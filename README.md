@@ -25,7 +25,7 @@ if (!requireNamespace("remotes", quietly = TRUE)) {
 }
 
 # Install from GitHub
-remotes::install_github("yourusername/seuratdisk-V5")
+remotes::install_github("mianaz/seuratdisk-V5")
 
 # Or install locally from source
 R CMD INSTALL .
