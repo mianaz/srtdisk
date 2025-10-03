@@ -136,6 +136,21 @@ setMethod(
   f = 'IsMatrix',
   signature = c('x' = 'H5D'),
   definition = function(x) {
+    # In Seurat V5, 2D cells dataset is a special case - check for it
+    is_cells_dataset <- FALSE
+    parent_name <- dirname(x$get_obj_name())
+    this_name <- basename(x$get_obj_name())
+    
+    if (this_name == "cells" && grepl("^/assays/", parent_name)) {
+      is_cells_dataset <- TRUE
+    }
+    
+    # Handle cells dataset specially
+    if (is_cells_dataset && length(x = x$dims) == 2) {
+      return(FALSE)  # Not a real matrix, special handling needed
+    }
+    
+    # Otherwise, normal matrix check
     return(length(x = x$dims) == 2)
   }
 )

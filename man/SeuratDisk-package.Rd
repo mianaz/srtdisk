@@ -3,7 +3,6 @@
 \docType{package}
 \name{SeuratDisk-package}
 \alias{SeuratDisk-package}
-\alias{_PACKAGE}
 \alias{SeuratDisk}
 \title{SeuratDisk: Interfaces for HDF5-Based Single Cell File Formats}
 \description{

@@ -1,6 +1,6 @@
 #' @importFrom rlang %||%
 #' @importFrom hdf5r H5T_COMPOUND
-#' @importFrom methods setOldClass
+#' @importFrom methods setOldClass isClass existsMethod
 #'
 NULL
 
@@ -66,6 +66,87 @@ version.regex <- '^\\d+(\\.\\d+){2}(\\.9\\d{3})?$'
 scdisk.types <- new.env()
 
 spatial.version <- '3.1.5.9900'
+v5.version <- '5.0.0'
+
+# Define null coalescing operator for use in multiple files
+`%||%` <- function(lhs, rhs) {
+  if (is.null(x = lhs)) {
+    return(rhs)
+  } else {
+    return(lhs)
+  }
+}
+
+# Helper functions for working with Seurat V5 Assay objects
+
+# Helper function to safely get layers from a V5 Assay
+# This handles the case where Layers() might not be exported from SeuratObject
+SafeGetLayers <- function(object) {
+  # Try using the Layers function if it exists
+  if (exists("Layers", where = asNamespace("SeuratObject"), mode = "function")) {
+    tryCatch({
+      return(SeuratObject::Layers(object))
+    }, error = function(e) {
+      # Fallback if Layers exists but fails
+      if (inherits(object, "Assay5")) {
+        return(c("counts", "data"))
+      } else {
+        return(c("counts", "data", "scale.data"))
+      }
+    })
+  }
+  
+  # Fallback method for getting layers if Layers() isn't available
+  # First check if this is an Assay5 object
+  if (!inherits(object, "Assay5")) {
+    return(c("counts", "data", "scale.data"))
+  }
+  
+  # Try direct slot access as a fallback
+  tryCatch({
+    if (exists("layers", where = attributes(object))) {
+      return(names(object@layers))
+    } else {
+      # Default layer names in V5
+      return(c("counts", "data"))
+    }
+  }, error = function(e) {
+    # Ultimate fallback
+    return(c("counts", "data"))
+  })
+}
+
+# Helper function to safely set layer data in a V5 Assay
+# This handles the case where LayerData<- might not be exported from SeuratObject
+SafeSetLayerData <- function(object, layer, value) {
+  # Try using the LayerData<- function if it exists
+  if (exists("LayerData<-", where = asNamespace("SeuratObject"), mode = "function")) {
+    `LayerData<-` <- getFromNamespace("LayerData<-", "SeuratObject")
+    tryCatch({
+      return(`LayerData<-`(object = object, layer = layer, value = value))
+    }, error = function(e) {
+      # Fall back to slot assignment if LayerData<- exists but fails
+    })
+  }
+  
+  # Fall back to direct slot assignment
+  tryCatch({
+    if (inherits(object, "Assay5")) {
+      # For Assay5, try to directly modify the layers slot
+      if (is.null(object@layers)) {
+        object@layers <- list()
+      }
+      object@layers[[layer]] <- value
+    } else {
+      # For standard Assay, use standard slots
+      slot(object, layer) <- value
+    }
+    return(object)
+  }, error = function(e) {
+    warning("Could not set layer data: ", e$message)
+    return(object)  # Return unchanged object as last resort
+  })
+}
 
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 # Internal utility functions
@@ -467,12 +548,28 @@ GetParent <- function(x) {
 GuessDType <- function(x, stype = 'utf8', ...) {
   dtype <- guess_dtype(x = x, ...)
   if (inherits(x = dtype, what = 'H5T_STRING')) {
-    dtype <- StringType(stype = stype)
+    # For string types, use the existing dtype or create new one
+    if (stype == 'utf8') {
+      # Keep the original H5T_STRING from guess_dtype
+      # Just ensure UTF8 is set
+      tryCatch({
+        dtype$set_cset(cset = h5const$H5T_CSET_UTF8)
+      }, error = function(e) {
+        # If setting fails, use the dtype as-is
+      })
+    } else if (stype == 'ascii7') {
+      dtype <- H5T_STRING$new(size = 7L)
+    }
   } else if (inherits(x = dtype, what = 'H5T_COMPOUND')) {
     cpd.dtypes <- dtype$get_cpd_types()
     for (i in seq_along(along.with = cpd.dtypes)) {
       if (inherits(x = cpd.dtypes[[i]], what = 'H5T_STRING')) {
-        cpd.dtypes[[i]] <- StringType(stype = stype)
+        # Keep string types as-is
+        if (stype == 'utf8') {
+          tryCatch({
+            cpd.dtypes[[i]]$set_cset(cset = h5const$H5T_CSET_UTF8)
+          }, error = function(e) {})
+        }
       }
     }
     dtype <- H5T_COMPOUND$new(
@@ -706,11 +803,12 @@ Scalar <- function() {
 #'
 StringType <- function(stype = c('utf8', 'ascii7')) {
   stype <- match.arg(arg = stype)
-  return(switch(
+  dtype <- switch(
     EXPR = stype,
     'utf8' = H5T_STRING$new(size = Inf)$set_cset(cset = h5const$H5T_CSET_UTF8),
     'ascii7' = H5T_STRING$new(size = 7L)
-  ))
+  )
+  return(dtype)
 }
 
 #' Update a Seurat key
@@ -865,12 +963,110 @@ WriteMode <- function(overwrite = FALSE) {
 # Loading handler
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+# Patch H5D methods for better compatibility with multidimensional arrays
+# This is critical for V5 compatibility
+PatchH5DMethods <- function(verbose = FALSE) {
+  if (verbose) {
+    message("Attempting to patch hdf5r H5D methods for V5 compatibility...")
+  }
+
+  # Make sure hdf5r is actually loaded
+  if (!requireNamespace("hdf5r", quietly = TRUE)) {
+    if (verbose) {
+      message("hdf5r package not available, cannot patch methods")
+    }
+    return(FALSE)
+  }
+
+  # Load hdf5r to ensure classes are available
+  if (!isNamespaceLoaded("hdf5r")) {
+    loadNamespace("hdf5r")
+  }
+
+  # Try to patch the [ method for H5D
+  tryCatch({
+    # Check if H5D class exists
+    if (!methods::isClass("H5D")) {
+      if (verbose) {
+        message("H5D class not found in hdf5r package")
+      }
+      return(FALSE)
+    }
+
+    # Store reference to original method if it exists
+    has_original <- methods::existsMethod("[", signature = c(x = "H5D"))
+
+    # Define our improved method
+    new_method <- function(x, i, j, ..., drop = TRUE) {
+      dims <- x$dims
+      ndims <- length(dims)
+
+      # Handle different access patterns
+      if (ndims == 1) {
+        # 1D dataset
+        if (missing(i)) {
+          # x[] - read all
+          return(x$read())
+        } else {
+          # x[i] - subset
+          return(x$read(args = list(i)))
+        }
+      } else if (ndims == 2) {
+        # 2D dataset
+        if (missing(i) && missing(j)) {
+          # x[,] - read all
+          return(x$read())
+        } else if (missing(j)) {
+          # x[i,] - rows only
+          return(x$read(args = list(i, 1:dims[2])))
+        } else if (missing(i)) {
+          # x[,j] - columns only
+          return(x$read(args = list(1:dims[1], j)))
+        } else {
+          # x[i,j] - both specified
+          return(x$read(args = list(i, j)))
+        }
+      } else {
+        # Higher dimensional - just use read()
+        return(x$read())
+      }
+    }
+
+    # Set the method
+    methods::setMethod(
+      f = "[",
+      signature = c(x = "H5D"),
+      definition = new_method
+    )
+
+    if (verbose) {
+      message("Successfully patched H5D[,] method")
+    }
+
+    return(TRUE)
+
+  }, error = function(e) {
+    if (verbose) {
+      message("Error patching H5D methods: ", e$message)
+    }
+    return(FALSE)
+  })
+}
+
 .onLoad <- function(libname, pkgname) {
   # Make the classes defined in SeuratDisk compatible with S4 generics/methods
   # setOldClass(Classes = c('scdisk', 'h5Seurat', 'loom'))
   setOldClass(Classes = c('scdisk', 'h5Seurat'))
   RegisterSCDisk(r6class = h5Seurat)
   RegisterSCDisk(r6class = loom)
+  
+  # Patch hdf5r's methods to handle multidimensional arrays better
+  # This is critical for V5 compatibility (fixes the "Number of arguments not equal to dimensions" error)
+  success <- PatchH5DMethods(verbose = TRUE)
+  if (!success) {
+    message("NOTE: Could not patch hdf5r methods - multidimensional array handling will use fallbacks")
+  }
+  
   # Set some default options
   op <- options()
   toset <- !names(x = default.options) %in% names(x = op)

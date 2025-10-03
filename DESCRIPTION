@@ -1,8 +1,8 @@
 Package: SeuratDisk
 Type: Package
 Title: Interfaces for HDF5-Based Single Cell File Formats
-Version: 0.0.0.9021
-Date: 2023-03-16
+Version: 0.1.0
+Date: 2024-09-29
 Authors@R: c(
   person(given = 'Paul', family = 'Hoffman', email = 'phoffman@nygenome.org', role = c('aut', 'cre'), comment = c(ORCID = '0000-0002-7693-8957')),
   person(given = 'Rahul', family = 'Satija', email = 'rsatija@nygenome.org', role = 'ctb', comment = c(ORCID = '0000-0001-9448-8833'))
@@ -20,7 +20,7 @@ BugReports: https://github.com/mojaveazure/seurat-disk/issues
 License: GPL-3 | file LICENSE
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.2.3
+RoxygenNote: 7.3.3
 Remotes: satijalab/seurat-data
 Depends:
   R (>= 3.6.0)
@@ -32,8 +32,8 @@ Imports:
   methods (>= 3.6.0),
   R6 (>= 2.4.1),
   rlang (>= 0.4.4),
-  Seurat (>= 3.2.0),
-  SeuratObject (>= 4.0.0),
+  Seurat (>= 5.0.0),
+  SeuratObject (>= 5.0.0),
   stats,
   stringi (>= 1.4.6),
   tools,
@@ -54,6 +54,8 @@ Collate:
     'sparse_matrix.R'
     'Transpose.R'
     'Convert.R'
+    'H5DAccess.R'
+    'LoadH5AD.R'
     'LoadH5Seurat.R'
     'loom.R'
     'loom_bindings.R'
@@ -62,10 +64,13 @@ Collate:
     'WriteH5Group.R'
     'SaveH5Seurat.R'
     'SaveLoom.R'
+    'V5Compatibility.R'
+    'V5LayerSupport.R'
     'h5Seurat_bindings.R'
 Suggests:
     httr,
     knitr,
     rmarkdown,
-    SeuratData
+    SeuratData,
+    testthat (>= 3.0.0)
 VignetteBuilder: knitr

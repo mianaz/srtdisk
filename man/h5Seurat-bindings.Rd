@@ -2,7 +2,7 @@
 % Please edit documentation in R/h5Seurat_bindings.R
 \name{h5Seurat-bindings}
 \alias{h5Seurat-bindings}
-\alias{Cells.h5Seurat}
+\alias{safe_read_cells}
 \alias{Cells}
 \alias{DefaultAssay.h5Seurat}
 \alias{DefaultAssay}
@@ -19,7 +19,7 @@
 \alias{Stdev.h5Seurat}
 \title{Seurat bindings for h5Seurat files}
 \usage{
-\method{Cells}{h5Seurat}(x)
+\method{Cells}{h5Seurat}(cell_dataset, verbose = FALSE)
 
 \method{DefaultAssay}{h5Seurat}(object, ...)
 
