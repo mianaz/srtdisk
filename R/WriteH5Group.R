@@ -232,6 +232,33 @@ WriteH5GroupAssay5 <- function(x, name, hgroup, verbose = TRUE) {
   # Direct implementation - no recursive call
   xgroup <- hgroup$create_group(name = name)
 
+  # Helper function to convert BPCells objects to dgCMatrix
+  ConvertBPCellsIfNeeded <- function(mat) {
+    if (is.null(mat)) return(NULL)
+
+    # Check if it's a BPCells object (RenameDims, IterableMatrix, etc.)
+    if (inherits(mat, "IterableMatrix") ||
+        inherits(mat, "RenameDims") ||
+        (is.object(mat) && !inherits(mat, c("dgCMatrix", "dgTMatrix", "matrix")))) {
+      # Check if BPCells package is available
+      if (requireNamespace("BPCells", quietly = TRUE) ||
+          inherits(mat, "RenameDims")) {
+        if (verbose) {
+          message("Converting BPCells object to dgCMatrix")
+        }
+        # Convert to dgCMatrix
+        mat <- tryCatch(
+          as(mat, "dgCMatrix"),
+          error = function(e) {
+            warning("Failed to convert BPCells object: ", e$message, call. = FALSE)
+            mat
+          }
+        )
+      }
+    }
+    return(mat)
+  }
+
   # Get layers (V5 compatible)
   layers <- if (inherits(x = x, what = 'Assay5')) {
     tryCatch(Layers(object = x), error = function(e) c("counts", "data"))
@@ -247,6 +274,9 @@ WriteH5GroupAssay5 <- function(x, name, hgroup, verbose = TRUE) {
         GetAssayData(object = x, layer = layer),
         error = function(e) NULL
       )
+
+      # Convert BPCells objects if needed
+      dat <- ConvertBPCellsIfNeeded(dat)
 
       if (!is.null(dat) && !IsMatrixEmpty(x = dat)) {
         if (verbose) {
@@ -268,6 +298,9 @@ WriteH5GroupAssay5 <- function(x, name, hgroup, verbose = TRUE) {
         GetAssayData(object = x, layer = layer),
         error = function(e) NULL
       )
+
+      # Convert BPCells objects if needed
+      dat <- ConvertBPCellsIfNeeded(dat)
 
       if (!is.null(dat) && !IsMatrixEmpty(x = dat)) {
         if (verbose) {
@@ -313,11 +346,23 @@ setMethod(
     if (inherits(x = x, what = 'Assay5')) {
       return(WriteH5GroupAssay5(x = x, name = name, hgroup = hgroup, verbose = verbose))
     }
+
+    # Helper to convert BPCells if needed
+    ConvertBPCellsIfNeeded <- function(mat) {
+      if (is.null(mat)) return(NULL)
+      if (inherits(mat, "IterableMatrix") || inherits(mat, "RenameDims")) {
+        if (verbose) message("Converting BPCells object to dgCMatrix")
+        mat <- tryCatch(as(mat, "dgCMatrix"), error = function(e) mat)
+      }
+      return(mat)
+    }
+
     xgroup <- hgroup$create_group(name = name)
     # Write out expression data
     # TODO: determine if empty matrices should be present
     for (i in c('counts', 'data', 'scale.data')) {
       dat <- SafeGetAssayData(object = x, layer = i)
+      dat <- ConvertBPCellsIfNeeded(dat)
       if (!is.null(dat) && !IsMatrixEmpty(x = dat)) {
         if (verbose) {
           message("Adding ", i, " for ", name)
