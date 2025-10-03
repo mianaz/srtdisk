@@ -1159,30 +1159,30 @@ H5SeuratToH5AD <- function(
       }
 
       # Add shape attribute for sparse matrices (required by anndata)
-      # Shape should be [nrows, ncols] based on the indptr and indices
-      if (dfile[[dname]]$exists(name = 'indptr') && dfile[[dname]]$exists(name = 'indices')) {
-        # For CSR matrix: nrows = length(indptr) - 1, ncols = max dimension
-        # Check if shape attribute already exists
-        if (!dfile[[dname]]$attr_exists(attr_name = 'shape')) {
-          # Try to infer shape from the data
-          nrows <- dfile[[dname]][['indptr']]$dims - 1L
+      if (dfile[[dname]]$exists(name = 'indptr') &&
+          dfile[[dname]]$exists(name = 'indices') &&
+          !dfile[[dname]]$attr_exists(attr_name = 'shape')) {
+        # For CSR matrix: nrows = length(indptr) - 1
+        # Use prod() to handle multi-dimensional dims arrays
+        indptr_len <- prod(dfile[[dname]][['indptr']]$dims)
+        nrows <- as.integer(indptr_len - 1L)
 
-          # For ncols, we need to check if there's a dims attribute or infer from indices
-          if (dfile[[dname]][['indices']]$attr_exists(attr_name = 'dims')) {
-            ncols <- h5attr(x = dfile[[dname]][['indices']], which = 'dims')[1]
-          } else {
-            # Infer from max index value + 1, or use a stored value
-            # This is a fallback - ideally shape should be passed in
-            ncols <- max(dfile[[dname]][['indices']][], 0) + 1L
-          }
-
-          shape <- c(nrows, ncols)
-          dfile[[dname]]$create_attr(
-            attr_name = 'shape',
-            robj = as.integer(shape),
-            dtype = GuessDType(x = as.integer(shape))
-          )
+        # Get ncols from max index + 1 (most reliable for sparse matrices)
+        # Read all indices and find max
+        all_indices <- dfile[[dname]][['indices']][]
+        ncols <- if (length(all_indices) > 0) {
+          as.integer(max(all_indices) + 1L)
+        } else {
+          # Empty matrix
+          0L
         }
+
+        shape <- c(nrows, ncols)
+        dfile[[dname]]$create_attr(
+          attr_name = 'shape',
+          robj = shape,
+          dtype = GuessDType(x = shape)
+        )
       }
     }
     return(invisible(x = NULL))
@@ -1237,26 +1237,46 @@ H5SeuratToH5AD <- function(
   if (verbose) {
     message("Adding ", x.data, " from ", assay, " as X")
   }
+  # Get shape from source BEFORE copying (most reliable)
+  source_dims <- NULL
+  if (grepl("/", x.data)) {
+    # Handle nested paths like "layers/data"
+    parts <- strsplit(x.data, "/")[[1]]
+    src_obj <- assay.group
+    for (part in parts) {
+      src_obj <- src_obj[[part]]
+    }
+    if (src_obj$attr_exists(attr_name = 'dims')) {
+      source_dims <- h5attr(x = src_obj, which = 'dims')
+    }
+  } else {
+    # Simple path
+    if (assay.group$exists(name = x.data) &&
+        assay.group[[x.data]]$attr_exists(attr_name = 'dims')) {
+      source_dims <- h5attr(x = assay.group[[x.data]], which = 'dims')
+    }
+  }
+
+  # Copy the data
   assay.group$obj_copy_to(dst_loc = dfile, dst_name = 'X', src_name = x.data)
 
   # Ensure shape attribute exists (required by anndata)
-  if (dfile[['X']]$attr_exists(attr_name = 'dims')) {
-    dims <- h5attr(x = dfile[['X']], which = 'dims')
-    dfile[['X']]$create_attr(
-      attr_name = 'shape',
-      robj = rev(x = dims),
-      dtype = GuessDType(x = dims)
-    )
-    dfile[['X']]$attr_delete(attr_name = 'dims')
-  } else if (inherits(x = dfile[['X']], what = 'H5Group') &&
-             !dfile[['X']]$attr_exists(attr_name = 'shape')) {
-    # For sparse matrices without explicit dims, try to get from source
-    if (assay.group[[x.data]]$attr_exists(attr_name = 'dims')) {
-      dims <- h5attr(x = assay.group[[x.data]], which = 'dims')
+  if (!dfile[['X']]$attr_exists(attr_name = 'shape')) {
+    # Try to get from copied dims attribute first
+    if (dfile[['X']]$attr_exists(attr_name = 'dims')) {
+      dims <- h5attr(x = dfile[['X']], which = 'dims')
       dfile[['X']]$create_attr(
         attr_name = 'shape',
         robj = rev(x = dims),
         dtype = GuessDType(x = dims)
+      )
+      dfile[['X']]$attr_delete(attr_name = 'dims')
+    } else if (!is.null(source_dims)) {
+      # Use dims from source
+      dfile[['X']]$create_attr(
+        attr_name = 'shape',
+        robj = rev(x = source_dims),
+        dtype = GuessDType(x = source_dims)
       )
     }
   }
@@ -1288,10 +1308,12 @@ H5SeuratToH5AD <- function(
     dfile[['var']]$link_delete(name = rownames)
   }
   features_data <- SafeH5DRead(assay.group[['features']])
+  # Ensure features are character strings
+  features_subset <- as.character(features_data[x.features])
   dfile[['var']]$create_dataset(
     name = rownames,
-    robj = features_data[x.features],
-    dtype = GuessDType(x = features_data[1])
+    robj = features_subset,
+    dtype = h5types$H5T_STRING$new(size = Inf)$set_cset(cset = h5const$H5T_CSET_UTF8)$set_strpad(strpad = h5const$H5T_STR_NULLTERM)
   )
 
   # Add encoding attributes to _index
@@ -1386,6 +1408,27 @@ H5SeuratToH5AD <- function(
     if (verbose) {
       message("Adding ", raw.data, " from ", assay, " as raw")
     }
+
+    # Get shape from source BEFORE copying (most reliable)
+    raw_source_dims <- NULL
+    if (grepl("/", raw.data)) {
+      # Handle nested paths like "layers/counts"
+      parts <- strsplit(raw.data, "/")[[1]]
+      src_obj <- assay.group
+      for (part in parts) {
+        src_obj <- src_obj[[part]]
+      }
+      if (src_obj$attr_exists(attr_name = 'dims')) {
+        raw_source_dims <- h5attr(x = src_obj, which = 'dims')
+      }
+    } else {
+      # Simple path
+      if (assay.group$exists(name = raw.data) &&
+          assay.group[[raw.data]]$attr_exists(attr_name = 'dims')) {
+        raw_source_dims <- h5attr(x = assay.group[[raw.data]], which = 'dims')
+      }
+    }
+
     dfile$create_group(name = 'raw')
     assay.group$obj_copy_to(
       dst_loc = dfile[['raw']],
@@ -1394,23 +1437,22 @@ H5SeuratToH5AD <- function(
     )
 
     # Ensure shape attribute exists for raw/X (required by anndata)
-    if (dfile[['raw/X']]$attr_exists(attr_name = 'dims')) {
-      dims <- h5attr(x = dfile[['raw/X']], which = 'dims')
-      dfile[['raw/X']]$create_attr(
-        attr_name = 'shape',
-        robj = rev(x = dims),
-        dtype = GuessDType(x = dims)
-      )
-      dfile[['raw/X']]$attr_delete(attr_name = 'dims')
-    } else if (inherits(x = dfile[['raw/X']], what = 'H5Group') &&
-               !dfile[['raw/X']]$attr_exists(attr_name = 'shape')) {
-      # For sparse matrices without explicit dims, try to get from source
-      if (assay.group[[raw.data]]$attr_exists(attr_name = 'dims')) {
-        dims <- h5attr(x = assay.group[[raw.data]], which = 'dims')
+    if (!dfile[['raw/X']]$attr_exists(attr_name = 'shape')) {
+      # Try to get from copied dims attribute first
+      if (dfile[['raw/X']]$attr_exists(attr_name = 'dims')) {
+        dims <- h5attr(x = dfile[['raw/X']], which = 'dims')
         dfile[['raw/X']]$create_attr(
           attr_name = 'shape',
           robj = rev(x = dims),
           dtype = GuessDType(x = dims)
+        )
+        dfile[['raw/X']]$attr_delete(attr_name = 'dims')
+      } else if (!is.null(raw_source_dims)) {
+        # Use dims from source
+        dfile[['raw/X']]$create_attr(
+          attr_name = 'shape',
+          robj = rev(x = raw_source_dims),
+          dtype = GuessDType(x = raw_source_dims)
         )
       }
     }
@@ -1545,10 +1587,11 @@ H5SeuratToH5AD <- function(
     if (Exists(x = dfile[['obs']], name = rownames)) {
       dfile[['obs']]$link_delete(name = rownames)
     }
+    cell_names <- as.character(Cells(x = source))
     dfile[['obs']]$create_dataset(
       name = rownames,
-      robj = Cells(x = source),
-      dtype = GuessDType(x = Cells(x = source))
+      robj = cell_names,
+      dtype = h5types$H5T_STRING$new(size = Inf)$set_cset(cset = h5const$H5T_CSET_UTF8)$set_strpad(strpad = h5const$H5T_STR_NULLTERM)
     )
 
     # Add encoding attributes to _index
