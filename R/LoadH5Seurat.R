@@ -320,14 +320,35 @@ as.Seurat.h5Seurat <- function(
     slot(object = object, name = 'commands') <- cmdlogs
   }
   # Load meta.data
-  if (meta.data) {
+  if (meta.data && x$exists('meta.data')) {
     if (verbose) {
       message("Adding cell-level metadata")
     }
-    md <- as.data.frame(x = x[['meta.data']], row.names = Cells(x = x))
-    if (ncol(x = md)) {
-      object <- AddMetaData(object = object, metadata = md)
-    }
+
+    # Safely read metadata with error handling
+    tryCatch({
+      md <- as.data.frame(x = x[['meta.data']], row.names = Cells(x = x))
+
+      # Validate columns before subsetting
+      if (ncol(x = md) > 0) {
+        # Remove any columns that might cause issues
+        problematic_cols <- sapply(md, function(col) {
+          inherits(col, "environment") || is.null(col)
+        })
+        if (any(problematic_cols)) {
+          md <- md[, !problematic_cols, drop = FALSE]
+        }
+
+        if (ncol(md) > 0) {
+          object <- AddMetaData(object = object, metadata = md)
+        }
+      }
+    }, error = function(e) {
+      if (verbose) {
+        warning("Could not load metadata: ", conditionMessage(e),
+                call. = FALSE, immediate. = TRUE)
+      }
+    })
   }
   # Set cell identities and object project
   Idents(object = object) <- Idents(object = x)
@@ -337,14 +358,14 @@ as.Seurat.h5Seurat <- function(
     if (verbose) {
       message("Adding miscellaneous information")
     }
-    slot(object = object, name = 'misc') <- as.list(x = x[['misc']])
+    slot(object = object, name = 'misc') <- as.list(x = x[['misc']], recursive = TRUE)
   }
   # Load tools
   if (tools) {
     if (verbose) {
       message("Adding tool-specific results")
     }
-    slot(object = object, name = 'tools') <- as.list(x = x[['tools']])
+    slot(object = object, name = 'tools') <- as.list(x = x[['tools']], recursive = TRUE)
   }
   # Load no.assay information
   if (obj.all && !is.null(x = index$no.assay)) {

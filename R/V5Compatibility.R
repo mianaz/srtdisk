@@ -8,6 +8,28 @@ NULL
 # V5-specific helper functions
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+#' Safely get assay data using layer or slot parameter
+#'
+#' @param object An Assay or Assay5 object
+#' @param layer Layer name (preferred for V5)
+#' @return Matrix data or NULL
+#' @keywords internal
+#'
+SafeGetAssayData <- function(object, layer) {
+  # Try layer parameter first (V5)
+  data <- tryCatch(
+    expr = GetAssayData(object = object, layer = layer),
+    error = function(e) {
+      # Fallback to slot parameter (V3/V4)
+      tryCatch(
+        expr = GetAssayData(object = object, slot = layer),
+        error = function(e2) NULL
+      )
+    }
+  )
+  return(data)
+}
+
 #' Get layers from an Assay5 object safely
 #'
 #' @param object An Assay or Assay5 object
@@ -27,15 +49,13 @@ SafeGetLayers <- function(object) {
     )
   } else {
     # V3/V4 Assays - check for non-empty slots
+    # Use a helper function to handle both layer and slot parameters
     layers <- c()
-    if (!IsMatrixEmpty(x = GetAssayData(object = object, slot = "counts"))) {
-      layers <- c(layers, "counts")
-    }
-    if (!IsMatrixEmpty(x = GetAssayData(object = object, slot = "data"))) {
-      layers <- c(layers, "data")
-    }
-    if (!IsMatrixEmpty(x = GetAssayData(object = object, slot = "scale.data"))) {
-      layers <- c(layers, "scale.data")
+    for (lyr in c("counts", "data", "scale.data")) {
+      data <- SafeGetAssayData(object = object, layer = lyr)
+      if (!is.null(data) && !IsMatrixEmpty(x = data)) {
+        layers <- c(layers, lyr)
+      }
     }
   }
   return(layers)

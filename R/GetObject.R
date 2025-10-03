@@ -95,9 +95,10 @@ GetAssays <- function(assays, index) {
     assays[[i]] <- slots.use
   }
   for (i in seq_along(along.with = assays)) {
-    if (!any(c('counts', 'data') %in% assays[[i]])) {
+    # V5 compatibility: Allow assays with any valid layers/slots, not just counts/data
+    if (length(assays[[i]]) == 0) {
       stop(
-        "Call assays must have either a 'counts' or 'data' slot, missing for ",
+        "Call assays must have at least one layer/slot, missing for ",
         names(x = assays)[i],
         call. = FALSE
       )
@@ -207,7 +208,7 @@ GetImages <- function(images, index, assays = NULL) {
       return(index[[x]]$images)
     }
   )
-  assays.images <- unique(x = c(unlist(x = assays.images, index$global$images)))
+  assays.images <- unique(x = c(unlist(x = assays.images), index$global$images))
   return(intersect(x = images, y = assays.images))
 }
 

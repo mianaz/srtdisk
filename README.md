@@ -1,40 +1,39 @@
-# SeuratDisk (Community V5 Fork)
+# SeuratDisk V5
 
-<!-- badges: start -->
 [![Lifecycle](https://img.shields.io/badge/lifecycle-experimental-orange.svg)]()
 [![R](https://img.shields.io/badge/R-%3E%3D4.0-blue.svg)]()
 [![Seurat](https://img.shields.io/badge/Seurat-v5-green.svg)]()
-<!-- badges: end -->
 
 ## Overview
 
-SeuratDisk provides interfaces for HDF5-based single cell file formats. This is a community-maintained fork with Seurat V5 compatibility. The h5Seurat format enables efficient storage of large single-cell datasets and conversion between Seurat and AnnData/h5ad formats for interoperability with Scanpy.
+SeuratDisk provides interfaces for HDF5-based single cell file formats, enabling efficient storage and conversion between Seurat objects and AnnData/h5ad formats. This fork extends the original [SeuratDisk package](https://github.com/mojaveazure/seurat-disk) with full Seurat V5 compatibility and improved interoperability with Python's scanpy/anndata ecosystem.
 
-## Features
+## Key Features
 
-- **Seurat V5 Compatible**: Full support for Seurat V5 objects and assay structures
-- **Efficient Storage**: HDF5-based format for large single-cell datasets
+- **Seurat V5 Support**: Native handling of Seurat V5 Assay5 objects and layered data structures
 - **Format Conversion**: Bidirectional conversion between Seurat, h5Seurat, and h5ad formats
-- **Metadata Preservation**: Complete transfer of cell metadata, embeddings, and analysis results
-- **Direct h5ad Loading**: Load h5ad files directly into Seurat (bypassing h5Seurat intermediate)
+- **Direct h5ad Loading**: Load AnnData h5ad files directly into Seurat without intermediate conversion
+- **Metadata Preservation**: Complete transfer of cell/gene metadata, dimensional reductions, and graphs
+- **Modern AnnData Compatibility**: Supports anndata 0.8+ categorical encoding and structure
 
 ## Installation
 
 ```r
-# Install from this repository
+# Install dependencies
 if (!requireNamespace("remotes", quietly = TRUE)) {
   install.packages("remotes")
 }
-# Replace 'username' with the actual GitHub username hosting this fork
-remotes::install_github("username/seuratdisk-V5")
 
-# Or install locally
+# Install from GitHub
+remotes::install_github("yourusername/seuratdisk-V5")
+
+# Or install locally from source
 R CMD INSTALL .
 ```
 
-## Quick Start
+## Usage
 
-### Save and Load Seurat Objects
+### Basic Operations
 
 ```r
 library(SeuratDisk)
@@ -42,125 +41,122 @@ library(SeuratDisk)
 # Save Seurat object to h5Seurat format
 SaveH5Seurat(seurat_obj, filename = "data.h5Seurat")
 
-# Load h5Seurat file back to Seurat
+# Load h5Seurat file
 seurat_obj <- LoadH5Seurat("data.h5Seurat")
-```
 
-### Convert Between Formats
-
-```r
-# Convert Seurat to h5ad (for Scanpy/Python)
+# Convert to h5ad for Python/scanpy
 Convert("data.h5Seurat", dest = "data.h5ad")
-
-# Convert h5ad to h5Seurat
-Convert("data.h5ad", dest = "data.h5Seurat")
-
-# Load h5ad directly into Seurat (recommended for V5)
-seurat_obj <- LoadH5AD("data.h5ad")
 ```
 
 ### Working with AnnData Files
 
 ```r
-# Direct h5ad to Seurat conversion (bypasses h5Seurat)
+# Load h5ad directly into Seurat (recommended for V5)
 seurat_obj <- LoadH5AD("scanpy_output.h5ad")
 
-# The LoadH5AD function preserves:
-# - Expression matrices (X, layers)
-# - Cell metadata (obs)
-# - Gene metadata (var)
-# - Dimensional reductions (obsm)
-# - Graphs (obsp)
-# - Unstructured data (uns)
+# Convert h5ad to h5Seurat
+Convert("data.h5ad", dest = "data.h5Seurat")
 ```
+
+### Layer Handling
+
+Seurat V5 supports multiple data layers per assay (counts, data, scale.data). These are mapped as follows:
+
+**In h5Seurat files:**
+- Stored under `/assays/{assay_name}/layers/{layer_name}`
+- Each layer is a separate HDF5 group/dataset
+
+**In h5ad files:**
+- Primary layer (typically `data` or `scale.data`) stored as `/X`
+- Raw counts stored as `/raw/X` (if available)
+- Additional assay layers stored in `/layers/{assay_name}`
+
+**Conversion behavior:**
+- h5Seurat → h5ad: `data` layer becomes `/X`, `counts` becomes `/raw/X`
+- h5ad → Seurat: `/X` becomes `data` layer, `/raw/X` becomes `counts`
+- Missing layers are handled gracefully (e.g., counts-only objects supported)
 
 ## System Requirements
 
-- **R**: >= 4.0.0
-- **Seurat**: >= 5.0.0
-- **SeuratObject**: >= 5.0.0
-- **hdf5r**: >= 1.3.0
+- R >= 4.0.0
+- Seurat >= 5.0.0
+- SeuratObject >= 5.0.0
+- hdf5r >= 1.3.0
 
-### Dependencies
+## Improvements in This Fork
 
-Core dependencies are automatically installed:
-- **Matrix**: Sparse matrix operations
-- **hdf5r**: HDF5 file interface
-- **R6**: Object system
-- Additional utility packages (cli, crayon, rlang, stringi, withr)
+### V5 Compatibility
+- Native Assay5 object handling with layer-based data storage
+- Patched hdf5r methods for improved multidimensional array access
+- Support for counts-only objects (data layer optional)
 
-## Supported Features
+### AnnData Format Updates
+- Modern categorical encoding (`categories`/`codes` instead of `__categories`)
+- Proper encoding attributes for anndata 0.8+ compatibility
+- Complete metadata group structure (`obsm`, `obsp`, `varm`, `varp`, `layers`, `uns`)
+- Correct `shape` attributes for sparse matrices
 
-✅ **Working**:
-- Seurat V5 → h5Seurat → h5ad conversion
-- Direct h5ad → Seurat loading (LoadH5AD)
-- All cell metadata preservation (V5 fix)
-- Multiple assays (RNA, SCT)
-- Dimensional reductions (PCA, UMAP, tSNE)
-- Highly variable genes
-- Graph structures
-
-⚠️ **Limited Support**:
-- Multi-modal assays with different dimensions (ADT, HTO)
-- Spatial transcriptomics data
-- Complex nested metadata structures
+### Bug Fixes
+- Fixed V5 metadata transfer issues
+- Corrected dimension handling for 1D/2D feature datasets
+- Improved error handling for missing data layers
 
 ## Known Limitations
 
-1. **Round-trip conversions**: h5Seurat → Seurat → h5Seurat may encounter issues with V5 objects
-2. **Multi-modal data**: Assays with different feature dimensions have limited support
-3. **Large files**: Datasets >100K cells may require increased memory
-4. **Spatial data**: Basic structure preserved but not fully integrated
+- Round-trip conversions (h5Seurat ↔ Seurat ↔ h5Seurat) may lose some V5-specific metadata
+- Multi-modal assays with different feature dimensions have limited support
+- Spatial transcriptomics data preservation is basic
+- Large datasets (>100K cells) may require substantial memory
 
 ## Troubleshooting
 
-### HDF5 Errors
-If you encounter HDF5 errors, ensure you're using compatible library versions:
-```r
-# Check hdf5r version
-packageVersion("hdf5r")  # Should be >= 1.3.0
-```
+### HDF5 Method Patching
 
-### Memory Issues
+If you see warnings about H5D method patching:
+```
+Error patching H5D methods: no method found for function '[' and signature H5D
+```
+This is expected if hdf5r methods are not yet loaded. The package uses fallback methods automatically.
+
+### Memory Management
+
 For large datasets:
 ```r
-# Increase memory limit (Windows)
-memory.limit(size = 16000)
-
 # Monitor memory usage
 gc()
+
+# Windows only: increase memory limit
+memory.limit(size = 32000)
 ```
 
-### V5 Compatibility
-For best V5 compatibility, use `LoadH5AD()` for direct h5ad loading rather than the h5Seurat intermediate format.
+## Upstream Reference
 
-## Contributing
-
-This is a community-maintained fork. Contributions are welcome! Key areas for improvement:
-- Enhanced multi-modal support
-- Spatial data integration
-- Performance optimization for large datasets
-
-## Original Project
-
-This fork builds upon the original SeuratDisk package. The original repository by mojaveazure may no longer be actively maintained.
+This fork is based on the original SeuratDisk package by [mojaveazure](https://github.com/mojaveazure/seurat-disk). The original repository may no longer be actively maintained. This fork focuses specifically on Seurat V5 compatibility and modern AnnData format support.
 
 ## Citation
 
-If you use SeuratDisk in your research, please cite the Seurat papers:
+If you use SeuratDisk in published research, please cite the relevant Seurat papers:
 
 ```
-Hao and Hao et al. Dictionary learning for integrative, multimodal and scalable
-single-cell analysis. Nature Biotechnology (2024) [Seurat V5]
+Hao and Hao et al. (2024) Dictionary learning for integrative, multimodal and
+scalable single-cell analysis. Nature Biotechnology. [Seurat V5]
 
-Hao and Hao et al. Integrated analysis of multimodal single-cell data.
-Cell (2021) [Seurat V4]
+Hao et al. (2021) Integrated analysis of multimodal single-cell data.
+Cell, 184(13), 3573-3587. [Seurat V4]
 ```
+
+## Contributing
+
+Contributions are welcome. Key areas for improvement:
+- Enhanced multi-modal assay support
+- Spatial transcriptomics integration
+- Performance optimization for very large datasets
+- Additional file format conversions
 
 ## License
 
-GPL-3
+GPL-3 (inherited from original SeuratDisk)
 
 ## Support
 
-For issues specific to this V5-compatible fork, please open an issue in this repository. For general Seurat questions, visit the [Seurat community](https://github.com/satijalab/seurat/discussions).
+For issues related to V5 compatibility or this fork, please open an issue in this repository. For general Seurat questions, visit the [Seurat discussions](https://github.com/satijalab/seurat/discussions).

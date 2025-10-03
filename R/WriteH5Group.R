@@ -227,7 +227,81 @@ setMethod(
   definition = BasicWrite
 )
 
+# Simplified V5 Assay5 support
+WriteH5GroupAssay5 <- function(x, name, hgroup, verbose = TRUE) {
+  # Direct implementation - no recursive call
+  xgroup <- hgroup$create_group(name = name)
+
+  # Get layers (V5 compatible)
+  layers <- if (inherits(x = x, what = 'Assay5')) {
+    tryCatch(Layers(object = x), error = function(e) c("counts", "data"))
+  } else {
+    c("counts", "data", "scale.data")
+  }
+
+  # Use V5 layer structure if available
+  if (exists("WriteV5Layer", where = asNamespace("SeuratDisk"), mode = "function")) {
+    # Write each layer using V5 format
+    for (layer in layers) {
+      dat <- tryCatch(
+        GetAssayData(object = x, layer = layer),
+        error = function(e) NULL
+      )
+
+      if (!is.null(dat) && !IsMatrixEmpty(x = dat)) {
+        if (verbose) {
+          message("Adding ", layer, " for ", name)
+        }
+        WriteV5Layer(
+          h5_group = xgroup,
+          layer_name = layer,
+          matrix_data = dat,
+          features = rownames(x),
+          verbose = verbose
+        )
+      }
+    }
+  } else {
+    # Fallback to old method
+    for (layer in layers) {
+      dat <- tryCatch(
+        GetAssayData(object = x, layer = layer),
+        error = function(e) NULL
+      )
+
+      if (!is.null(dat) && !IsMatrixEmpty(x = dat)) {
+        if (verbose) {
+          message("Adding ", layer, " for ", name)
+        }
+        WriteH5Group(x = dat, name = layer, hgroup = xgroup, verbose = verbose)
+      }
+    }
+  }
+
+  # Write features
+  if (!is.null(rownames(x))) {
+    WriteH5Group(x = rownames(x), name = 'features', hgroup = xgroup, verbose = verbose)
+  }
+
+  # Write key
+  xgroup$create_attr(
+    attr_name = 'key',
+    robj = Key(object = x),
+    dtype = GuessDType(x = Key(object = x))
+  )
+
+  # Mark as Assay5
+  xgroup$create_attr(
+    attr_name = 's4class',
+    robj = 'SeuratObject::Assay5',
+    dtype = GuessDType(x = 'SeuratObject::Assay5')
+  )
+
+  return(invisible(x = NULL))
+}
+
 #' @importClassesFrom Seurat Assay
+#' @importClassesFrom SeuratObject Assay5
 #'
 #' @rdname WriteH5Group
 #'
@@ -235,19 +309,23 @@ setMethod(
   f = 'WriteH5Group',
   signature = c('x' = 'Assay'),
   definition = function(x, name, hgroup, verbose = TRUE) {
+    # Check if this is an Assay5 object and delegate to the appropriate method
+    if (inherits(x = x, what = 'Assay5')) {
+      return(WriteH5GroupAssay5(x = x, name = name, hgroup = hgroup, verbose = verbose))
+    }
     xgroup <- hgroup$create_group(name = name)
     # Write out expression data
     # TODO: determine if empty matrices should be present
     for (i in c('counts', 'data', 'scale.data')) {
-      dat <- GetAssayData(object = x, slot = i)
-      if (!IsMatrixEmpty(x = dat)) {
+      dat <- SafeGetAssayData(object = x, layer = i)
+      if (!is.null(dat) && !IsMatrixEmpty(x = dat)) {
         if (verbose) {
           message("Adding ", i, " for ", name)
         }
         WriteH5Group(x = dat, name = i, hgroup = xgroup, verbose = verbose)
       }
       # For scale.data, ensure we have the features used
-      if (i == 'scale.data') {
+      if (i == 'scale.data' && !is.null(dat) && !IsMatrixEmpty(x = dat)) {
         WriteH5Group(
           x = rownames(x = dat),
           name = 'scaled.features',

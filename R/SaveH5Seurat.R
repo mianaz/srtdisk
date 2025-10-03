@@ -267,11 +267,23 @@ as.h5Seurat.Seurat <- function(
   }
   # Add metadata, cell names, and identity classes
   WriteH5Group(x = x[[]], name = 'meta.data', hgroup = hfile, verbose = verbose)
-  WriteH5Group(
-    x = colnames(x = x),
+  # Ensure cell names are written as a 1D vector, not a 2D matrix
+  # The issue causing the dimension mismatch when reading h5Seurat files is here
+  cell_names <- colnames(x = x)
+  
+  # Force cell names to be a standard character vector (not a matrix or data.frame)
+  if (!is.null(dim(cell_names)) || !is.vector(cell_names)) {
+    if (verbose) {
+      message("Converting cell names to a 1D vector for compatibility")
+    }
+    cell_names <- as.character(cell_names)
+  }
+  
+  # Create the dataset directly instead of using WriteH5Group to ensure proper dimensionality
+  hfile$create_dataset(
     name = 'cell.names',
-    hgroup = hfile,
-    verbose = verbose
+    robj = cell_names,
+    dtype = GuessDType(x = cell_names)
   )
   WriteH5Group(
     x = Idents(object = x),
