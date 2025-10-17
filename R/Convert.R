@@ -480,6 +480,13 @@ H5ADToH5Seurat <- function(
         meta.scaled <- names(x = source[['var']])
         meta.scaled <- meta.scaled[!meta.scaled %in% c('__categories', scaled.dset)]
         for (mf in meta.scaled) {
+          # Skip if not a dataset (e.g., skip groups like feature_types, genome)
+          if (!inherits(x = source[['var']][[mf]], what = 'H5D')) {
+            if (verbose) {
+              message("Skipping ", mf, " (not a dataset)")
+            }
+            next
+          }
           if (!mf %in% names(x = assay.group[['meta.features']])) {
             if (verbose) {
               message("Adding ", mf, " from scaled feature-level metadata")
@@ -552,6 +559,35 @@ H5ADToH5Seurat <- function(
       src_name = 'obs',
       dst_name = 'meta.data'
     )
+    # Normalize h5ad categorical format (categories/codes) to SeuratDisk format (levels/values)
+    NormalizeH5ADCategorical <- function(dfgroup) {
+      for (col_name in names(dfgroup)) {
+        col_obj <- dfgroup[[col_name]]
+        # Check if this is an h5ad categorical group (has 'categories' and 'codes')
+        if (inherits(col_obj, 'H5Group') &&
+            all(c('categories', 'codes') %in% names(col_obj))) {
+          # Rename 'categories' to 'levels'
+          if (!col_obj$exists('levels')) {
+            col_obj$obj_copy_from(
+              src_loc = col_obj,
+              src_name = 'categories',
+              dst_name = 'levels'
+            )
+            col_obj$link_delete(name = 'categories')
+          }
+          # Rename 'codes' to 'values'
+          if (!col_obj$exists('values')) {
+            col_obj$obj_copy_from(
+              src_loc = col_obj,
+              src_name = 'codes',
+              dst_name = 'values'
+            )
+            col_obj$link_delete(name = 'codes')
+          }
+        }
+      }
+    }
+    NormalizeH5ADCategorical(dfgroup = dfile[['meta.data']])
     ColToFactor(dfgroup = dfile[['meta.data']])
     # if (dfile[['meta.data']]$attr_exists(attr_name = 'column-order')) {
     if (isTRUE(x = AttrExists(x = dfile[['meta.data']], name = 'column-order'))) {
@@ -1160,24 +1196,23 @@ H5SeuratToH5AD <- function(
 
       # Add shape attribute for sparse matrices (required by anndata)
       if (dfile[[dname]]$exists(name = 'indptr') &&
-          dfile[[dname]]$exists(name = 'indices') &&
-          !dfile[[dname]]$attr_exists(attr_name = 'shape')) {
+          dfile[[dname]]$exists(name = 'indices')) {
         # For CSR matrix: nrows = length(indptr) - 1
-        # Use prod() to handle multi-dimensional dims arrays
         indptr_len <- prod(dfile[[dname]][['indptr']]$dims)
         nrows <- as.integer(indptr_len - 1L)
 
         # Get ncols from max index + 1 (most reliable for sparse matrices)
-        # Read all indices and find max
         all_indices <- dfile[[dname]][['indices']][]
         ncols <- if (length(all_indices) > 0) {
           as.integer(max(all_indices) + 1L)
         } else {
-          # Empty matrix
           0L
         }
 
         shape <- c(nrows, ncols)
+        if (dfile[[dname]]$attr_exists(attr_name = 'shape')) {
+          dfile[[dname]]$attr_delete(attr_name = 'shape')
+        }
         dfile[[dname]]$create_attr(
           attr_name = 'shape',
           robj = shape,
@@ -1282,10 +1317,27 @@ H5SeuratToH5AD <- function(
   }
 
   AddEncoding(dname = 'X')
+  # Get number of features based on structure
+  if (has_layers && assay.group$exists(name = 'meta.data/_index')) {
+    # V5 structure: get count from meta.data/_index
+    n_features <- length(SafeH5DRead(assay.group[['meta.data/_index']]))
+  } else {
+    # Legacy structure: use features dims
+    n_features <- prod(assay.group[['features']]$dims)
+  }
+
   x.features <- switch(
     EXPR = x.data,
-    'scale.data' = which(x = SafeH5DRead(assay.group[['features']]) %in% SafeH5DRead(assay.group[['scaled.features']])),
-    seq.default(from = 1, to = prod(assay.group[['features']]$dims))
+    'scale.data' = {
+      if (has_layers && assay.group$exists(name = 'meta.data/_index')) {
+        # V5: match meta.data/_index against scaled.features
+        which(x = SafeH5DRead(assay.group[['meta.data/_index']]) %in% SafeH5DRead(assay.group[['scaled.features']]))
+      } else {
+        # Legacy: match features against scaled.features
+        which(x = SafeH5DRead(assay.group[['features']]) %in% SafeH5DRead(assay.group[['scaled.features']]))
+      }
+    },
+    seq.default(from = 1, to = n_features)
   )
   # Add meta.features with validation
   if (assay.group$exists(name = 'meta.features')) {
@@ -1307,7 +1359,14 @@ H5SeuratToH5AD <- function(
   if (Exists(x = dfile[['var']], name = rownames)) {
     dfile[['var']]$link_delete(name = rownames)
   }
-  features_data <- SafeH5DRead(assay.group[['features']])
+  # Get feature names from correct location based on structure
+  if (has_layers && assay.group$exists(name = 'meta.data/_index')) {
+    # V5 structure: feature names are in meta.data/_index
+    features_data <- SafeH5DRead(assay.group[['meta.data/_index']])
+  } else {
+    # Legacy structure: feature names are in features dataset
+    features_data <- SafeH5DRead(assay.group[['features']])
+  }
   # Ensure features are character strings
   features_subset <- as.character(features_data[x.features])
   dfile[['var']]$create_dataset(
@@ -1478,7 +1537,14 @@ H5SeuratToH5AD <- function(
     if (Exists(x = dfile[['raw/var']], name = rownames)) {
       dfile[['raw/var']]$link_delete(name = rownames)
     }
-    features_data_raw <- SafeH5DRead(assay.group[['features']])
+    # Get feature names from correct location based on structure
+    if (has_layers && assay.group$exists(name = 'meta.data/_index')) {
+      # V5 structure: feature names are in meta.data/_index
+      features_data_raw <- SafeH5DRead(assay.group[['meta.data/_index']])
+    } else {
+      # Legacy structure: feature names are in features dataset
+      features_data_raw <- SafeH5DRead(assay.group[['features']])
+    }
     dfile[['raw/var']]$create_dataset(
       name = rownames,
       robj = features_data_raw,
@@ -1666,16 +1732,25 @@ H5SeuratToH5AD <- function(
       # Because apparently AnnData requires nPCs == nrow(X)
       if (reduc.features < x.features) {
         pad <- paste0('pad_', varm.name)
+        # Get feature indices and filter out NAs
+        feature_indices <- match(
+          x = SafeH5DRead(source[['reductions']][[reduc]][['features']]),
+          table = SafeH5DRead(dfile[['var']][[rownames]])
+        )
+        # Replace NA values with new rows (append to end)
+        na_indices <- which(is.na(feature_indices))
+        if (length(na_indices) > 0) {
+          # For NA indices, assign new row positions at the end
+          feature_indices[na_indices] <- (reduc.features + 1L):(reduc.features + length(na_indices))
+        }
+
         PadMatrix(
           src = loadings,
           dest = dfile[['varm']],
           dname = pad,
           dims = c(x.features, loadings$dims[2]),
           index = list(
-            match(
-              x = SafeH5DRead(source[['reductions']][[reduc]][['features']]),
-              table = SafeH5DRead(dfile[['var']][[rownames]])
-            ),
+            feature_indices,
             seq.default(from = 1, to = loadings$dims[2])
           )
         )
@@ -1702,8 +1777,170 @@ H5SeuratToH5AD <- function(
       verbose = FALSE
     )
   }
+  # Add spatial coordinates if available
+  # Check for spatial data in images slot
+  if (source$exists(name = 'images')) {
+    cell_names <- SafeH5DRead(source[['cell.names']])
+    images <- names(x = source[['images']])
+    if (length(images) > 0 && verbose) {
+      message("Processing spatial data from images")
+    }
+
+    # Process first image for now (extend for multiple images later)
+    if (length(images) > 0) {
+      img_name <- images[1]
+      img_group <- source[['images']][[img_name]]
+
+      # Check for coordinates
+      spatial_matrix <- NULL
+      if (img_group$exists(name = 'coordinates')) {
+        if (verbose) {
+          message("Adding spatial coordinates to obsm['spatial']")
+        }
+
+        # Read coordinates
+        coord_group <- img_group[['coordinates']]
+
+        # Get x and y coordinates
+        if (coord_group$exists('x') && coord_group$exists('y')) {
+          x_coords <- coord_group[['x']][]
+          y_coords <- coord_group[['y']][]
+
+          # Create spatial matrix (cells x 2)
+          spatial_matrix <- cbind(y_coords, x_coords)
+        } else if (coord_group$exists('imagerow') && coord_group$exists('imagecol')) {
+          # Visium-style coordinates
+          row_coords <- coord_group[['imagerow']][]
+          col_coords <- coord_group[['imagecol']][]
+
+          # Create spatial matrix (cells x 2)
+          spatial_matrix <- cbind(row_coords, col_coords)
+        }
+      } else if (img_group$exists(name = 'boundaries') &&
+                 img_group[['boundaries']]$exists(name = 'centroids')) {
+        centroid_group <- img_group[['boundaries/centroids']]
+        if (centroid_group$exists(name = 'coords')) {
+          coords_mat <- centroid_group[['coords']]$read()
+          row_index <- seq_len(nrow(coords_mat))
+          if (centroid_group$exists(name = 'cells')) {
+            centroid_cells <- centroid_group[['cells']][]
+            if (!is.null(cell_names)) {
+              matched <- match(cell_names, centroid_cells)
+              if (any(is.na(matched))) {
+                warning("Unable to align all centroid coordinates with cell names")
+              } else {
+                row_index <- matched
+              }
+            }
+          }
+          coords_mat <- coords_mat[row_index, , drop = FALSE]
+          spatial_matrix <- cbind(coords_mat[, 2], coords_mat[, 1])
+        }
+      }
+      if (!is.null(spatial_matrix)) {
+        spatial_matrix <- as.matrix(spatial_matrix)
+        storage.mode(spatial_matrix) <- 'double'
+        obsm$create_dataset(
+          name = 'spatial',
+          robj = spatial_matrix,
+          dtype = h5types$H5T_NATIVE_DOUBLE
+        )
+        Transpose(
+          x = obsm[['spatial']],
+          dest = obsm,
+          dname = 'spatial',
+          overwrite = TRUE,
+          verbose = FALSE
+        )
+        obsm[['spatial']]$create_attr(
+          attr_name = 'encoding-type',
+          robj = 'array',
+          dtype = GuessDType(x = 'array'),
+          space = Scalar()
+        )
+        obsm[['spatial']]$create_attr(
+          attr_name = 'encoding-version',
+          robj = '0.2.0',
+          dtype = GuessDType(x = '0.2.0'),
+          space = Scalar()
+        )
+      }
+    }
+  }
+
   # Create uns
   dfile$create_group(name = 'uns')
+
+  # Add spatial metadata to uns if available
+  if (source$exists(name = 'images')) {
+    images <- names(x = source[['images']])
+
+    if (length(images) > 0) {
+      if (verbose) {
+        message("Adding spatial metadata to uns['spatial']")
+      }
+
+      # Create spatial group in uns
+      spatial_uns <- dfile[['uns']]$create_group(name = 'spatial')
+
+      # Process each image (using first as primary library)
+      for (i in seq_along(images)) {
+        img_name <- images[i]
+        img_group <- source[['images']][[img_name]]
+
+        # Use library_1, library_2, etc. as keys
+        lib_id <- paste0('library_', i)
+        lib_group <- spatial_uns$create_group(name = lib_id)
+
+        # Add scale factors if available
+        if (img_group$exists(name = 'scale.factors')) {
+          sf_group <- lib_group$create_group(name = 'scalefactors')
+          sf_src <- img_group[['scale.factors']]
+          sf_map <- c(
+            hires = 'tissue_hires_scalef',
+            lowres = 'tissue_lowres_scalef',
+            spot = 'spot_diameter_fullres',
+            fiducial = 'fiducial_diameter_fullres'
+          )
+          for (sf_name in sf_src$names) {
+            dst_name <- sf_map[[sf_name]]
+            if (is.null(dst_name)) {
+              dst_name <- sf_name
+            }
+            sf_value <- sf_src[[sf_name]][]
+            sf_group$create_dataset(
+              name = dst_name,
+              robj = sf_value,
+              dtype = h5types$H5T_NATIVE_DOUBLE,
+              space = Scalar(),
+              chunk_dims = NULL
+            )
+          }
+        }
+
+        # Add metadata
+        meta_group <- lib_group$create_group(name = 'metadata')
+        meta_group$create_dataset(
+          name = 'image_name',
+          robj = img_name
+        )
+
+        # Add images if available
+        if (img_group$exists(name = 'image')) {
+          images_group <- lib_group$create_group(name = 'images')
+          img_data <- img_group[['image']]$read()
+          if (length(dim(img_data)) == 3L) {
+            img_arr <- aperm(img_data, c(3L, 2L, 1L))
+            images_group$create_dataset(
+              name = 'lowres',
+              robj = img_arr,
+              dtype = h5types$H5T_NATIVE_DOUBLE
+            )
+          }
+        }
+      }
+    }
+  }
 
   # Add graphs to obsp (pairwise observations)
   graphs.available <- source$index()[[assay]]$graphs
@@ -2039,4 +2276,3 @@ readH5AD_obsm <-  function(file) {
   hfile$close_all()
   return(obsm.list)
 }
-

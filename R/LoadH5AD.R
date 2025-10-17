@@ -386,6 +386,16 @@ LoadH5AD <- function(file, assay.name = "RNA", verbose = TRUE) {
     }
   }
 
+  # 12. Add spatial data support
+  if (h5ad$exists("obsm") && "spatial" %in% names(h5ad[["obsm"]])) {
+    seurat_obj <- ConvertH5ADSpatialToSeurat(
+      h5ad_file = h5ad,
+      seurat_obj = seurat_obj,
+      assay_name = assay.name,
+      verbose = verbose
+    )
+  }
+
   if (verbose) {
     message("\nSuccessfully loaded H5AD file")
     message("  Cells: ", ncol(seurat_obj))
