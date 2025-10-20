@@ -17,19 +17,19 @@ knitr::opts_chunk$set(
 )
 ```
 
-The h5Seurat file format, based on [HDF5](https://en.wikipedia.org/wiki/Hierarchical_Data_Format), is on specifically designed for the storage and analysis of multi-modal single-cell and spatially-resolved expression experiments, for example, from CITE-seq or 10X Visium technologies. It holds all molecular information and associated metadata, including (for example) nearest-neighbor graphs, dimensional reduction information, spatial coordinates and image data, and cluster labels.
+The h5Seurat file format, based on [HDF5](https://en.wikipedia.org/wiki/Hierarchical_Data_Format), is specifically designed for the storage and analysis of multi-modal single-cell and spatially-resolved expression experiments, for example, from CITE-seq or 10X Visium technologies. It holds all molecular information and associated metadata, including (for example) nearest-neighbor graphs, dimensional reduction information, spatial coordinates and image data, and cluster labels.
 
-This vignette serves as a guide to saving and loading `Seurat` objects to h5Seurat files. The h5Seurat file format, based on [HDF5](https://en.wikipedia.org/wiki/Hierarchical_Data_Format), is on specifically designed for the storage and analysis of multi-modal single-cell and spatially-resolved expression experiments, for example, from CITE-seq or 10X Visium technologies. It holds all molecular information and associated metadata, including (for example) nearest-neighbor graphs, dimensional reduction information, spatial coordinates and image data, and cluster labels. For more details about h5Seurat files, please see the [h5Seurat file specification](https://mojaveazure.github.io/seurat-disk/articles/h5Seurat-spec.html).
+This vignette serves as a guide to saving and loading `Seurat` objects to h5Seurat files. **This implementation supports Seurat v5 with full Assay5 compatibility**, automatically handling both legacy Assay and modern Assay5 objects. For more details about h5Seurat files, please see the [h5Seurat file specification](https://mojaveazure.github.io/seurat-disk/articles/h5Seurat-spec.html).
 
 <!-- *can't save unserializeable data -->
 
 ## Saving a dataset
 
-Saving a `Seurat` object to an h5Seurat file is a fairly painless process. All assays, dimensional reductions, spatial images, and nearest-neighbor graphs are automatically saved as well as extra metadata such as miscellaneous data, command logs, or cell identity classes from a `Seurat` object. To save a `Seurat` object, we need the [Seurat](https://satijalab.org/seurat) and [SeuratDisk](https://mojaveazure.github.io/seurat-disk) R packages. Example `Seurat` objects are distributed through [SeuratData](https://github.com/satijalab/seurat-data).
+Saving a `Seurat` object to an h5Seurat file is a fairly painless process. All assays, dimensional reductions, spatial images, and nearest-neighbor graphs are automatically saved as well as extra metadata such as miscellaneous data, command logs, or cell identity classes from a `Seurat` object. To save a `Seurat` object, we need the [Seurat](https://satijalab.org/seurat) and srtdisk R packages. Example `Seurat` objects are distributed through [SeuratData](https://github.com/satijalab/seurat-data).
 
 ```{r packages}
 library(Seurat)
-library(SeuratDisk)
+library(srtdisk)
 library(SeuratData)
 ```
 
@@ -50,6 +50,7 @@ slot(object = brain, name = "version") <- packageVersion("Seurat")
 ```
 
 ```{r process_data}
+# Update to Seurat v5 format - important for Assay5 compatibility
 brain <- UpdateSeuratObject(brain)
 brain <- SCTransform(brain, assay = "Spatial", verbose = FALSE)
 brain <- RunPCA(brain)

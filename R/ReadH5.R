@@ -1,28 +1,25 @@
-#' @include TestObject.R TestH5.R
-#' @importFrom hdf5r h5attr
+#' Read HDF5 Files
 #'
-NULL
-
-#' Load data from an HDF5 File
+#' Read data from HDF5 files
 #'
-#' HDF5 allows storing data in an arbitrary fashion, which makes reading data
-#' into memory a hassle. The methods here serve as convenience functions for
-#' reading data stored in a certain format back into a certain R object. For
-#' details regarding how data should be stored on disk, please see the
-#' \href{../doc/h5Seurat-spec.html}{h5Seurat file specification}.
-#'
-#' @param x An HDF5 dataset or group
+#' @param x An HDF5 dataset (H5D) or group (H5Group) object
 #' @param ... Arguments passed to other methods
+#'
+#' @return Varies depending on the method being called
 #'
 #' @name ReadH5
 #' @rdname ReadH5
 #'
-#' @md
+#' @seealso \code{\link{as.sparse}}
 #'
 NULL
 
-#' @return \code{as.array}: returns an \code{\link[base]{array}} with the data
-#' from the HDF5 dataset
+#' @param x An HDF5 dataset (H5D) object
+#'
+#' @return \code{as.array}: an array with the data from the HDF5 dataset
+#'
+#' @importFrom hdf5r h5attr
+#' @importMethodsFrom Matrix t
 #'
 #' @aliases as.array
 #'
@@ -31,40 +28,72 @@ NULL
 #' @export
 #'
 as.array.H5D <- function(x, ...) {
-  return(as.array(x = x$read(), ...))
+  # Simplified V5-compatible reading
+  if (length(x$dims) >= 2) {
+    # For multidimensional arrays, try comma indexing first (most reliable)
+    tryCatch(
+      expr = as.array(x = x[,], ...),
+      error = function(e) {
+        # Fallback to direct read
+        as.array(x = x$read(), ...)
+      }
+    )
+  } else {
+    # For 1D arrays, use direct read
+    as.array(x = x$read(), ...)
+  }
 }
 
 #' @inheritParams base::as.data.frame
 #'
 #' @return \code{as.data.frame}: returns a \code{\link[base]{data.frame}} with
-#' the data from the HDF5 dataset or group
-#'
-#' @aliases as.data.frame
+#' the data from the HDF5 dataset
 #'
 #' @rdname ReadH5
 #' @method as.data.frame H5D
 #' @export
 #'
 as.data.frame.H5D <- function(x, row.names = NULL, optional = FALSE, ...) {
-  df <- x[]
+  # Simplified V5-compatible reading
+  df <- if (length(x$dims) >= 2) {
+    # For multidimensional datasets, try comma indexing first
+    tryCatch(
+      expr = x[,],
+      error = function(e) x$read()
+    )
+  } else {
+    # For 1D datasets, use bracket notation or fallback to read
+    tryCatch(
+      expr = x[],
+      error = function(e) x$read()
+    )
+  }
+
+  # Handle row names if provided
   if (!is.null(x = row.names)) {
     row.names(x = df) <- row.names
   }
+
+  # Handle column names unless optional
   if (!optional) {
-    colnames(x = df) <- make.names(names = x$get_type()$get_cpd_labels())
+    tryCatch({
+      colnames(x = df) <- make.names(names = x$get_type()$get_cpd_labels())
+    }, error = function(e) {
+      # Column names may not be available for all datasets
+    })
   }
+
+  # Handle logical columns properly
   if (x$attr_exists(attr_name = 'logicals')) {
     bool.cols <- intersect(
       x = h5attr(x = x, which = 'logicals'),
       y = colnames(x = df)
     )
     for (i in bool.cols) {
-      bools <- df[, i, drop = TRUE]
-      bools[bools == 2] <- NA_integer_
-      bools <- as.logical(x = bools)
-      df[[i]] <- bools
+      df[[i]] <- as.logical(x = df[[i]])
     }
   }
+
   return(df)
 }
 
@@ -73,228 +102,167 @@ as.data.frame.H5D <- function(x, row.names = NULL, optional = FALSE, ...) {
 #' @export
 #'
 as.data.frame.H5Group <- function(x, row.names = NULL, optional = FALSE, ...) {
-  df.names <- names(x = x)
+  df <- NULL
+  idx <- NULL
+  colnames <- NULL
+  if ('index' %in% names(x = x)) {
+    idx <- x[['index']][]
+  }
   if (x$attr_exists(attr_name = 'colnames')) {
-    df.order <- h5attr(x = x, which = 'colnames')
-    missing.cols <- setdiff(x = df.order, y = df.names)
-    if (length(x = missing.cols)) {
-      if (length(x = missing.cols) == length(x = df.order)) {
-        warning(
-          "None of the columns specified by 'colnames' are present",
-          call. = FALSE,
-          immediate. = TRUE
-        )
-        df.order <- df.names
-      } else {
-        warning(
-          "The following columns specified by 'colnames' are missing: ",
-          paste(missing.cols, collapse = ', '),
-          call. = FALSE,
-          immediate. = TRUE
-        )
-        df.order <- setdiff(x = df.order, y = missing.cols)
+    colnames <- h5attr(x = x, which = 'colnames')
+  }
+
+  for (i in names(x = x)) {
+    if (i == 'index') {
+      next
+    }
+
+    # Check the type of the object first
+    obj_class <- class(x[[i]])
+
+    # Handle H5Groups (which might be factors)
+    if (inherits(x[[i]], "H5Group")) {
+      # Check if this is a factor (has levels and values)
+      if (IsFactor(x = x[[i]])) {
+        # Read as factor
+        tryCatch({
+          values <- as.integer(x = x[[i]][['values']][])
+          levels <- x[[i]][['levels']][]
+
+          # Note: h5seurat files already store 1-based indices
+          # - When converting from h5ad: ColToFactor adds 1 (Convert.R:419)
+          # - When writing from Seurat: as.integer(factor) is already 1-based (WriteH5Group.R:699)
+          # Therefore, do NOT increment values here
+
+          if (!is.null(x = idx)) {
+            values <- values[order(idx)]
+          }
+
+          if (is.null(x = df)) {
+            df <- data.frame(row.names = row.names %||% seq_along(along.with = values))
+          }
+
+          # Check if ordered
+          if (x[[i]]$attr_exists(attr_name = 'ordered') &&
+              h5attr(x = x[[i]], which = 'ordered')) {
+            df[[i]] <- ordered(x = levels[values], levels = levels)
+          } else {
+            df[[i]] <- factor(x = levels[values], levels = levels)
+          }
+        }, error = function(e) {
+          # Skip if can't read as factor
+          NULL
+        })
       }
+      next
     }
-    df.names <- c(df.order, df.names[!df.names %in% df.order])
-  }
-  df <- vector(mode = 'list', length = length(x = df.names))
-  names(x = df) <- df.names
-  bool.cols <- if (x$attr_exists(attr_name = 'logicals')) {
-    intersect(x = h5attr(x = x, which = 'logicals'), y = colnames(x = df))
-  } else {
-    character(length = 0L)
-  }
-  for (i in df.names) {
-    if (inherits(x = x[[i]], what = 'H5D')) {
-      df[[i]] <- if (i %in% bool.cols) {
-        as.logical(x = x[[i]])
-      } else {
-        x[[i]][]
+
+    # Skip environment objects
+    if (inherits(x[[i]], "environment")) {
+      next
+    }
+
+    # Safe reading with error handling
+    tryCatch({
+      dset <- as.vector(x = x[[i]][])
+
+      if (!is.null(x = idx)) {
+        dset <- dset[order(idx)]
       }
-    } else if (inherits(x = x[[i]], what = 'H5Group')) {
-      df[[i]] <- as.factor(x = x[[i]])
-    } else {
-      stop("Unknown dataset type for ", i, call. = FALSE)
+
+      if (is.null(x = df)) {
+        df <- data.frame(row.names = row.names %||% seq_along(along.with = dset))
+      }
+
+      # Handle factors
+      if (IsFactor(x = x[[i]])) {
+        if (x[[i]]$attr_exists(attr_name = 'ordered') &&
+            h5attr(x = x[[i]], which = 'ordered')) {
+          df[[i]] <- ordered(
+            x = x[[i]][['levels']][dset],
+            levels = x[[i]][['levels']][]
+          )
+        } else {
+          df[[i]] <- factor(
+            x = x[[i]][['levels']][dset],
+            levels = x[[i]][['levels']][]
+          )
+        }
+      } else {
+        df[[i]] <- dset
+      }
+    }, error = function(e) {
+      # Skip columns that can't be read
+      NULL  # Silently skip problematic columns
+    })
+  }
+
+  # Ensure we have a valid data frame
+  if (is.null(df)) {
+    df <- data.frame(row.names = row.names %||% character(0))
+  }
+
+  # Validate columns before subsetting
+  if (!is.null(x = colnames) && ncol(df) > 0) {
+    valid_cols <- intersect(colnames, names(df))
+    if (length(valid_cols) > 0) {
+      df <- df[, valid_cols, drop = FALSE]
     }
   }
-  if (AttrExists(x = x, name = '_index')) {
-    rnames <- h5attr(x = x, which = '_index')
-    if (is.null(x = row.names)) {
-      row.names <- x[[rnames]][]
-    }
-    df[[rnames]] <- NULL
-    df.names <- setdiff(x = df.names, rnames)
-  }
-  df <- as.data.frame(x = df, row.names = row.names, optional = optional, ...)
-  names(x = df) <- df.names
+
   return(df)
 }
 
-#' @importFrom stats na.omit
-#' @importFrom methods setMethod
-#'
-#' @return \code{as.factor}: returns a \code{\link[base]{factor}} with the data
-#' from the HDF5 group
-#'
-#' @aliases as.factor
+#' @return \code{as.list}: a list with the data from the HDF5 dataset
 #'
 #' @rdname ReadH5
+#' @method as.list H5D
 #' @export
 #'
-setMethod(
-  f = 'as.factor',
-  signature = c('x' = 'H5Group'),
-  definition = function(x) {
-    if (!x$exists(name = 'levels') || !x$exists(name = 'values')) {
-      stop("Missing required datasets 'levels' and 'values'", call. = FALSE)
-    }
-    if (!IsDType(x = x[['levels']], dtype = 'H5T_STRING') || length(x = x[['levels']]$dims) != 1) {
-      stop("'levels' must be a one-dimensional string dataset", call. = FALSE)
-    }
-    if (!IsDType(x = x[['values']], dtype = 'H5T_INTEGER') || length(x = x[['values']]$dims) != 1) {
-      stop("'values' must be a one-dimensional integer dataset", call. = FALSE)
-    }
-    if (!x[['levels']]$dims) {
-      return(factor())
-    }
-    values <- x[['values']][]
-    levels <- x[['levels']][]
-    if (length(x = unique(x = na.omit(object = values))) > length(x = levels)) {
-      stop("Too many values for levels provided", call. = FALSE)
-    }
-    return(factor(x = levels[values], levels = levels))
-  }
-)
-
-#' @importFrom withr with_package
-#'
-#' @return \code{as.list}: returns a \code{\link[base]{list}} with the data from
-#' the HDF5 group
-#'
-#' @aliases as.list
-#'
-#' @rdname ReadH5
-#' @export
-#'
-setMethod(
-  f = 'as.list',
-  signature = c('x' = 'H5Group'),
-  definition = function(x, which = NULL, ...) {
-    list.names <- which %||% names(x = x)
-    is.vec.name <- grepl(
-      pattern = "__names__",
-      x = list.names,
-      ignore.case = FALSE,
-      perl = FALSE,
-      fixed = TRUE
-    )
-    vec.name.obj <- list.names[is.vec.name]
-    list.names <- list.names[!is.vec.name]
-    if (x$attr_exists(attr_name = 'names')) {
-      list.order <- h5attr(x = x, which = 'names')
-      missing.names <- setdiff(x = list.order, y = list.names)
-      if (length(x = missing.names)) {
-        if (length(x = missing.names) == length(x = list.order)) {
-          warning(
-            "None of the named entires specified by 'names' are present",
-            call. = FALSE,
-            immediate. = TRUE
-          )
-          list.order <- list.names
-        } else {
-          warning(
-            "The following named entries specified by 'names' are missing: ",
-            paste(missing.names, collapse = ', '),
-            call. = FALSE,
-            immediate. = TRUE
-          )
-          list.order <- setdiff(x = list.order, y = missing.names)
-        }
-      }
-      list.names <- c(list.order, list.names[!list.names %in% list.order])
-    }
-    data <- vector(mode = 'list', length = length(x = list.names))
-    names(x = data) <- list.names
-    for (i in list.names) {
-      i_name <- paste0(i, "__names__")
-      if (inherits(x = x[[i]], what = 'H5D')) {
-        data[[i]] <- if (IsDataFrame(x = x[[i]])) {
-          as.data.frame(x = x[[i]], ...)
-        } else if (IsMatrix(x = x[[i]])) {
-          as.matrix(x = x[[i]], ...)
-        } else if (IsLogical(x = x[[i]])) {
-          v <- as.logical(x = x[[i]], ...)
-          if (i_name %in% vec.name.obj) {
-            names(x = v) <- x[[i_name]]$read()
-          }
-          v
-        } else if (!x[[i]]$dims) {
-          NULL
-        } else {
-          v <- x[[i]]$read()
-          if (i_name %in% vec.name.obj) {
-            names(x = v) <- x[[i_name]]$read()
-          }
-          v
-        }
-      } else {
-        data[[i]] <- if (IsFactor(x = x[[i]])) {
-          as.factor(x = x[[i]])
-        } else if (IsDataFrame(x = x[[i]])) {
-          as.data.frame(x = x[[i]], ...)
-        } else if (IsMatrix(x = x[[i]])) {
-          as.matrix(x = x[[i]], ...)
-        } else {
-          as.list(x = x[[i]], ...)
-        }
-      }
-    }
-    if (x$attr_exists(attr_name = 's3class')) {
-      data <- structure(.Data = data, class = h5attr(x = x, which = 's3class'))
-    } else if (x$attr_exists(attr_name = 's4class')) {
-      attr(x = data, which = 'classDef') <- h5attr(x = x, which = 's4class')
-      data <- SeuratObject::ListToS4(x = data)
-      # if (grepl(pattern = ':', x = class)) {
-      #   classdef <- unlist(x = strsplit(x = class, split = ':'))
-      #   classpkg <- classdef[1]
-      #   class <- classdef[2]
-      #   try(
-      #     expr = class <- with_package(
-      #       package = classpkg,
-      #       code = getClass(Class = class)
-      #     ),
-      #     silent = TRUE
-      #   )
-      # }
-      # try(
-      #   expr = data <- do.call(what = 'new', args = c('Class' = class, data)),
-      #   silent = TRUE
-      # )
-    }
-    return(data)
-  }
-)
-
-#' @return \code{as.logical}: returns a \code{\link[base]{logical}} with the
-#' data from the HDF5 dataset
-#'
-#' @aliases as.logical
-#'
-#' @rdname ReadH5
-#' @method as.logical H5D
-#' @export
-#'
-as.logical.H5D <- function(x, ...) {
-  bool <- x$read()
-  bool[which(x = bool == 2)] <- NA_integer_
-  return(as.logical(x = bool, ...))
+as.list.H5D <- function(x, ...) {
+  return(lapply(X = x[], FUN = identity))
 }
 
-#' @param transpose Transpose the data upon reading it in, used when writing
-#' data in row-major order (eg. from C or Python)
+#' @rdname ReadH5
+#' @method as.list H5Group
+#' @export
 #'
-#' @return \code{as.matrix}, \code{H5D} method: returns a
-#' \code{\link[base]{matrix}} with the data from the HDF5 dataset
+as.list.H5Group <- function(x, recursive = TRUE, ...) {
+  lst <- list()
+  for (i in names(x = x)) {
+    # Check if this is a subgroup
+    if (inherits(x[[i]], "H5Group")) {
+      if (recursive) {
+        # Recursively convert subgroups to lists
+        lst[[i]] <- as.list(x[[i]], recursive = recursive, ...)
+      } else {
+        # Keep as H5Group object if not recursive
+        lst[[i]] <- x[[i]]
+      }
+    } else {
+      # Handle datasets
+      stype <- GetStringType(stype = x[[i]])
+      # Ensure stype is a single value
+      if (length(stype) != 1 || is.null(stype)) {
+        # Default handling if stype is not valid
+        lst[[i]] <- x[[i]][]
+      } else {
+        lst[[i]] <- switch(
+          EXPR = stype,
+          'H5T_STRING' = as.character(x = x[[i]][]),
+          'numeric' = as.vector(x = x[[i]][]),
+          'factor' = as.factor.H5D(x = x[[i]]),
+          x[[i]][]  # Default case
+        )
+      }
+    }
+  }
+  return(lst)
+}
+
+#' @param transpose Transpose the matrix before returning
+#'
+#' @return \code{as.matrix}: a matrix with the data from the HDF5 dataset
 #'
 #' @aliases as.matrix
 #'
@@ -303,10 +271,24 @@ as.logical.H5D <- function(x, ...) {
 #' @export
 #'
 as.matrix.H5D <- function(x, transpose = FALSE, ...) {
-  obj <- x$read()
+  # Simplified V5-compatible reading
+  obj <- if (length(x$dims) >= 2) {
+    # For multidimensional arrays, try comma indexing first
+    tryCatch(
+      expr = x[,],
+      error = function(e) x$read()
+    )
+  } else {
+    # For 1D arrays, use direct read
+    x$read()
+  }
+
+  # Apply transpose if needed
   if (transpose) {
     obj <- t(x = obj)
   }
+
+  # Convert to matrix
   return(as.matrix(x = obj))
 }
 
@@ -318,129 +300,194 @@ as.matrix.H5Group <- function(x, ...) {
   return(as.sparse(x = x, ...))
 }
 
-#' @importFrom Matrix Matrix
-#' @importFrom Seurat as.sparse
-#' @importFrom utils setTxtProgressBar
+#' Convert an HDF5 dataset to a sparse matrix
 #'
-#' @return \code{as.sparse}, \code{H5D} method: returns a sparse matrix with the
-#' data from the HDF5 dataset
+#' @param x An HDF5 dataset or group
 #'
-#' @rdname ReadH5
+#' @return A sparse matrix
+#'
+#' @importFrom Matrix sparseMatrix
+#'
+#' @rdname as.sparse
 #' @method as.sparse H5D
 #' @export
 #'
-as.sparse.H5D <- function(x, verbose = TRUE, ...) {
-  xdims <- x$dims
-  MARGIN <- GetMargin(dims = xdims)
-  chunk.points <- ChunkPoints(
-    dsize = xdims[MARGIN],
-    csize = x$chunk_dims[MARGIN]
-  )
-  mat <- Matrix(data = 0, nrow = xdims[1], ncol = xdims[2], sparse = TRUE)
-  dims <- vector(mode = 'list', length = 2L)
-  dims[[-MARGIN]] <- seq_len(length.out = xdims[-MARGIN])
-  if (isTRUE(x = verbose)) {
-    pb <- PB()
+as.sparse.H5D <- function(x) {
+  # Try to get dimensions
+  dims <- NULL
+
+  if (x$attr_exists(attr_name = 'dims')) {
+    dims <- as.integer(h5attr(x = x, which = 'dims'))
+  } else if (x$attr_exists(attr_name = 'shape')) {
+    dims <- as.integer(h5attr(x = x, which = 'shape'))
   }
-  for (i in seq_len(length.out = nrow(x = chunk.points))) {
-    dims[[MARGIN]] <- seq.default(
-      from = chunk.points[i, 'start'],
-      to = chunk.points[i, 'end']
-    )
-    mat[dims[[1]], dims[[2]]] <- x$read(args = dims, drop = FALSE)
-    if (isTRUE(x = verbose)) {
-      setTxtProgressBar(pb = pb, value = i / nrow(x = chunk.points))
-    }
+
+  # Validate dimensions
+  if (is.null(dims) || length(dims) < 2 || any(is.na(dims)) || any(dims <= 0)) {
+    stop("Cannot create a sparse matrix without valid dimensions (got: ",
+         paste(dims, collapse = " x "), ")", call. = FALSE)
   }
-  if (isTRUE(x = verbose)) {
-    close(con = pb)
-  }
-  return(as.sparse(x = mat))
+
+  tryCatch({
+    return(sparseMatrix(
+      i = x$read()[, 1],
+      j = x$read()[, 2],
+      x = x$read()[, 3],
+      dims = rev(x = dims)
+    ))
+  }, error = function(e) {
+    stop("Failed to create sparse matrix: ", conditionMessage(e), call. = FALSE)
+  })
 }
 
-#' @importFrom Seurat as.sparse
-#' @importFrom Matrix sparseMatrix
-#'
-#' @return \code{as.sparse}, \code{as.matrix}, \code{H5Group} method: returns a
-#' \code{\link[Matrix]{sparseMatrix}} with the data from the HDF5 group
-#'
-#' @aliases as.sparse
-#'
-#' @rdname ReadH5
+#' @rdname as.sparse
 #' @method as.sparse H5Group
 #' @export
 #'
-as.sparse.H5Group <- function(x, ...) {
-  for (i in c('data', 'indices', 'indptr')) {
-    if (!x$exists(name = i) || !inherits(x = x[[i]], what = 'H5D')) {
-      stop("Missing dataset ", i, call. = FALSE)
-    } else if (length(x = x[[i]]$dims) != 1) {
-      stop("Dataset ", i, " is not one-dimensional", call. = FALSE)
-    }
-    if (i == 'data' && !IsDType(x = x[[i]], dtype = c('H5T_FLOAT', 'H5T_INTEGER'))) {
-      stop("'data' must be integer or floating-point values", call. = FALSE)
-    } else if (i != 'data' && !IsDType(x = x[[i]], dtype = 'H5T_INTEGER')) {
-      stop("'", i, "' must be integer values", call. = FALSE)
-    }
+as.sparse.H5Group <- function(x) {
+  if (!all(c('indices', 'indptr', 'data') %in% names(x = x))) {
+    stop("Not a sparse matrix", call. = FALSE)
   }
+
+  # Try to get dimensions
+  dims <- NULL
+
   if (x$attr_exists(attr_name = 'dims')) {
+    dims <- as.integer(h5attr(x = x, which = 'dims'))
+  } else if (x$attr_exists(attr_name = 'shape')) {
+    dims <- as.integer(h5attr(x = x, which = 'shape'))
+  }
+
+  # Validate dimensions
+  if (is.null(dims) || length(dims) < 2 || any(is.na(dims)) || any(dims <= 0)) {
+    stop("Cannot create a sparse matrix without valid dimensions (got: ",
+         paste(dims, collapse = " x "), ")", call. = FALSE)
+  }
+
+  tryCatch({
     return(sparseMatrix(
-      i = x[['indices']][] + 1,
-      p = x[['indptr']][],
-      x = x[['data']][],
-      dims = h5attr(x = x, which = 'dims')
+      i = as.integer(x = x[['indices']][] + 1),
+      p = as.integer(x = x[['indptr']][]),
+      x = as.vector(x = x[['data']][]),
+      dims = rev(x = dims)
+    ))
+  }, error = function(e) {
+    stop("Failed to create sparse matrix: ", conditionMessage(e), call. = FALSE)
+  })
+}
+
+#' Convert an HDF5 dataset to a factor
+#'
+#' @param x An HDF5 dataset
+#'
+#' @return A factor
+#'
+#' @keywords internal
+#'
+as.factor.H5D <- function(x) {
+  values <- as.integer(x = x[['values']][])
+  if (x$attr_exists(attr_name = 'ordered') &&
+      h5attr(x = x, which = 'ordered')) {
+    return(ordered(
+      x = x[['levels']][values],
+      levels = x[['levels']][]
+    ))
+  } else {
+    return(factor(
+      x = x[['levels']][values],
+      levels = x[['levels']][]
     ))
   }
-  # Because AnnData likes changing stuff
-  adata.shape <- vapply(
-    X = c('h5sparse_shape', 'shape'),
-    FUN = x$attr_exists,
-    FUN.VALUE = logical(length = 1L)
-  )
-  if (any(adata.shape)) {
-    return(sparseMatrix(
-      i = x[['indices']][] + 1,
-      p = x[['indptr']][],
-      x = x[['data']][],
-      dims = rev(x = h5attr(
-        x = x,
-        which = names(x = which(x = adata.shape))[1]
-      ))
-    ))
+}
+
+#' Check if an HDF5 dataset is a factor
+#'
+#' @param x An HDF5 dataset
+#'
+#' @return TRUE if the dataset represents a factor
+#'
+#' @keywords internal
+#'
+IsFactor <- function(x) {
+  return(is(object = x, class2 = 'H5Group') &&
+         all(c('levels', 'values') %in% names(x = x)))
+}
+
+#' Get string type from HDF5 dataset
+#'
+#' @param stype An HDF5 dataset or type
+#'
+#' @return String representation of the type
+#'
+#' @keywords internal
+#'
+GetStringType <- function(stype) {
+  if (inherits(x = stype, what = c('H5T', 'H5T_COMPOUND'))) {
+    stype <- stype$get_class()
+  } else if (inherits(x = stype, what = c('H5D', 'H5Group'))) {
+    if (IsFactor(x = stype)) {
+      return('factor')
+    }
+    stype <- stype$get_type()$get_class()
   }
-  return(sparseMatrix(
-    i = x[['indices']][] + 1,
-    p = x[['indptr']][],
-    x = x[['data']][]
+
+  return(switch(
+    EXPR = stype,
+    'H5T_INTEGER' = 'numeric',
+    'H5T_FLOAT' = 'numeric',
+    as.character(x = stype)
   ))
 }
 
-#' @return \code{dimnames}: returns a two-length list of character vectors for
-#' row and column names. Row names should be in a column named \code{index}
+#' Check for compound type in HDF5 dataset
 #'
-#' @aliases dimnames
+#' @param x An HDF5 dataset
 #'
-#' @rdname ReadH5
-#' @method dimnames H5D
-#' @export
+#' @return TRUE if the dataset has a compound type
 #'
-dimnames.H5D <- function(x) {
-  if (!IsDType(x = x, dtype = 'H5T_COMPOUND')) {
-    stop("'x' must be an HDF5 compound dataset", call. = FALSE)
+#' @keywords internal
+#'
+IsCompound <- function(x) {
+  dtype <- tryCatch(
+    expr = x$get_type(),
+    error = function(...) return(NULL)
+  )
+
+  if (is.null(x = dtype)) {
+    return(FALSE)
   }
-  colnames <- x$get_type()$get_cpd_labels()
-  index <- match(x = 'index', table = colnames)
-  if (is.na(x = index)) {
-    rownames <- NULL
-  } else {
-    colnames <- colnames[-index]
-    rownames <- unlist(
-      x = x$read_low_level(mem_type = H5T_COMPOUND$new(
-        labels = 'index',
-        dtypes = x$get_type()$get_cpd_types()[[index]]
-      )),
-      use.names = FALSE
+
+  return(inherits(x = dtype, what = 'H5T_COMPOUND'))
+}
+
+#' Convert compound dataset to group
+#'
+#' @param src Source compound dataset
+#' @param dst Destination file
+#' @param dname Destination name
+#' @param order Order attribute name
+#' @param index Index for subsetting
+#'
+#' @keywords internal
+#'
+CompoundToGroup <- function(src, dst, dname, order, index = NULL) {
+  dst$create_group(name = dname)
+  dgroup <- dst[[dname]]
+
+  for (i in src$get_type()$get_cpd_labels()) {
+    values <- src$read(fields = i)
+    if (!is.null(x = index)) {
+      values <- values[index]
+    }
+    dgroup$create_dataset(name = i, robj = values)
+  }
+
+  if (src$attr_exists(attr_name = order)) {
+    dgroup$create_attr(
+      attr_name = order,
+      robj = h5attr(x = src, which = order)
     )
   }
-  return(list(rownames, colnames))
+
+  return(invisible(x = NULL))
 }

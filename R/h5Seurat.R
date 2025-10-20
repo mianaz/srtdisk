@@ -6,7 +6,7 @@ NULL
 # Class definition
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-spatial.version <- '3.1.5.9900'
+# Version constants should now be defined in zzz.R for global availability
 
 #' A class for connections to h5Seurat files
 #'
@@ -68,12 +68,74 @@ h5Seurat <- R6Class(
     #' @description Get the version attribute
     version = function() {
       return(h5attr(x = self, which = 'version'))
+    },
+    #' @description Detect the Seurat version of the stored object
+    #' @return A string indicating the detected version ("V3", "V4", or "V5")
+    detect.version = function() {
+      # Check if we have V5-specific structure
+      if (self$exists("assays")) {
+        # Get first assay for inspection
+        assays <- names(self[["assays"]])
+        if (length(assays) > 0) {
+          first_assay <- self[["assays"]][[assays[1]]]
+
+          # V5 indicator: layers subdirectory with sparse matrix components
+          if (first_assay$exists("layers")) {
+            layers_group <- first_assay[["layers"]]
+            if (inherits(layers_group, "H5Group")) {
+              # Check if layers contain sparse matrix structures
+              layer_names <- layers_group$names
+              if (length(layer_names) > 0) {
+                first_layer <- layers_group[[layer_names[1]]]
+                if (inherits(first_layer, "H5Group") &&
+                    first_layer$exists("data") &&
+                    first_layer$exists("indices") &&
+                    first_layer$exists("indptr")) {
+                  return("V5")
+                }
+              }
+            }
+          }
+
+          # V4 indicator: direct counts/data without layers
+          if (first_assay$exists("counts") || first_assay$exists("data")) {
+            # Check if these are direct datasets (not groups)
+            if (first_assay$exists("counts")) {
+              counts_obj <- first_assay[["counts"]]
+              if (!inherits(counts_obj, "H5Group")) {
+                return("V4")
+              }
+            }
+          }
+        }
+      }
+
+      # Fall back to version attribute if structure is ambiguous
+      version_attr <- self$version()
+      if (!is.null(version_attr)) {
+        version_num <- numeric_version(version_attr)
+        if (version_num >= numeric_version("5.0.0")) {
+          return("V5")
+        } else if (version_num >= numeric_version("4.0.0")) {
+          return("V4")
+        } else {
+          return("V3")
+        }
+      }
+
+      # Default to V4 if we can't determine
+      return("V4")
+    },
+    #' @description Check if this is a V5 format file
+    #' @return Logical indicating if file uses V5 format
+    is.v5 = function() {
+      return(self$detect.version() == "V5")
     }
   ),
   private = list(
     # Fields
     index.internal = list(),
-    versions = c('3.1.2', spatial.version),
+    versions = c('3.1.2', spatial.version, v5.version, '5.2.1'),
     # Methods
     build.index = function(version) {
       version <- match.arg(arg = version, choices = private$versions)
@@ -82,13 +144,62 @@ h5Seurat <- R6Class(
       index <- sapply(
         X = names(x = self[['assays']]),
         FUN = function(x) {
-          slots <- c('counts', 'data', 'scale.data')
-          check <- slots %in% names(x = self[['assays']][[x]])
-          names(x = check) <- slots
-          check[['scale.data']] <- check[['scale.data']] && self[['assays']][[x]]$exists(name = 'scaled.features')
-          check <- list(check)
-          names(x = check) <- 'slots'
-          return(check)
+          # Handle V5 structure if applicable
+          if (version >= numeric_version(x = v5.version) && 
+              self[['assays']][[x]]$attr_exists(attr_name = 's4class')) {
+            # Check for V5 Assay structure
+            assay_class <- self[['assays']][[x]]$attr_open(attr_name = 's4class')$read()
+            
+            # Check if we have a V5-style "layers" subdirectory
+            potential_layers <- c()
+            if (self[['assays']][[x]]$exists("layers") && 
+                inherits(self[['assays']][[x]][['layers']], "H5Group")) {
+              # V5 structure with separate layers group
+              potential_layers <- self[['assays']][[x]][['layers']]$names
+            } else {
+              # Legacy structure, look for direct children
+              all_datasets <- self[['assays']][[x]]$names
+              non_layer_names <- c("features", "scaled.features", "variable.features", "meta.features", "misc", "layers")
+              potential_layers <- setdiff(all_datasets, non_layer_names)
+            }
+            
+            # Create a check vector for all potential layers
+            check <- rep(TRUE, length(potential_layers))
+            names(check) <- potential_layers
+            
+            # Ensure standard slots are included for backward compatibility
+            std_slots <- c('counts', 'data', 'scale.data')
+            for (slot in std_slots) {
+              if (!(slot %in% names(check))) {
+                check[slot] <- FALSE
+              }
+            }
+            
+            # Special handling for scale.data
+            if ('scale.data' %in% names(check)) {
+              check[['scale.data']] <- check[['scale.data']] && 
+                (self[['assays']][[x]]$exists(name = 'scaled.features') || 
+                 (self[['assays']][[x]]$exists(name = 'scale.data') && 
+                  self[['assays']][[x]][['scale.data']]$attr_exists(attr_name = 'scaled.features')))
+            }
+            
+            # Add V5-specific information
+            assay_result <- list(
+              slots = check,
+              v5class = assay_class,
+              layers = potential_layers  # Include all potential layers
+            )
+            return(assay_result)
+          } else {
+            # Handle pre-V5 structure
+            slots <- c('counts', 'data', 'scale.data')
+            check <- slots %in% names(x = self[['assays']][[x]])
+            names(x = check) <- slots
+            check[['scale.data']] <- check[['scale.data']] && self[['assays']][[x]]$exists(name = 'scaled.features')
+            check <- list(check)
+            names(x = check) <- 'slots'
+            return(check)
+          }
         },
         simplify = FALSE,
         USE.NAMES = TRUE
@@ -213,9 +324,7 @@ h5Seurat <- R6Class(
         stop(private$errors(type = 'mode'), call. = FALSE)
       }
       version <- ClosestVersion(query = version, targets = private$versions)
-      if (verbose) {
-        message("Creating h5Seurat file for version ", version)
-      }
+      # Version message is now handled in SaveH5Seurat to show object version
       self$set.version(version = version)
       if (numeric_version(x = version) >= numeric_version(x = '3.1.2')) {
         for (group in c('assays', 'commands', 'neighbors', 'graphs', 'misc', 'reductions', 'tools')) {
@@ -240,12 +349,23 @@ h5Seurat <- R6Class(
       if (numeric_version(x = version) >= numeric_version(x = spatial.version)) {
         self$create_group(name = 'images')
       }
+      if (numeric_version(x = version) >= numeric_version(x = v5.version)) {
+        # V5 specific initialization
+        # Currently, we're keeping the same basic structure but can add
+        # V5-specific requirements here as needed
+      }
       return(invisible(x = self))
     },
     validate = function(verbose = TRUE, ...) {
       if (self$mode %in% modes$new) {
+        # Use object version if already set, otherwise use package version
+        if (self$attr_exists(attr_name = 'version')) {
+          version <- h5attr(x = self, which = 'version')
+        } else {
+          version <- packageVersion(pkg = 'Seurat')
+        }
         private$create(
-          version = packageVersion(pkg = 'Seurat'),
+          version = version,
           verbose = verbose
         )
         return(invisible(x = NULL))
@@ -267,6 +387,9 @@ h5Seurat <- R6Class(
       }
       if (version >= numeric_version(x = '3.1.3.9900')) {
         private$v3.2.0()
+      }
+      if (version >= numeric_version(x = v5.version)) {
+        private$v5.0.0()
       }
       private$build.index(version = as.character(x = version))
       return(invisible(x = NULL))
@@ -331,6 +454,22 @@ h5Seurat <- R6Class(
     v3.2.0 = function() {
       return(invisible(x = NULL))
       .NotYetImplemented()
+    },
+    v5.0.0 = function() {
+      # Validate V5-specific structures
+      # For now, we'll keep basic validation and build upon it as we implement more V5 features
+      
+      # Check for required groups for V5
+      req.groups <- c('assays', 'reductions', 'graphs', 'misc', 'tools')
+      for (group in req.groups) {
+        if (!private$is.data(name = group, type = 'H5Group')) {
+          stop("Missing required group ", group, " for Seurat V5", call. = FALSE)
+        }
+      }
+      
+      # Additional V5-specific validation will be added as we implement more features
+      
+      return(invisible(x = NULL))
     }
   )
 )

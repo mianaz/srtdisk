@@ -22,3 +22,10 @@ Meta
 /*.R
 /*.rds
 /*.Rds
+
+# ignore test data
+tests/
+examples/
+
+# ignore macos files
+.DS_Store

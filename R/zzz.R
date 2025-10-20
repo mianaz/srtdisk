@@ -5,12 +5,17 @@
 NULL
 
 #' @docType package
-#' @name SeuratDisk-package
-#' @rdname SeuratDisk-package
+#' @name srtdisk-package
+#' @rdname srtdisk-package
+#'
+#' @description
+#' Extended implementation of SeuratDisk for Seurat v5. Provides interfaces for
+#' HDF5-based single-cell file formats including h5Seurat and AnnData (h5ad)
+#' with enhanced support for Seurat v5 Assay5 and spatial data.
 #'
 #' @section Package options:
 #'
-#' SeuratDisk uses the following options to control behavior, users can configure
+#' srtdisk uses the following options to control behavior, users can configure
 #' these with \code{\link[base]{options}}:
 #'
 #' \describe{
@@ -37,7 +42,7 @@ NULL
 #'  }
 #' }
 #'
-#' @aliases SeuratDisk
+#' @aliases srtdisk SeuratDisk
 #'
 "_PACKAGE"
 
@@ -66,10 +71,57 @@ version.regex <- '^\\d+(\\.\\d+){2}(\\.9\\d{3})?$'
 scdisk.types <- new.env()
 
 spatial.version <- '3.1.5.9900'
+v5.version <- '5.0.0'
+
+# Standard Seurat assay layer names
+.STANDARD_LAYERS <- c("counts", "data", "scale.data")
+
+# Threshold for determining if matrix should be stored as sparse (90% zeros)
+.SPARSITY_THRESHOLD <- 0.9
+
+# AnnData encoding defaults
+.ANNDATA_ENCODING_VERSION <- "0.2.0"
 
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 # Internal utility functions
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+#' Convert BPCells matrix objects to dgCMatrix
+#'
+#' @param mat Matrix object (potentially BPCells IterableMatrix or RenameDims)
+#' @param verbose Show conversion message
+#' @return dgCMatrix or original matrix if not BPCells
+#' @keywords internal
+#'
+ConvertBPCellsMatrix <- function(mat, verbose = FALSE) {
+  if (is.null(mat)) return(NULL)
+
+  # Check if it's a BPCells object
+  is_bpcells <- inherits(mat, c("IterableMatrix", "RenameDims")) ||
+    (is.object(mat) && !inherits(mat, c("dgCMatrix", "dgTMatrix", "matrix")))
+
+  if (!is_bpcells) return(mat)
+
+  vmessage("Converting BPCells object to dgCMatrix", verbose)
+
+  tryCatch(
+    as(mat, "dgCMatrix"),
+    error = function(e) {
+      warning("BPCells conversion failed: ", e$message, call. = FALSE)
+      mat
+    }
+  )
+}
+
+#' Verbose message wrapper
+#'
+#' @param msg Message to print
+#' @param verbose Logical, whether to print
+#' @keywords internal
+#'
+vmessage <- function(msg, verbose = TRUE) {
+  if (verbose) message(msg)
+}
 
 #' Convert a logical to an integer
 #'
@@ -708,9 +760,39 @@ StringType <- function(stype = c('utf8', 'ascii7')) {
   stype <- match.arg(arg = stype)
   return(switch(
     EXPR = stype,
-    'utf8' = H5T_STRING$new(size = Inf)$set_cset(cset = h5const$H5T_CSET_UTF8),
+    'utf8' = H5T_STRING$new(size = Inf)$set_cset(cset = h5const$H5T_CSET_UTF8)$set_strpad(strpad = h5const$H5T_STR_NULLTERM),
     'ascii7' = H5T_STRING$new(size = 7L)
   ))
+}
+
+#' Add AnnData encoding attributes to an HDF5 dataset or group
+#'
+#' Helper function to add standard AnnData encoding-type and encoding-version
+#' attributes to an HDF5 object. This is used for string arrays, categorical
+#' variables, and dataframes to ensure compatibility with AnnData/scanpy.
+#'
+#' @param h5obj An hdf5r H5D or H5Group object
+#' @param encoding_type The encoding type (e.g., 'string-array', 'categorical', 'dataframe')
+#' @param encoding_version The encoding version (default: '0.2.0')
+#'
+#' @return NULL (modifies h5obj in place)
+#'
+#' @keywords internal
+#'
+AddAnndataEncoding <- function(h5obj, encoding_type = 'string-array', encoding_version = '0.2.0') {
+  h5obj$create_attr(
+    attr_name = 'encoding-type',
+    robj = encoding_type,
+    dtype = GuessDType(x = encoding_type),
+    space = Scalar()
+  )
+  h5obj$create_attr(
+    attr_name = 'encoding-version',
+    robj = encoding_version,
+    dtype = GuessDType(x = encoding_version),
+    space = Scalar()
+  )
+  invisible(NULL)
 }
 
 #' Update a Seurat key

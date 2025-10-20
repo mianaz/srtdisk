@@ -1,22 +1,26 @@
-Package: SeuratDisk
+Package: srtdisk
 Type: Package
-Title: Interfaces for HDF5-Based Single Cell File Formats
-Version: 0.0.0.9021
-Date: 2023-03-16
+Title: Extended HDF5-Based Single Cell File Format Support
+Version: 0.1.0
+Date: 2025-10-20
 Authors@R: c(
-  person(given = 'Paul', family = 'Hoffman', email = 'phoffman@nygenome.org', role = c('aut', 'cre'), comment = c(ORCID = '0000-0002-7693-8957')),
-  person(given = 'Rahul', family = 'Satija', email = 'rsatija@nygenome.org', role = 'ctb', comment = c(ORCID = '0000-0001-9448-8833'))
+  person(given = 'Miana', family = 'Z', email = 'zzeng4@nd.edu', role = c('aut', 'cre')),
+  person(given = 'Paul', family = 'Hoffman', email = 'phoffman@nygenome.org', role = 'aut', comment = c(ORCID = '0000-0002-7693-8957')),
+  person(given = 'Rahul', family = 'Satija', email = 'rsatija@nygenome.org', role = 'aut', comment = c(ORCID = '0000-0001-9448-8833'))
   )
-Description: The h5Seurat file format is specifically designed for the storage
-  and analysis of multi-modal single-cell and spatially-resolved expression
-  experiments, for example, from CITE-seq or 10X Visium technologies. It holds
-  all molecular information and associated metadata, including (for example)
-  nearest-neighbor graphs, dimensional reduction information, spatial
-  coordinates and image data, and cluster labels. We also support rapid and
-  on-disk conversion between h5Seurat and AnnData objects, with the goal of
-  enhancing interoperability between Seurat and Scanpy.
-URL: https://mojaveazure.github.io/seurat-disk/, https://github.com/mojaveazure/seurat-disk
-BugReports: https://github.com/mojaveazure/seurat-disk/issues
+Description: Extended implementation of SeuratDisk for Seurat v5 with enhanced
+  support for HDF5-based single cell file formats. The h5Seurat file format is
+  specifically designed for the storage and analysis of multi-modal single-cell
+  and spatially-resolved expression experiments, for example, from CITE-seq or
+  10X Visium technologies. It holds all molecular information and associated
+  metadata, including (for example) nearest-neighbor graphs, dimensional
+  reduction information, spatial coordinates and image data, and cluster labels.
+  We also support rapid and on-disk conversion between h5Seurat and AnnData
+  objects, with the goal of enhancing interoperability between Seurat and Scanpy.
+  This version includes Seurat v5 Assay5 compatibility and improved spatial data
+  handling.
+URL: https://github.com/miana/seuratdisk-V5
+BugReports: https://github.com/miana/seuratdisk-V5/issues
 License: GPL-3 | file LICENSE
 Encoding: UTF-8
 LazyData: true
@@ -53,12 +57,17 @@ Collate:
     'PadMatrix.R'
     'sparse_matrix.R'
     'Transpose.R'
+    'H5DAccess.R'
+    'V5Compatibility.R'
+    'V5LayerSupport.R'
     'Convert.R'
     'LoadH5Seurat.R'
     'loom.R'
     'loom_bindings.R'
     'LoadLoom.R'
     'ReadH5.R'
+    'SpatialConversion.R'
+    'SpatialFOV.R'
     'WriteH5Group.R'
     'SaveH5Seurat.R'
     'SaveLoom.R'

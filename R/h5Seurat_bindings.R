@@ -20,7 +20,19 @@ Cells.h5Seurat <- function(x) {
   if (!x$exists(name = 'cell.names')) {
     stop("Cannot find cell names in this h5Seurat file", call. = FALSE)
   }
-  return(x[['cell.names']][])
+  
+  cell_dataset <- x[['cell.names']]
+  
+  # Handle 2D cell datasets (V5 compatibility)
+  if (length(cell_dataset$dims) > 1) {
+    # 2D dataset - read first column
+    cells <- as.character(cell_dataset[, 1])
+  } else {
+    # 1D dataset - standard read
+    cells <- as.character(cell_dataset[])
+  }
+  
+  return(cells)
 }
 
 #' @importFrom Seurat DefaultAssay
@@ -65,7 +77,25 @@ DefaultAssay.h5Seurat <- function(object, ...) {
 #' @export
 #'
 Idents.h5Seurat <- function(object, ...) {
-  return(as.factor(x = object[['active.ident']]))
+  if (!object$exists('active.ident')) {
+    return(NULL)
+  }
+
+  ai <- object[['active.ident']]
+
+  # Check if it's a factor-like H5Group
+  if (inherits(ai, "H5Group") && all(c("levels", "values") %in% names(ai))) {
+    # Read as factor
+    values <- as.integer(x = ai[['values']][])
+    levels <- ai[['levels']][]
+    return(factor(x = levels[values], levels = levels))
+  } else if (inherits(ai, "H5D")) {
+    # Simple dataset
+    return(as.factor(x = ai[]))
+  } else {
+    # Fallback
+    return(NULL)
+  }
 }
 
 #' @importFrom Seurat IsGlobal

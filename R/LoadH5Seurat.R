@@ -9,58 +9,104 @@ NULL
 # Generics
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-#' Load a saved \code{Seurat} object from an h5Seurat file
+#' Load a Seurat object from an h5Seurat file
 #'
-#' @param file,x Name of h5Seurat or connected h5Seurat file to load
+#' Load a previously saved Seurat object from an h5Seurat file. This function supports
+#' flexible loading options, allowing you to load only the components you need (e.g.,
+#' specific assays, reductions) to minimize memory usage on large datasets.
+#'
+#' @param file,x Name of an h5Seurat file path (character) or connected h5Seurat file to load
 #' @param assays One of:
 #' \itemize{
-#'  \item A character vector with names of assays
-#'  \item A character vector with one or more of \code{counts}, \code{data},
-#'  \code{scale.data} describing which slots of \strong{all assays} to load
-#'  \item A named list where each entry is either the name of an assay or a vector
-#'  describing which slots (described above) to take from which assay
-#'  \item \code{NULL} for all assays
+#'  \item \code{NULL} (default): Load all assays
+#'  \item A character vector with names of assays to load (e.g., \code{c("RNA", "ADT")})
+#'  \item A character vector specifying which data layers to load for all assays:
+#'    \code{c("counts", "data")} loads only the counts and data layers, skipping scale.data
+#'  \item A named list for fine-grained control, e.g., \code{list(RNA = "data", ADT = c("data", "scale.data"))}
 #' }
 #' @param reductions One of:
 #' \itemize{
-#'  \item A character vector with names of reductions
-#'  \item \code{NULL} for all reductions
-#'  \item \code{NA} for \link[Seurat:IsGlobal]{global} reductions
-#'  \item \code{FALSE} for no reductions
+#'  \item \code{NULL} (default): Load all reductions (PCA, UMAP, etc.)
+#'  \item A character vector with names of specific reductions (e.g., \code{c("pca", "umap")})
+#'  \item \code{NA}: Load only global (assay-independent) reductions
+#'  \item \code{FALSE}: Skip loading all reductions
 #' }
-#' \strong{Note}: Only reductions associated with an assay loaded in
-#' \code{assays} or marked as \link[Seurat:IsGlobal]{global} will be loaded
+#' \strong{Note}: Only reductions associated with a loaded assay or marked as global will be loaded.
 #' @param graphs One of:
 #' \itemize{
-#'  \item A character vector with names of graphs
-#'  \item \code{NULL} for all graphs
-#'  \item \code{FALSE} for no graphs
+#'  \item \code{NULL} (default): Load all graphs
+#'  \item A character vector with specific graph names (e.g., \code{c("RNA_snn", "ADT_snn")})
+#'  \item \code{FALSE}: Skip loading graphs
 #' }
-#' \strong{Note}: Only graphs associated with an assay loaded in \code{assays}
-#' will be loaded
+#' \strong{Note}: Only graphs associated with loaded assays will be available.
 #' @param neighbors One of:
 #' \itemize{
-#'  \item A character vector with the names of neighbors
-#'  \item \code{NULL} for all neighbors
-#'  \item \code{FALSE} for no neighbors
+#'  \item \code{NULL} (default): Load all neighbor information
+#'  \item A character vector with neighbor names
+#'  \item \code{FALSE}: Skip neighbors
 #' }
 #' @param images One of:
 #' \itemize{
-#'  \item A character vector with names of images
-#'  \item \code{NULL} for all images
-#'  \item \code{NA} for \link[Seurat:IsGlobal]{global} images
-#'  \item \code{FALSE} for no images
+#'  \item \code{NULL} (default): Load all images (for spatial experiments)
+#'  \item A character vector with image names
+#'  \item \code{NA}: Load only global images
+#'  \item \code{FALSE}: Skip images
 #' }
-#' @param meta.data Load object metadata
-#' @param commands Load command information \cr
-#' \strong{Note}: only commands associated with an assay loaded in
-#' \code{assays} will be loaded
-#' @param misc Load miscellaneous data
-#' @param tools Load tool-specific information
-#' @param verbose Show progress updates
+#' @param meta.data Logical; if \code{TRUE} (default), load cell metadata
+#' @param commands Logical; if \code{TRUE} (default), load command history.
+#'   Commands are only loaded if their associated assays are loaded.
+#' @param misc Logical; if \code{TRUE} (default when all assays loaded), load miscellaneous data
+#' @param tools Logical; if \code{TRUE} (default when all assays loaded), load tool-specific information
+#' @param verbose Logical; if \code{TRUE} (default), show progress messages
 #' @param ... Arguments passed to other methods
 #'
-#' @return A \code{Seurat} object with the data requested
+#' @return A \code{Seurat} object containing the requested components
+#'
+#' @details
+#' The h5Seurat format is highly flexible for selective loading. This is particularly useful when:
+#' \itemize{
+#'   \item Working with very large datasets where loading everything would exceed memory
+#'   \item You only need specific assays or reductions for downstream analysis
+#'   \item You want to quickly inspect object structure without full data loading
+#' }
+#'
+#' @section Seurat V5 Layer Support:
+#' For Seurat V5 objects with multiple layers, you can selectively load layers per assay.
+#' For example, use \code{assays = list(RNA = "data")} to load only the normalized expression layer,
+#' skipping raw counts and scaled data.
+#'
+#' @seealso
+#' \code{\link{SaveH5Seurat}} to save a Seurat object to h5Seurat format
+#' \code{\link{Convert}} to convert to other formats
+#'
+#' @examples
+#' \dontrun{
+#' library(SeuratDisk)
+#'
+#' # Load entire h5Seurat file
+#' seurat_obj <- LoadH5Seurat("data.h5seurat")
+#'
+#' # Load only specific assays
+#' seurat_obj <- LoadH5Seurat("data.h5seurat", assays = c("RNA", "ADT"))
+#'
+#' # Load only specific data layers (memory-efficient for large files)
+#' seurat_obj <- LoadH5Seurat("data.h5seurat", assays = c("data"))  # Only normalized expression
+#'
+#' # Load specific assays with different layers
+#' seurat_obj <- LoadH5Seurat(
+#'   "data.h5seurat",
+#'   assays = list(RNA = c("data", "scale.data"), ADT = "data")
+#' )
+#'
+#' # Load without reductions (faster)
+#' seurat_obj <- LoadH5Seurat("data.h5seurat", reductions = FALSE)
+#'
+#' # Load UMAP and PCA reductions only
+#' seurat_obj <- LoadH5Seurat("data.h5seurat", reductions = c("umap", "pca"))
+#'
+#' # Load spatial data without graphs (for Visium experiments)
+#' seurat_obj <- LoadH5Seurat("visium.h5seurat", images = TRUE, graphs = FALSE)
+#' }
 #'
 #' @export
 #'
@@ -295,11 +341,32 @@ as.Seurat.h5Seurat <- function(
       if (verbose) {
         message("Adding image ", image)
       }
-      object[[image]] <- AssembleImage(
-        image = image,
-        file = x,
-        verbose = verbose
-      )
+      tryCatch({
+        img_obj <- AssembleImage(
+          image = image,
+          file = x,
+          verbose = verbose
+        )
+        object[[image]] <- img_obj
+      }, error = function(e) {
+        if (verbose) {
+          message("Could not add image ", image, " to Seurat object: ", conditionMessage(e))
+          message("Storing image in misc slot instead")
+        }
+        # Store in misc slot as fallback
+        tryCatch({
+          img_obj <- AssembleImage(
+            image = image,
+            file = x,
+            verbose = verbose
+          )
+          slot(object = object, name = 'misc')[[paste0('image_', image)]] <<- img_obj
+        }, error = function(e2) {
+          if (verbose) {
+            message("Failed to store image in misc: ", conditionMessage(e2))
+          }
+        })
+      })
     }
   }
   # Load SeuratCommands
@@ -320,14 +387,35 @@ as.Seurat.h5Seurat <- function(
     slot(object = object, name = 'commands') <- cmdlogs
   }
   # Load meta.data
-  if (meta.data) {
+  if (meta.data && x$exists('meta.data')) {
     if (verbose) {
       message("Adding cell-level metadata")
     }
-    md <- as.data.frame(x = x[['meta.data']], row.names = Cells(x = x))
-    if (ncol(x = md)) {
-      object <- AddMetaData(object = object, metadata = md)
-    }
+
+    # Safely read metadata with error handling
+    tryCatch({
+      md <- as.data.frame(x = x[['meta.data']], row.names = Cells(x = x))
+
+      # Validate columns before subsetting
+      if (ncol(x = md) > 0) {
+        # Remove any columns that might cause issues
+        problematic_cols <- sapply(md, function(col) {
+          inherits(col, "environment") || is.null(col)
+        })
+        if (any(problematic_cols)) {
+          md <- md[, !problematic_cols, drop = FALSE]
+        }
+
+        if (ncol(md) > 0) {
+          object <- AddMetaData(object = object, metadata = md)
+        }
+      }
+    }, error = function(e) {
+      if (verbose) {
+        warning("Could not load metadata: ", conditionMessage(e),
+                call. = FALSE, immediate. = TRUE)
+      }
+    })
   }
   # Set cell identities and object project
   Idents(object = object) <- Idents(object = x)
@@ -337,14 +425,16 @@ as.Seurat.h5Seurat <- function(
     if (verbose) {
       message("Adding miscellaneous information")
     }
-    slot(object = object, name = 'misc') <- as.list(x = x[['misc']])
+    # Use SafeH5GroupToList to handle 3D+ arrays
+    slot(object = object, name = 'misc') <- SafeH5GroupToList(h5obj = x[['misc']], recursive = TRUE)
   }
   # Load tools
   if (tools) {
     if (verbose) {
       message("Adding tool-specific results")
     }
-    slot(object = object, name = 'tools') <- as.list(x = x[['tools']])
+    # Use SafeH5GroupToList to handle 3D+ arrays
+    slot(object = object, name = 'tools') <- SafeH5GroupToList(h5obj = x[['tools']], recursive = TRUE)
   }
   # Load no.assay information
   if (obj.all && !is.null(x = index$no.assay)) {

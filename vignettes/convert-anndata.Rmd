@@ -3,16 +3,16 @@ title: 'Conversions: h5Seurat and AnnData'
 ---
 
 ```{r setup, include = FALSE}
-python3 <- Sys.which(names = "python3")
+#python3 <- Sys.which(names = "python3")
 library(reticulate)
-use_python(python = python3)
+#use_python(python = python3)
+use_condaenv("scverse", required = TRUE)
 knitr::opts_chunk$set(
-  message = FALSE,
-  warning = FALSE,
+  message = TRUE,
+  warning = TRUE,
   collapse = TRUE,
   comment = "#>"
 )
-# options(SeuratData.repo.use = "https://seurat.nygenome.org")
 ```
 
 ```{r cleanup, echo=FALSE, results='hide'}
@@ -25,21 +25,25 @@ outs <- c(
 file.remove(outs)
 ```
 
-This vignette showcases how to convert from `Seurat` object to AnnData files via an intermediate step thorugh h5Seurat files. This allows interoperability between Seurat and [Scanpy](https://scanpy.readthedocs.io/)
+This vignette showcases how to convert between `Seurat` objects, h5Seurat files, and AnnData h5ad files. The workflows below enable interoperability between Seurat and [Scanpy](https://scanpy.readthedocs.io/).
 
 ```{r packages}
 library(Seurat)
 library(SeuratData)
-library(SeuratDisk)
+library(srtdisk)
 ```
 
-## Converting from Seurat to AnnData via h5Seurat
+## Single-modality scRNA-seq data conversion
 
-To showcase going from a `Seurat` object to an AnnData file, we'll use the processed version of the PBMC 3k dataset, available on [SeuratData](https://github.com/satijalab/seurat-data); this dataset was created following [Seurat's PBMC 3k tutorial](https://satijalab.org/seurat/v3.1/pbmc3k_tutorial.html)
+### Convert from Seurat Object to AnnData via h5Seurat
+
+To showcase going from a `Seurat` object to an AnnData file, we'll use the processed version of the PBMC 3k dataset, available on [SeuratData](https://github.com/satijalab/seurat-data); this dataset was created following [Seurat's PBMC 3k tutorial](https://satijalab.org/seurat/articles/pbmc3k_tutorial)
 
 ```{r get_data}
 InstallData("pbmc3k")
 data("pbmc3k.final")
+# update pbmc3k to seurat v5
+pbmc3k.final <- UpdateSeuratObject(pbmc3k.final)
 pbmc3k.final
 ```
 
@@ -48,21 +52,23 @@ To see how this dataset was generated, please run `?pbmc3k.final`
 Converting the `Seurat` object to an AnnData file is a two-step process. First, we [save the `Seurat` object](https://mojaveazure.github.io/seurat-disk/reference/SaveH5Seurat.html) as an h5Seurat file. For more details about saving `Seurat` objects to h5Seurat files, please see [this vignette](https://mojaveazure.github.io/seurat-disk/articles/h5Seurat-load.html); after the file is saved, we can [convert](https://mojaveazure.github.io/seurat-disk/reference/Convert.html) it to an AnnData file for use in Scanpy. Full details about the conversion processes are listed in the [manual page](https://mojaveazure.github.io/seurat-disk/reference/Convert.html) for the `Convert` function
 
 ```{r convert_seurat}
-SaveH5Seurat(pbmc3k.final, filename = "pbmc3k.h5Seurat")
-Convert("pbmc3k.h5Seurat", dest = "h5ad")
+SaveH5Seurat(pbmc3k.final, filename = "pbmc3k.h5Seurat", overwrite=TRUE)
+Convert("pbmc3k.h5Seurat", dest = "h5ad", overwrite = TRUE)
 ```
 
 We can view the AnnData file in Scanpy by using the `read_h5ad` function
 
 ```{python load_adata}
-import scanpy
-adata = scanpy.read_h5ad("pbmc3k.h5ad")
+import scanpy as sc
+adata = sc.read_h5ad("pbmc3k.h5ad")
 adata
+sc.pl.umap(adata, color=["seurat_clusters"])
+sc.pl.umap(adata, color=["MS4A1", "CD14", "GNLY"])
 ```
 
-## Converting from AnnData to Seurat via h5Seurat
+### Converting from AnnData to Seurat via h5Seurat
 
-To shocwcase going from an AnnData file to a `Seurat` object, we'll use a processed version of the PBMC 3k dataset; this dataset was processed using Scanpy following [Scanpy's PBMC 3k tutorial](https://scanpy-tutorials.readthedocs.io/en/latest/pbmc3k.html)
+To showcase going from an AnnData file to a `Seurat` object, we'll use a processed version of the PBMC 3k dataset; this dataset was processed using Scanpy following [Scanpy's PBMC 3k tutorial](https://scanpy-tutorials.readthedocs.io/en/latest/pbmc3k.html)
 
 ```{r get_adata}
 url <- "https://seurat.nygenome.org/pbmc3k_final.h5ad"
@@ -71,11 +77,44 @@ curl::curl_download(url, basename(url))
 
 To see how this dataset was created, please see [this script](https://gist.github.com/mojaveazure/922aa904b9ac212e627f522c2b816a52)
 
-
-Converting the AnnData file to a `Seurat` object is a two-step process. First, convert the AnnData file to an h5Seurat file using the [`Convert` function](https://mojaveazure.github.io/seurat-disk/reference/Convert.html); full details about the conversion process are listed in the [manual page](https://mojaveazure.github.io/seurat-disk/reference/Convert.html). Then, we [load the h5Seurat file](https://mojaveazure.github.io/seurat-disk/reference/LoadH5Seurat.html) into a `Seurat` object; for more details about loading `Seurat` objects from h5Seurat files, please see [this vignette](https://mojaveazure.github.io/seurat-disk/articles/h5Seurat-load.html)
-
 ```{r convert_adata}
 Convert("pbmc3k_final.h5ad", dest = "h5seurat", overwrite = TRUE)
 pbmc3k <- LoadH5Seurat("pbmc3k_final.h5seurat")
 pbmc3k
+DimPlot(pbmc3k, reduction = "umap", group.by = "leiden")
+FeaturePlot(pbmc3k, features = c("MS4A1", "CD14", "GNLY"))
 ```
+
+## Visium V1 spatial data conversion
+
+The test data is from 10x Genomics' [Spatial Transcriptomics Demo Dataset: Human Prostate Cancer FFPE](https://www.10xgenomics.com/datasets/human-prostate-cancer-adenocarcinoma-with-invasive-carcinoma-ffpe-1-standard-1-3-0)
+
+```{r}
+pca_visiumv1 <- readRDS("~/Documents/GitHub/seuratdisk-V5/examples/stx_pca_v1.rds")
+pca_visiumv1
+SpatialFeaturePlot(pca_visiumv1, features="PTPRC", images = "lowres")
+```
+#### Seurat object to anndata
+
+```{r}
+SaveH5Seurat(pca_visiumv1, filename = "pca_visiumv1.h5Seurat", overwrite = TRUE)
+Convert("pca_visiumv1.h5Seurat", dest = "h5ad", overwrite = TRUE)
+```
+
+```{python load_adata_spatial}
+import scanpy as sc
+import squidpy as sq
+adata = sc.read_h5ad("pca_visiumv1.h5ad")
+adata
+sq.pl.spatial_scatter(adata,size=1.5, color=["PTPRC"])
+```
+
+### AnnData to Seurat object
+
+```{r load_visium, eval = FALSE}
+Convert("~/Documents/GitHub/seuratdisk-V5/examples/visiumv1_squidpy.h5ad", dest="h5Seurat", overwrite=TRUE)
+pca_adata <- LoadH5Seurat("~/Documents/GitHub/seuratdisk-V5/examples/visiumv1_squidpy.h5seurat")
+SpatialFeaturePlot(pca_adata, features = "PTPRC", images = "Visium_FFPE_Human_Prostate_Cancer")
+```
+
+The call above expects that the AnnData file was exported by Scanpy (or similar) with the `uns['spatial']` hierarchy intact. After loading, standard Seurat spatial workflows—such as `SpatialFeaturePlot`, `Images`, and `GetTissueCoordinates`—operate as if the data originated in Seurat.
