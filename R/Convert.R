@@ -356,6 +356,186 @@ H5ADToH5Seurat <- function(
     }
     return(rownames)
   }
+  # Read compound HDF5 dataset using Python h5py
+  #
+  # Some h5ad files store obs/var as compound HDF5 datasets that hdf5r cannot read.
+  # This function uses Python's h5py library as a fallback to read these datasets.
+  #
+  # @param h5file Path to the h5ad file
+  # @param dataset_path Path to the dataset within the file (e.g., 'obs', 'var')
+  #
+  # @return A data.frame with the dataset contents, or NULL if Python is not available
+  #
+  ReadCompoundDataset <- function(h5file, dataset_path) {
+    # Check if Python with h5py and pandas is available
+    python_cmd <- tryCatch({
+      system2("python3", c("-c", shQuote("import h5py, pandas")),
+              stdout = FALSE, stderr = FALSE)
+      "python3"
+    }, error = function(e) {
+      tryCatch({
+        system2("python", c("-c", shQuote("import h5py, pandas")),
+                stdout = FALSE, stderr = FALSE)
+        "python"
+      }, error = function(e) {
+        if (verbose) {
+          message("  Warning: Python with h5py/pandas not available, cannot read compound dataset")
+        }
+        return(NULL)
+      })
+    })
+
+    if (is.null(python_cmd)) {
+      return(NULL)
+    }
+
+    # Create a temporary file for the CSV output
+    temp_csv <- tempfile(fileext = ".csv")
+    on.exit(unlink(temp_csv), add = TRUE)
+
+    # Python script to read compound dataset and save as CSV
+    python_script <- sprintf('
+import h5py
+import pandas as pd
+import sys
+
+try:
+    with h5py.File("%s", "r") as f:
+        data = f["%s"][:]
+        df = pd.DataFrame(data)
+        # Decode bytes to strings if needed
+        for col in df.columns:
+            if df[col].dtype == object:
+                try:
+                    df[col] = df[col].str.decode("utf-8")
+                except:
+                    pass
+        df.to_csv("%s", index=False)
+except Exception as e:
+    sys.stderr.write(str(e))
+    sys.exit(1)
+', h5file, dataset_path, temp_csv)
+
+    # Execute Python script
+    result <- tryCatch({
+      system2(python_cmd, c("-c", shQuote(python_script)),
+              stdout = TRUE, stderr = TRUE)
+    }, error = function(e) {
+      if (verbose) {
+        message("  Warning: Failed to read compound dataset with Python: ", conditionMessage(e))
+      }
+      return(NULL)
+    })
+
+    # Check if CSV was created
+    if (!file.exists(temp_csv) || file.size(temp_csv) == 0) {
+      if (verbose) {
+        message("  Warning: Python failed to read compound dataset")
+        if (length(result) > 0) {
+          message("  Python error: ", paste(result, collapse = "\n"))
+        }
+      }
+      return(NULL)
+    }
+
+    # Read the CSV
+    tryCatch({
+      df <- read.csv(temp_csv, stringsAsFactors = FALSE, check.names = FALSE)
+      return(df)
+    }, error = function(e) {
+      if (verbose) {
+        message("  Warning: Failed to read CSV from Python: ", conditionMessage(e))
+      }
+      return(NULL)
+    })
+  }
+  # Copy LZF-compressed sparse matrix using Python to temporary file
+  #
+  # Some h5ad files use LZF compression which hdf5r cannot read.
+  # This function uses Python to read LZF-compressed sparse matrices and
+  # write them decompressed to a temporary file, which can then be copied.
+  #
+  # @param src_file Path to source h5ad file
+  # @param src_path Path to sparse matrix group in source (e.g., 'X')
+  #
+  # @return Path to temporary H5 file with decompressed data, or NULL if failed
+  #
+  CopySparseMatrixDecompressed <- function(src_file, src_path) {
+    # Check if Python with h5py is available
+    python_cmd <- tryCatch({
+      system2("python3", c("-c", shQuote("import h5py, numpy")),
+              stdout = FALSE, stderr = FALSE)
+      "python3"
+    }, error = function(e) {
+      tryCatch({
+        system2("python", c("-c", shQuote("import h5py, numpy")),
+                stdout = FALSE, stderr = FALSE)
+        "python"
+      }, error = function(e) {
+        if (verbose) {
+          message("  Warning: Python with h5py not available for LZF decompression")
+        }
+        return(NULL)
+      })
+    })
+
+    if (is.null(python_cmd)) {
+      return(NULL)
+    }
+
+    # Create temporary file
+    temp_file <- tempfile(fileext = ".h5")
+
+    # Python script to copy sparse matrix to temp file without LZF compression
+    python_script <- sprintf('
+import h5py
+import numpy as np
+import sys
+
+try:
+    # Open source file and create temp file
+    with h5py.File("%s", "r") as src, h5py.File("%s", "w") as dst:
+        # Read the sparse matrix components
+        src_grp = src["%s"]
+
+        # Create group at root
+        dst_grp = dst.create_group("matrix")
+
+        # Copy each component without LZF compression
+        for comp in ["data", "indices", "indptr"]:
+            if comp in src_grp:
+                data = src_grp[comp][:]
+                # Write without compression
+                dst_grp.create_dataset(comp, data=data, compression=None)
+
+        # Copy attributes
+        for attr_name, attr_value in src_grp.attrs.items():
+            dst_grp.attrs[attr_name] = attr_value
+
+        sys.exit(0)
+except Exception as e:
+    sys.stderr.write(str(e))
+    sys.exit(1)
+', src_file, temp_file, src_path)
+
+    # Execute Python script
+    result <- system2(python_cmd, c("-c", shQuote(python_script)),
+                     stdout = TRUE, stderr = TRUE)
+
+    if (!is.null(attr(result, "status")) && attr(result, "status") != 0) {
+      if (verbose) {
+        message("  Warning: Python LZF decompression failed: ", paste(result, collapse = "\n"))
+      }
+      unlink(temp_file)
+      return(NULL)
+    }
+
+    if (!file.exists(temp_file)) {
+      return(NULL)
+    }
+
+    return(temp_file)
+  }
   ColToFactor <- function(dfgroup) {
     if (dfgroup$exists(name = '__categories')) {
       for (i in names(x = dfgroup[['__categories']])) {
@@ -437,11 +617,72 @@ H5ADToH5Seurat <- function(
       message("Adding ", ds.map[[i]], " as ", names(x = ds.map)[i])
     }
     dst <- names(x = ds.map)[i]
-    assay.group$obj_copy_from(
-      src_loc = source,
-      src_name = ds.map[[i]],
-      dst_name = dst
-    )
+
+    # Check if this is a sparse matrix with LZF compression
+    has_lzf <- FALSE
+    if (inherits(x = source[[ds.map[[i]]]], what = 'H5Group')) {
+      # Check if this sparse matrix group has LZF-compressed components
+      if (source[[ds.map[[i]]]]$exists(name = 'data')) {
+        tryCatch({
+          # Try to read first element - will fail if LZF compressed
+          test_read <- source[[ds.map[[i]]]][['data']][1]
+        }, error = function(e) {
+          if (grepl("can't synchronously read data|Read failed", conditionMessage(e))) {
+            has_lzf <<- TRUE
+          }
+        })
+      }
+    }
+
+    # Handle LZF compression with Python
+    if (has_lzf) {
+      if (verbose) {
+        message("  Detected LZF compression; using Python to decompress")
+      }
+
+      # Get source file path
+      src_file <- if (inherits(x = source, what = 'H5File')) {
+        source$filename
+      } else {
+        as.character(source)
+      }
+
+      # Use Python to decompress to temporary file
+      temp_file <- CopySparseMatrixDecompressed(
+        src_file = src_file,
+        src_path = ds.map[[i]]
+      )
+
+      if (!is.null(temp_file)) {
+        # Copy from temporary file
+        temp_h5 <- H5File$new(filename = temp_file, mode = 'r')
+        assay.group$obj_copy_from(
+          src_loc = temp_h5,
+          src_name = 'matrix',
+          dst_name = dst
+        )
+        temp_h5$close_all()
+        unlink(temp_file)
+      } else {
+        if (verbose) {
+          message("  Warning: LZF decompression failed, attempting normal copy")
+        }
+        # Fallback to normal copy (will likely fail on load, but conversion completes)
+        assay.group$obj_copy_from(
+          src_loc = source,
+          src_name = ds.map[[i]],
+          dst_name = dst
+        )
+      }
+    } else {
+      # Normal copy for non-LZF data
+      assay.group$obj_copy_from(
+        src_loc = source,
+        src_name = ds.map[[i]],
+        dst_name = dst
+      )
+    }
+
     # if (assay.group[[dst]]$attr_exists(attr_name = 'shape')) {
     if (isTRUE(x = AttrExists(x = assay.group[[dst]], name = 'shape'))) {
       dims <- rev(x = h5attr(x = assay.group[[dst]], which = 'shape'))
@@ -458,6 +699,9 @@ H5ADToH5Seurat <- function(
     yes = 'raw/var',
     no = 'var'
   )
+  # Track if we've already handled compound var dataset
+  var_compound_handled <- FALSE
+
   if (inherits(x = source[[features.source]], what = 'H5Group')) {
     features.dset <- GetRownames(dset = features.source)
     assay.group$obj_copy_from(
@@ -466,15 +710,127 @@ H5ADToH5Seurat <- function(
       dst_name = 'features'
     )
   } else {
-    tryCatch(
-      expr = assay.group$create_dataset(
-        name = 'features',
-        robj = rownames(x = source[[features.source]]),
-        dtype = GuessDType(x = "")
-      ),
-      error = function(...) {
-        stop("Cannot find feature names in this H5AD file", call. = FALSE)
+    # When var is an H5D dataset (e.g., compound datatype), try to read it with Python
+    if (verbose) {
+      message("Detected compound var dataset; attempting to read with Python")
+    }
+
+    # Get the source file path (need to handle both filename and H5File)
+    h5file_path <- if (inherits(x = source, what = 'H5File')) {
+      source$filename
+    } else {
+      as.character(source)
+    }
+
+    var_data <- ReadCompoundDataset(h5file_path, features.source)
+
+    if (!is.null(var_data) && nrow(var_data) > 0) {
+      # Successfully read compound dataset with Python
+      if (verbose) {
+        message("  Successfully read compound var dataset with ", nrow(var_data), " features")
       }
+
+      # Extract feature names from the 'index' column or first column
+      feature_names <- if ('index' %in% names(var_data)) {
+        as.character(var_data$index)
+      } else {
+        as.character(var_data[[1]])
+      }
+
+      # Store the var data for later use in meta.features
+      # Create meta.features group and add columns
+      if (!assay.group$exists(name = 'meta.features')) {
+        assay.group$create_group(name = 'meta.features')
+      }
+      for (col_name in names(var_data)) {
+        if (col_name == 'index' || col_name == names(var_data)[1]) {
+          next  # Skip the index column as it's used for rownames
+        }
+        col_data <- var_data[[col_name]]
+        assay.group[['meta.features']]$create_dataset(
+          name = col_name,
+          robj = col_data,
+          dtype = GuessDType(x = if (length(col_data) > 0) col_data[1] else col_data)
+        )
+      }
+      # Add rownames to meta.features
+      assay.group[['meta.features']]$create_dataset(
+        name = '_index',
+        robj = feature_names,
+        dtype = GuessDType(x = feature_names[1])
+      )
+      assay.group[['meta.features']]$create_attr(
+        attr_name = '_index',
+        robj = '_index',
+        dtype = GuessDType(x = '_index')
+      )
+      assay.group[['meta.features']]$create_attr(
+        attr_name = 's4class',
+        robj = 'DFrame',
+        dtype = StringType()
+      )
+      # Set a flag to indicate we've handled meta.features from compound var
+      var_compound_handled <- TRUE
+    } else {
+      # Fallback: create generic feature names
+      feature_names <- tryCatch(
+        expr = {
+          # Try to get rownames directly
+          rn <- rownames(x = source[[features.source]])
+          # Check if rownames actually returned valid data
+          if (is.null(rn) || length(rn) == 0) {
+            stop("rownames returned NULL or empty")
+          }
+          rn
+        },
+        error = function(e1) {
+          # If that fails, try to get dimensions and create generic names
+          tryCatch(
+            expr = {
+              # Get number of features from var dataset dimensions
+              nfeatures <- source[[features.source]]$dims
+              if (is.null(nfeatures) || length(nfeatures) == 0) {
+                stop("dims returned NULL or empty")
+              }
+              if (verbose) {
+                message(
+                  "  Warning: Could not read var with Python; using generic feature names ",
+                  "(Feature1, Feature2, ..., Feature", nfeatures, ")"
+                )
+              }
+              paste0("Feature", seq_len(nfeatures))
+            },
+            error = function(e2) {
+              # Last resort: get from X matrix dimensions
+              if (inherits(x = source[['X']], what = 'H5Group')) {
+                # Sparse matrix - check shape attribute
+                if (source[['X']]$attr_exists(attr_name = 'shape')) {
+                  shape <- h5attr(x = source[['X']], which = 'shape')
+                  nfeatures <- shape[1]
+                } else {
+                  stop("Cannot determine number of features from h5ad file", call. = FALSE)
+                }
+              } else {
+                # Dense matrix
+                nfeatures <- source[['X']]$dims[1]
+              }
+              if (verbose) {
+                message(
+                  "  Warning: Cannot extract feature names from var; using generic names ",
+                  "(Feature1, Feature2, ..., Feature", nfeatures, ")"
+                )
+              }
+              paste0("Feature", seq_len(nfeatures))
+            }
+          )
+        }
+      )
+    }
+
+    assay.group$create_dataset(
+      name = 'features',
+      robj = feature_names,
+      dtype = GuessDType(x = feature_names[1])
     )
   }
   scaled <- !is.null(x = ds.map['scale.data']) && !is.na(x = ds.map['scale.data'])
@@ -487,15 +843,37 @@ H5ADToH5Seurat <- function(
         dst_name = 'scaled.features'
       )
     } else {
-      tryCatch(
-        expr = assay.group$create_dataset(
-          name = 'scaled.features',
-          robj = rownames(x = source[['var']]),
-          dtype = GuessDType(x = "")
-        ),
-        error = function(...) {
-          stop("Cannot find scaled features in this H5AD file", call. = FALSE)
+      # When var is an H5D dataset, use the same feature names as before
+      scaled_feature_names <- tryCatch(
+        expr = {
+          rn <- rownames(x = source[['var']])
+          # Check if rownames actually returned valid data
+          if (is.null(rn) || length(rn) == 0) {
+            stop("rownames returned NULL or empty")
+          }
+          rn
+        },
+        error = function(e) {
+          # Get number of scaled features from var or X
+          nfeatures <- if (!is.null(source[['var']]$dims) && length(source[['var']]$dims) > 0) {
+            source[['var']]$dims
+          } else if (inherits(x = source[['X']], what = 'H5Group')) {
+            if (source[['X']]$attr_exists(attr_name = 'shape')) {
+              h5attr(x = source[['X']], which = 'shape')[1]
+            } else {
+              stop("Cannot determine number of scaled features", call. = FALSE)
+            }
+          } else {
+            source[['X']]$dims[1]
+          }
+          paste0("Feature", seq_len(nfeatures))
         }
+      )
+
+      assay.group$create_dataset(
+        name = 'scaled.features',
+        robj = scaled_feature_names,
+        dtype = GuessDType(x = scaled_feature_names[1])
       )
     }
   }
@@ -553,13 +931,15 @@ H5ADToH5Seurat <- function(
           assay.group[['meta.features']][[mf]][features.use] <- source[['var']][[mf]]$read()
         }
       }
-    } else {
+    } else if (!var_compound_handled) {
       warning(
         "Cannot yet add feature-level metadata from compound datasets",
         call. = FALSE,
         immediate. = TRUE
       )
-      assay.group$create_group(name = 'meta.features')
+      if (!assay.group$exists(name = 'meta.features')) {
+        assay.group$create_group(name = 'meta.features')
+      }
     }
   } else {
     if (inherits(x = source[['var']], what = 'H5Group')) {
@@ -571,13 +951,16 @@ H5ADToH5Seurat <- function(
         src_name = 'var',
         dst_name = 'meta.features'
       )
-    } else {
+    } else if (!var_compound_handled) {
+      # Only warn if we didn't already handle compound var with Python
       warning(
         "Cannot yet add feature-level metadata from compound datasets",
         call. = FALSE,
         immediate. = TRUE
       )
-      assay.group$create_group(name = 'meta.features')
+      if (!assay.group$exists(name = 'meta.features')) {
+        assay.group$create_group(name = 'meta.features')
+      }
     }
   }
   ColToFactor(dfgroup = assay.group[['meta.features']])
@@ -590,15 +973,23 @@ H5ADToH5Seurat <- function(
     assay.group[['meta.features']]$create_attr(
       attr_name = 'colnames',
       robj = colnames,
-      dtype = GuessDType(x = colnames)
+      dtype = GuessDType(x = if (length(colnames) > 0) colnames[1] else colnames)
     )
   }
   if (inherits(x = source[['var']], what = 'H5Group')) {
-    assay.group[['meta.features']]$link_delete(name = GetRownames(dset = 'var'))
+    rownames_to_delete <- GetRownames(dset = 'var')
+    # Only delete if the link exists in meta.features
+    if (assay.group[['meta.features']]$exists(name = rownames_to_delete)) {
+      assay.group[['meta.features']]$link_delete(name = rownames_to_delete)
+    } else if (verbose) {
+      message("Note: Rownames '", rownames_to_delete, "' not found in meta.features, skipping deletion")
+    }
   }
 
   # Extract variable features from highly_variable column if available
-  if (source$exists(name = 'var/highly_variable')) {
+  # Only check if var is an H5Group (compound datasets don't support sub-paths)
+  if (inherits(x = source[['var']], what = 'H5Group') &&
+      source$exists(name = 'var/highly_variable')) {
     if (verbose) {
       message("Converting highly_variable to variable.features")
     }
@@ -699,7 +1090,7 @@ H5ADToH5Seurat <- function(
       dfile[['meta.data']]$create_attr(
         attr_name = 'colnames',
         robj = colnames,
-        dtype = GuessDType(x = colnames)
+        dtype = GuessDType(x = if (length(colnames) > 0) colnames[1] else colnames)
       )
     }
     rownames <- GetRownames(dset = 'obs')
@@ -709,6 +1100,89 @@ H5ADToH5Seurat <- function(
       dst_name = 'cell.names'
     )
     dfile[['meta.data']]$link_delete(name = rownames)
+  } else if (source$exists(name = 'obs') && inherits(x = source[['obs']], what = 'H5D')) {
+    # Handle compound obs dataset using Python
+    if (verbose) {
+      message("Detected compound obs dataset; attempting to read with Python")
+    }
+
+    # Get the source file path
+    h5file_path <- if (inherits(x = source, what = 'H5File')) {
+      source$filename
+    } else {
+      as.character(source)
+    }
+
+    obs_data <- ReadCompoundDataset(h5file_path, 'obs')
+
+    if (!is.null(obs_data) && nrow(obs_data) > 0) {
+      # Successfully read compound dataset with Python
+      if (verbose) {
+        message("  Successfully read compound obs dataset with ", nrow(obs_data), " cells")
+      }
+
+      # Extract cell names from the 'index' column or first column
+      cell_names <- if ('index' %in% names(obs_data)) {
+        as.character(obs_data$index)
+      } else {
+        as.character(obs_data[[1]])
+      }
+
+      # Create meta.data group and add columns
+      dfile$create_group(name = 'meta.data')
+      for (col_name in names(obs_data)) {
+        if (col_name == 'index' || col_name == names(obs_data)[1]) {
+          next  # Skip the index column as it's used for cell names
+        }
+        col_data <- obs_data[[col_name]]
+        dfile[['meta.data']]$create_dataset(
+          name = col_name,
+          robj = col_data,
+          dtype = GuessDType(x = if (length(col_data) > 0) col_data[1] else col_data)
+        )
+      }
+      # Add rownames to meta.data
+      dfile[['meta.data']]$create_dataset(
+        name = '_index',
+        robj = cell_names,
+        dtype = GuessDType(x = cell_names[1])
+      )
+      dfile[['meta.data']]$create_attr(
+        attr_name = '_index',
+        robj = '_index',
+        dtype = GuessDType(x = '_index')
+      )
+      dfile[['meta.data']]$create_attr(
+        attr_name = 's4class',
+        robj = 'DFrame',
+        dtype = StringType()
+      )
+
+      # Create cell.names dataset
+      dfile$create_dataset(
+        name = 'cell.names',
+        robj = cell_names,
+        dtype = GuessDType(x = cell_names[1])
+      )
+    } else {
+      # Fallback if Python reading fails
+      warning(
+        "Could not read compound obs dataset with Python; creating fake cell names",
+        call. = FALSE,
+        immediate. = TRUE
+      )
+      ncells <- if (inherits(x = assay.group[['data']], what = 'H5Group')) {
+        assay.group[['data/indptr']]$dims - 1
+      } else {
+        assay.group[['data']]$dims[2]
+      }
+      dfile$create_group(name = 'meta.data')
+      dfile$create_dataset(
+        name = 'cell.names',
+        robj = paste0('Cell', seq.default(from = 1, to = ncells)),
+        dtype = GuessDType(x = 'Cell1')
+      )
+    }
   } else {
     warning(
       "No cell-level metadata present, creating fake cell names",
@@ -997,11 +1471,17 @@ H5ADToH5Seurat <- function(
       if (verbose) {
         message("Adding ", i, " to miscellaneous data")
       }
-      dfile[['misc']]$obj_copy_from(
-        src_loc = source[['uns']],
-        src_name = i,
-        dst_name = i
-      )
+      tryCatch({
+        dfile[['misc']]$obj_copy_from(
+          src_loc = source[['uns']],
+          src_name = i,
+          dst_name = i
+        )
+      }, error = function(e) {
+        if (verbose) {
+          message("  Warning: Could not copy ", i, " to miscellaneous data: ", conditionMessage(e))
+        }
+      })
     }
   }
   # Add spatial images from uns/spatial

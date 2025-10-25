@@ -24,8 +24,8 @@ Meta
 /*.Rds
 
 # ignore test data
-tests/
 examples/
+inst/testdata/
 
 # ignore macos files
 .DS_Store
