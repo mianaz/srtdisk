@@ -35,35 +35,6 @@ jobs:
           extra-packages: any::rcmdcheck
           needs: check
 
-      - name: Create test data
-        run: |
-          Rscript -e '
-          library(Seurat)
-          library(srtdisk)
-
-          # Use built-in pbmc_small dataset (80 cells, very small)
-          data("pbmc_small")
-
-          # Create test directory
-          dir.create("inst/testdata", recursive = TRUE, showWarnings = FALSE)
-
-          # Save as h5Seurat
-          SaveH5Seurat(pbmc_small, "inst/testdata/pbmc_small.h5seurat", overwrite = TRUE)
-          cat("Created pbmc_small.h5seurat\n")
-
-          # Convert to h5ad format for testing
-          Convert("inst/testdata/pbmc_small.h5seurat",
-                  dest = "inst/testdata/pbmc_small.h5ad",
-                  overwrite = TRUE)
-          cat("Created pbmc_small.h5ad\n")
-
-          # List created files
-          files <- list.files("inst/testdata", full.names = TRUE)
-          for (f in files) {
-            cat(sprintf("  %s (%.2f MB)\n", basename(f), file.size(f) / 1024^2))
-          }
-          '
-
       - uses: r-lib/actions/check-r-package@v2
         with:
           upload-snapshots: true
