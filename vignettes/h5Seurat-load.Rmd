@@ -224,42 +224,44 @@ While `SeuratData` provides curated examples, many Visium datasets are shared as
 
 ### Downloading the Heart Visium dataset
 
-The CZ Biohub Spatial Atlas heart dataset is available as an `.h5ad` file. The snippet below downloads the data to a user-defined cache directory; the chunk is not evaluated during vignette rendering to avoid large downloads.
+The CZ Biohub Spatial Atlas heart dataset is distributed as an AnnData (`.h5ad`) archive that contains multiple Visium libraries. The command below downloads the file to the working directory; the chunk remains disabled during vignette builds to avoid large network transfers.
 
 ```{r heart_visium_download, eval = FALSE}
-heart_url <- "https://datasets.cellxgene.cziscience.com/3c84ef48-2cc2-4327-90a1-4f4cb57de168.h5ad"
-cache_dir <- fs::path_home_r(".cache", "srtdisk", "data")
-fs::dir_create(cache_dir, recurse = TRUE)
-
-heart_h5ad <- fs::path(cache_dir, "heart_visium.h5ad")
-
-if (!fs::file_exists(heart_h5ad)) {
-  download.file(heart_url, destfile = heart_h5ad, mode = "wb", quiet = TRUE)
-}
+download.file(
+  url = "https://datasets.cellxgene.cziscience.com/8cc521c8-c4ff-4cba-a07b-cae67a9dcba9.h5ad",
+  destfile = "sn.heart.h5ad",
+  mode = "wb"
+)
 ```
 
-### Converting to h5Seurat
+### Converting and isolating a single library
 
-Once the AnnData file is present, converting and loading it follows the same pattern as earlier sections. The conversion is disabled during knitting because it requires Python dependencies, but the code is ready to copy and run in an interactive session.
+After downloading, convert the AnnData file to h5Seurat, load it, and pull out one Visium library. The metadata column that labels libraries is typically named `library_id`; adjust `library_column` below if your download uses a different field.
 
 ```{r heart_visium_convert, eval = FALSE}
-heart_h5seurat <- fs::path(cache_dir, "heart_visium.h5seurat")
+Convert("sn.heart.h5ad", dest = "sn.heart.h5seurat", overwrite = TRUE, verbose = FALSE)
 
-Convert(
-  heart_h5ad,
-  dest = heart_h5seurat,
+heart <- LoadH5Seurat("sn.heart.h5seurat")
+
+library_column <- "library_id"
+metadata <- heart[[]]
+stopifnot(library_column %in% names(metadata))
+
+library_ids <- unique(metadata[[library_column]])
+selected_id <- library_ids[[1]]
+
+selected_cells <- rownames(metadata)[metadata[[library_column]] == selected_id]
+
+heart_library <- subset(heart, cells = selected_cells)
+
+SaveH5Seurat(
+  heart_library,
+  filename = sprintf("sn.heart.%s.h5seurat", selected_id),
   overwrite = TRUE,
   verbose = FALSE
 )
 
-heart <- LoadH5Seurat(
-  heart_h5seurat,
-  assays = list("Spatial" = "counts"),
-  images = NULL,
-  reductions = NA,
-  graphs = FALSE
-)
-heart
+heart_library
 ```
 
 You can now explore and append additional data just as we did with the brain example, taking advantage of on-disk storage to manage large spatial datasets.
