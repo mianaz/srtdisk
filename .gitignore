@@ -30,6 +30,9 @@ inst/testdata/
 # ignore macos files
 .DS_Store
 
+# ignore claude settings
+.claude/
+
 # ignore working index files
 FUNCTION_INDEX.md
 
