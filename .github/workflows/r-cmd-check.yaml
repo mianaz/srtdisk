@@ -35,57 +35,32 @@ jobs:
           extra-packages: any::rcmdcheck
           needs: check
 
-      - name: Download test data
+      - name: Create test data
         run: |
           Rscript -e '
+          library(Seurat)
+          library(srtdisk)
+
+          # Use built-in pbmc_small dataset (80 cells, very small)
+          data("pbmc_small")
+
+          # Create test directory
           dir.create("inst/testdata", recursive = TRUE, showWarnings = FALSE)
 
-          # Download cellxgene heart datasets
-          tryCatch({
-            download.file(
-              "https://datasets.cellxgene.cziscience.com/c5ac5c36-f60c-4680-8018-2d6cb65c0a37.h5ad",
-              destfile = "inst/testdata/vis.heart.h5ad",
-              mode = "wb",
-              quiet = FALSE
-            )
-            cat("Downloaded vis.heart.h5ad\n")
-          }, error = function(e) {
-            cat("Failed to download vis.heart.h5ad:", conditionMessage(e), "\n")
-          })
+          # Save as h5Seurat
+          SaveH5Seurat(pbmc_small, "inst/testdata/pbmc_small.h5seurat", overwrite = TRUE)
+          cat("Created pbmc_small.h5seurat\n")
 
-          tryCatch({
-            download.file(
-              "https://datasets.cellxgene.cziscience.com/8cc521c8-c4ff-4cba-a07b-cae67a9dcba9.h5ad",
-              destfile = "inst/testdata/sn.heart.h5ad",
-              mode = "wb",
-              quiet = FALSE
-            )
-            cat("Downloaded sn.heart.h5ad\n")
-          }, error = function(e) {
-            cat("Failed to download sn.heart.h5ad:", conditionMessage(e), "\n")
-          })
+          # Convert to h5ad format for testing
+          Convert("inst/testdata/pbmc_small.h5seurat",
+                  dest = "inst/testdata/pbmc_small.h5ad",
+                  overwrite = TRUE)
+          cat("Created pbmc_small.h5ad\n")
 
-          tryCatch({
-            download.file(
-              "https://covid19.cog.sanger.ac.uk/baron16.processed.h5ad",
-              destfile = "inst/testdata/ba16.h5ad",
-              mode = "wb",
-              quiet = FALSE
-            )
-            cat("Downloaded ba16.h5ad\n")
-          }, error = function(e) {
-            cat("Failed to download ba16.h5ad:", conditionMessage(e), "\n")
-          })
-
-          # List downloaded files
+          # List created files
           files <- list.files("inst/testdata", full.names = TRUE)
-          if (length(files) > 0) {
-            cat("\nDownloaded test data files:\n")
-            for (f in files) {
-              cat(sprintf("  %s (%.2f MB)\n", basename(f), file.size(f) / 1024^2))
-            }
-          } else {
-            cat("\nNo test data files were downloaded successfully\n")
+          for (f in files) {
+            cat(sprintf("  %s (%.2f MB)\n", basename(f), file.size(f) / 1024^2))
           }
           '
 
