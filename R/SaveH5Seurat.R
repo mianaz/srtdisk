@@ -322,19 +322,40 @@ as.h5Seurat.Seurat <- function(
   # Add attributes for project and default assay
   Project(object = hfile) <- Project(object = x)
   DefaultAssay(object = hfile) <- DefaultAssay(object = x)
-  # Add Images
-  if (package_version(x = object.version) >= package_version(x = spatial.version)) {
-    # Older versions of Seurat don't have Images, call directly instead
-    for (image in Seurat::Images(object = x)) {
-      if (verbose) {
-        message("Adding image ", image)
+  # Add Images (if object has spatial data or SliceImage objects)
+  has_slice_images <- FALSE
+  if (package_version(x = object.version) < package_version(x = spatial.version)) {
+    has_slice_images <- tryCatch({
+      imgs <- Seurat::Images(object = x)
+      if (length(imgs) > 0) {
+        any(sapply(imgs, function(img) inherits(x[[img]], 'SliceImage')))
+      } else {
+        FALSE
       }
-      WriteH5Group(
-        x = x[[image]],
-        name = image,
-        hgroup = hfile[['images']],
-        verbose = verbose
-      )
+    }, error = function(e) {
+      FALSE
+    })
+  }
+
+  if (package_version(x = object.version) >= package_version(x = spatial.version) || has_slice_images) {
+    has_images <- tryCatch({
+      length(Seurat::Images(object = x)) > 0
+    }, error = function(e) {
+      FALSE
+    })
+
+    if (has_images) {
+      for (image in Seurat::Images(object = x)) {
+        if (verbose) {
+          message("Adding image ", image)
+        }
+        WriteH5Group(
+          x = x[[image]],
+          name = image,
+          hgroup = hfile[['images']],
+          verbose = verbose
+        )
+      }
     }
   }
   # Add metadata, cell names, and identity classes

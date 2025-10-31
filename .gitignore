@@ -29,3 +29,17 @@ inst/testdata/
 
 # ignore macos files
 .DS_Store
+
+# ignore working index files
+FUNCTION_INDEX.md
+
+# ignore test output files
+tests/*.h5seurat
+tests/*.pdf
+tests/strategy_comparison_output.txt
+
+# Ignore pkgdown site
+docs/
+
+# Ignore pkgdown site
+docs/

@@ -258,8 +258,29 @@ h5Seurat <- R6Class(
           index$no.assay$graphs <- c(index$no.assay$graphs, graph)
         }
       }
-      # Get images
-      if (version >= numeric_version(x = spatial.version)) {
+      # Get images (Seurat v5 or SliceImage from v4)
+      has_slice_images <- FALSE
+      if (version < numeric_version(x = spatial.version) && self$exists(name = 'images')) {
+        has_slice_images <- tryCatch({
+          img_names <- names(x = self[['images']])
+          if (length(img_names) > 0) {
+            any(sapply(img_names, function(img_name) {
+              img_group <- self[['images']][[img_name]]
+              if (img_group$attr_exists(attr_name = 's4class')) {
+                s4class <- h5attr(x = img_group, which = 's4class')
+                return(s4class == 'SliceImage')
+              }
+              return(FALSE)
+            }))
+          } else {
+            FALSE
+          }
+        }, error = function(e) {
+          FALSE
+        })
+      }
+
+      if (version >= numeric_version(x = spatial.version) || has_slice_images) {
         for (image in names(x = self[['images']])) {
           img.group <- self[['images']][[image]]
           if (!img.group$attr_exists(attr_name = 'assay') || !img.group$attr_exists(attr_name = 's4class')) {

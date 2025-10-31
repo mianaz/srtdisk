@@ -19,7 +19,7 @@ knitr::opts_chunk$set(
 
 The h5Seurat file format, based on [HDF5](https://en.wikipedia.org/wiki/Hierarchical_Data_Format), is specifically designed for the storage and analysis of multi-modal single-cell and spatially-resolved expression experiments, for example, from CITE-seq or 10X Visium technologies. It holds all molecular information and associated metadata, including (for example) nearest-neighbor graphs, dimensional reduction information, spatial coordinates and image data, and cluster labels.
 
-This vignette serves as a guide to saving and loading `Seurat` objects to h5Seurat files. **This implementation supports Seurat v5 with full Assay5 compatibility**, automatically handling both legacy Assay and modern Assay5 objects. For more details about h5Seurat files, please see the [h5Seurat file specification](https://mojaveazure.github.io/seurat-disk/articles/h5Seurat-spec.html).
+This vignette serves as a guide to saving and loading `Seurat` objects to h5Seurat files. **This implementation supports Seurat v5 with full Assay5 compatibility**, automatically handling both legacy Assay and modern Assay5 objects. For more details about h5Seurat files, please see the h5Seurat-spec vignette.
 
 <!-- *can't save unserializeable data -->
 
@@ -40,7 +40,7 @@ InstallData(ds = "stxBrain")
 brain <- LoadData(ds = "stxBrain", type = "anterior1")
 ```
 
-The data loaded is the raw, unprocessed version of the data. In order to generate the full dataset, we'll follow the steps outlined in [Seurat's spatial dataset vignette](https://satijalab.org/seurat/v3.1/spatial_vignette.html).
+The data loaded is the raw, unprocessed version of the data. In order to generate the full dataset, we'll follow the spatial processing steps.
 
 <details>
   <summary>Processing Steps</summary>
@@ -65,7 +65,7 @@ brain <- RunUMAP(brain, dims = 1:30)
 brain
 ```
 
-As seen, we have a dataset with multiple components to it. Despite being a complex dataset with multiple parts, saving the dataset is no problem with nearly all information from the object being written to disk. Saving an object is as simple as calling [`SaveH5Seurat`](https://mojaveazure.github.io/seurat-disk/reference/SaveH5Seurat.html); minimally, this function takes a `Seurat` object and nothing else. Optional arguments are present for specifying a filename and whether or not you want to overwrite a preexisting file.
+As seen, we have a dataset with multiple components to it. Despite being a complex dataset with multiple parts, saving the dataset is no problem with nearly all information from the object being written to disk. Saving an object is as simple as calling `SaveH5Seurat()`; minimally, this function takes a `Seurat` object and nothing else. Optional arguments are present for specifying a filename and whether or not you want to overwrite a preexisting file.
 
 ```{r save_data}
 SaveH5Seurat(brain, overwrite = TRUE)
@@ -82,7 +82,7 @@ An [Rds](http://stat.ethz.ch/R-manual/R-devel/library/base/html/readRDS.html) fi
 
 ## Connecting to and querying h5Seurat files
 
-Unlike most data formats, HDF5 files can be connected to and explored without loading the data into memory. To facilitate this, we've built an [`h5Seurat` object](https://mojaveazure.github.io/seurat-disk/reference/h5Seurat-class.html) to serve as an interface to h5Seurat files in R. `h5Seurat` objects are built off of the [`H5File` object](https://hhoeflin.github.io/hdf5r/reference/H5File-class.html) from [hdf5r](https://hhoeflin.github.io/hdf5r/).
+Unlike most data formats, HDF5 files can be connected to and explored without loading the data into memory. To facilitate this, we've built an `h5Seurat` object to serve as an interface to h5Seurat files in R. `h5Seurat` objects are built off of the `H5File` object from the hdf5r package.
 
 <details>
   <summary>`h5Seurat` objects and R6 classes</summary>
@@ -127,14 +127,14 @@ hfile$close_all()
 
 ## Loading datasets
 
-Reading data from an h5Seurat file is as simple as calling [`LoadH5Seurat`](https://mojaveazure.github.io/seurat-disk/reference/LoadH5Seurat.html); by default, it loads the entire object into memory.
+Reading data from an h5Seurat file is as simple as calling `LoadH5Seurat()`; by default, it loads the entire object into memory.
 
 ```{r load_data, eval=FALSE}
 brain2 <- LoadH5Seurat("anterior1.h5Seurat")
 brain2
 ```
 
-However, there are situations in which loading an entire `Seurat` object is not desirable. As such, we can leverage the HDF5 format and load only parts of a dataset at a time. `LoadH5Seurat` makes use of assay association to limit the data loaded. In `Seurat` objects, all dimensional reduction information, nearest-neighbor graphs, and spatial image data have an assay they "belong" to (see the help page for [`DefaultAssay`](https://rdrr.io/cran/Seurat/man/DefaultAssay.html) for more details). If only certain assays are requested, then only the object associated with those assays are loaded.
+However, there are situations in which loading an entire `Seurat` object is not desirable. As such, we can leverage the HDF5 format and load only parts of a dataset at a time. `LoadH5Seurat` makes use of assay association to limit the data loaded. In `Seurat` objects, all dimensional reduction information, nearest-neighbor graphs, and spatial image data have an assay they "belong" to (see `DefaultAssay()` in the Seurat package for more details). If only certain assays are requested, then only the object associated with those assays are loaded.
 
 There are four main parameters for controlling data loading. The first is the `assays` parameter; this parameter controls which assays are loaded and which slots of each assay are loaded. The simplest level of control is specifying the assays to load. For our brain dataset, we can choose from either "SCT" or "Spatial"; passing one of these will load the entire assay object for the assay specified.
 
@@ -190,7 +190,7 @@ In addition, there are four secondary parameters to `LoadH5Seurat`: `meta.data`,
   For more details about global objects, please see the documentation for [globality in Seurat](https://rdrr.io/cran/Seurat/man/IsGlobal.html)
 </details>
 
-Partial loading of datasets is an excellent way to limit memory usage and prevent the loading of massive datasets into memory. However, there can be instances in which a partial dataset was loaded, but then needs to be expanded with additional data from the h5Seurat file. Instead of redoing the partial load, we can make use of [`AppendData`](https://mojaveazure.github.io/seurat-disk/reference/AppendData.html) to add additional objects from an h5Seurat file to an already-loaded `Seurat` object. To show how this works, we'll start off with by loading just the "data" slot from the "SCT" assay as well as all spatial image data, but not load any dimensional reduction information or nearest-neighbor graphs.
+Partial loading of datasets is an excellent way to limit memory usage and prevent the loading of massive datasets into memory. However, there can be instances in which a partial dataset was loaded, but then needs to be expanded with additional data from the h5Seurat file. Instead of redoing the partial load, we can make use of `AppendData()` to add additional objects from an h5Seurat file to an already-loaded `Seurat` object. To show how this works, we'll start off with by loading just the "data" slot from the "SCT" assay as well as all spatial image data, but not load any dimensional reduction information or nearest-neighbor graphs.
 
 ```{r load_partial}
 brain2 <- LoadH5Seurat("anterior1.h5Seurat", assays = c("SCT" = "data"), reductions = FALSE, graphs = FALSE, images = NULL)

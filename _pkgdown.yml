@@ -1,15 +1,18 @@
-url: https://mianaz.github.io/seuratdisk-V5/
+url: https://mianaz.github.io/srtdisk/
 destination: docs
 
 template:
-  params:
-    bootswatch: flatly
-    docsearch:
-      api_key: ~
-      index_name: ~
+  bootstrap: 5
+  bootswatch: flatly
 
 development:
   mode: auto
+
+home:
+  strip_header: false
+  links:
+  - text: Browse source code
+    href: https://github.com/mianaz/srtdisk
 
 reference:
   - title: "Package Information"
@@ -57,7 +60,6 @@ reference:
     contents:
       - ReadH5
       - WriteH5Group
-      - WriteH5GroupAssay5
       - BasicWrite
       - ImageWrite
       - SparseWrite

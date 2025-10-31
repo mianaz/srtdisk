@@ -102,7 +102,7 @@ ConvertBPCellsMatrix <- function(mat, verbose = FALSE) {
 
   if (!is_bpcells) return(mat)
 
-  vmessage("Converting BPCells object to dgCMatrix", verbose)
+  if (verbose) message("Converting BPCells object to dgCMatrix")
 
   tryCatch(
     as(mat, "dgCMatrix"),
@@ -113,15 +113,8 @@ ConvertBPCellsMatrix <- function(mat, verbose = FALSE) {
   )
 }
 
-#' Verbose message wrapper
-#'
-#' @param msg Message to print
-#' @param verbose Logical, whether to print
-#' @keywords internal
-#'
-vmessage <- function(msg, verbose = TRUE) {
-  if (verbose) message(msg)
-}
+# Removed: vmessage() was just a wrapper for if(verbose) message()
+# Replace all vmessage(msg, verbose) with if(verbose) message(msg)
 
 #' Convert a logical to an integer
 #'
@@ -720,16 +713,8 @@ RandomName <- function(length = 5L, ...) {
   return(paste(sample(x = letters, size = length, ...), collapse = ""))
 }
 
-#' Create a scalar space
-#'
-#' @return An object of type \code{\link[hdf5r:H5S]{H5S}} denoting a scalar HDF5
-#' space
-#'
-#' @keywords internal
-#'
-Scalar <- function() {
-  return(H5S$new(type = 'scalar'))
-}
+# Removed: Scalar() was just a wrapper for H5S$new(type = 'scalar')
+# Replace all Scalar() calls with H5S$new(type = 'scalar')
 
 #' Generate an HDF5 string dtype
 #'
@@ -784,13 +769,13 @@ AddAnndataEncoding <- function(h5obj, encoding_type = 'string-array', encoding_v
     attr_name = 'encoding-type',
     robj = encoding_type,
     dtype = GuessDType(x = encoding_type),
-    space = Scalar()
+    space = H5S$new(type = "scalar")
   )
   h5obj$create_attr(
     attr_name = 'encoding-version',
     robj = encoding_version,
     dtype = GuessDType(x = encoding_version),
-    space = Scalar()
+    space = H5S$new(type = "scalar")
   )
   invisible(NULL)
 }

@@ -19,8 +19,8 @@ Description: Extended implementation of SeuratDisk for Seurat v5 with enhanced
   objects, with the goal of enhancing interoperability between Seurat and Scanpy.
   This version includes Seurat v5 Assay5 compatibility and improved spatial data
   handling.
-URL: https://github.com/miana/seuratdisk-V5
-BugReports: https://github.com/miana/seuratdisk-V5/issues
+URL: https://mianaz.github.io/srtdisk/, https://github.com/mianaz/srtdisk
+BugReports: https://github.com/mianaz/srtdisk/issues
 License: GPL-3 | file LICENSE
 Encoding: UTF-8
 LazyData: true
@@ -44,6 +44,10 @@ Imports:
   utils,
   withr (>= 2.1.2)
 Collate:
+    'UtilsAssayCompat.R'
+    'UtilsH5Access.R'
+    'UtilsMatrix.R'
+    'UtilsSparseMatrix.R'
     'zzz.R'
     'GetObject.R'
     'AssembleObject.R'

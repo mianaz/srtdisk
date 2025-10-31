@@ -1,8 +1,6 @@
-# Ignore built vignettes and component R scripts
 *.html
 *.R
-
-# Ignore h5Seurat and H5AD data files
-*.h5seurat
-*.h5Seurat
+*.pdf
 *.h5ad
+*.h5Seurat
+*.h5seurat

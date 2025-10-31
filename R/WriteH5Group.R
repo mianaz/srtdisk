@@ -1,4 +1,5 @@
 #' @include zzz.R
+#' @include UtilsAssayCompat.R
 #' @importFrom methods setOldClass setClassUnion setGeneric setMethod slotNames
 #' slot tryNew
 #' @importFrom Seurat GetAssayData Key VariableFeatures Misc Embeddings Loadings
@@ -94,12 +95,26 @@ ImageWrite <- function(x, name, hgroup, verbose = TRUE) {
   # Write out slots other than assay
   slots <- setdiff(x = slotNames(x = x), y = c('assay', 'global'))
   for (slot in slots) {
-    WriteH5Group(
-      x = slot(object = x, name = slot),
-      name = slot,
-      hgroup = xgroup,
-      verbose = verbose
-    )
+    slot_value <- tryCatch({
+      slot(object = x, name = slot)
+    }, error = function(e) {
+      if (slot == 'key') {
+        paste0(name, '_')
+      } else {
+        NULL
+      }
+    })
+
+    if (!is.null(slot_value)) {
+      WriteH5Group(
+        x = slot_value,
+        name = slot,
+        hgroup = xgroup,
+        verbose = verbose
+      )
+    } else if (verbose) {
+      message("Skipping slot '", slot, "' for image '", name, "' (unable to access)")
+    }
   }
   return(invisible(x = NULL))
 }
@@ -357,7 +372,7 @@ setMethod(
     xgroup <- hgroup$create_group(name = name)
     # Write out expression data
     for (i in .STANDARD_LAYERS) {
-      dat <- SafeGetAssayData(object = x, layer = i)
+      dat <- GetAssayDataCompat(object = x, layer_or_slot = i)
       dat <- ConvertBPCellsMatrix(dat, verbose = verbose)
       if (!is.null(dat) && !IsMatrixEmpty(x = dat)) {
         if (verbose) {

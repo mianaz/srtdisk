@@ -1,4 +1,5 @@
 #' @include zzz.R
+#' @include UtilsH5Access.R
 #' @importFrom hdf5r h5attr
 #' @importFrom methods slot<- new
 #' @importFrom Seurat Cells Key<- Key Cells scalefactors
@@ -19,26 +20,17 @@ NULL
 #' @keywords internal
 #'
 ReadSparseMatrix <- function(h5_group, verbose = FALSE) {
-  # Helper for safe existence checking
-  safe_exists_local <- function(group, path) {
-    tryCatch(
-      expr = group$exists(name = path),
-      error = function(e) path %in% names(group)
-    )
-  }
+  safe_exists <- CreateCachedExistsChecker()
 
-  # Check for CSR/CSC sparse matrix components
-  if (safe_exists_local(h5_group, "data") && safe_exists_local(h5_group, "indices") && safe_exists_local(h5_group, "indptr")) {
+  if (safe_exists(h5_group, "data") && safe_exists(h5_group, "indices") && safe_exists(h5_group, "indptr")) {
     if (verbose) {
       message("Reading sparse matrix in CSR/CSC format")
     }
 
-    # Read components
     data_vals <- h5_group[["data"]][]
     indices <- h5_group[["indices"]][]
     indptr <- h5_group[["indptr"]][]
 
-    # Get dimensions - check for shape attribute first (V5 style)
     nrows <- NA
     ncols <- NA
 
@@ -50,7 +42,6 @@ ReadSparseMatrix <- function(h5_group, verbose = FALSE) {
         message("Read dimensions from 'shape' attribute: ", nrows, " x ", ncols)
       }
     } else if (h5_group$attr_exists("dims")) {
-      # Fall back to dims attribute (older format)
       dims <- h5attr(x = h5_group, which = "dims")
       nrows <- as.integer(dims[1])
       ncols <- as.integer(dims[2])
@@ -58,7 +49,6 @@ ReadSparseMatrix <- function(h5_group, verbose = FALSE) {
         message("Read dimensions from 'dims' attribute: ", nrows, " x ", ncols)
       }
     } else {
-      # Infer dimensions from the data
       if (length(indices) == 0) {
         if (verbose) {
           message("Warning: Empty indices array, cannot infer dimensions")
@@ -66,13 +56,12 @@ ReadSparseMatrix <- function(h5_group, verbose = FALSE) {
         return(NULL)
       }
       ncols <- length(indptr) - 1L
-      nrows <- max(indices) + 1L  # 0-based indexing
+      nrows <- max(indices) + 1L
       if (verbose) {
         message("Warning: No shape/dims attribute found, inferring dimensions: ", nrows, " x ", ncols)
       }
     }
 
-    # Validate dimensions before creating sparse matrix
     if (is.na(nrows) || is.na(ncols) || nrows <= 0 || ncols <= 0) {
       if (verbose) {
         message("Error: Invalid dimensions (", nrows, " x ", ncols, "), cannot create sparse matrix")
@@ -80,30 +69,27 @@ ReadSparseMatrix <- function(h5_group, verbose = FALSE) {
       return(NULL)
     }
 
-    # Detect format (CSR vs CSC) based on indptr length
     tryCatch({
       if (length(indptr) - 1 == ncols) {
-        # CSC format: indptr indexes columns
         if (verbose) {
           message("Detected CSC format")
         }
         sparse_mat <- Matrix::sparseMatrix(
-          i = indices + 1L,  # Convert from 0-based to 1-based
+          i = indices + 1L,
           p = indptr,
           x = data_vals,
           dims = c(nrows, ncols),
           index1 = TRUE
         )
       } else if (length(indptr) - 1 == nrows) {
-        # CSR format: indptr indexes rows - need to transpose
         if (verbose) {
           message("Detected CSR format, will transpose")
         }
         sparse_mat <- Matrix::sparseMatrix(
-          j = indices + 1L,  # Convert from 0-based to 1-based
+          j = indices + 1L,
           p = indptr,
           x = data_vals,
-          dims = c(ncols, nrows),  # Note: swapped dimensions for transpose
+          dims = c(ncols, nrows),
           index1 = TRUE
         )
         sparse_mat <- Matrix::t(sparse_mat)
@@ -115,7 +101,7 @@ ReadSparseMatrix <- function(h5_group, verbose = FALSE) {
         return(NULL)
       }
 
-      return(sparse_mat)  # Keep as sparse!
+      return(sparse_mat)
     }, error = function(e) {
       if (verbose) {
         message("Error creating sparse matrix: ", conditionMessage(e))
@@ -128,8 +114,7 @@ ReadSparseMatrix <- function(h5_group, verbose = FALSE) {
     })
   }
 
-  # Check for dgCMatrix components (older SeuratDisk format)
-  if (safe_exists_local(h5_group, "i") && safe_exists_local(h5_group, "p") && safe_exists_local(h5_group, "x")) {
+  if (safe_exists(h5_group, "i") && safe_exists(h5_group, "p") && safe_exists(h5_group, "x")) {
     if (verbose) {
       message("Reading sparse matrix in dgCMatrix format")
     }
@@ -138,7 +123,6 @@ ReadSparseMatrix <- function(h5_group, verbose = FALSE) {
     p_vals <- h5_group[["p"]][]
     x_vals <- h5_group[["x"]][]
 
-    # Get dimensions
     if (h5_group$attr_exists("Dim")) {
       dims <- as.integer(h5attr(x = h5_group, which = "Dim"))
       if (verbose) {
@@ -157,7 +141,6 @@ ReadSparseMatrix <- function(h5_group, verbose = FALSE) {
       }
     }
 
-    # Validate dimensions
     if (length(dims) < 2 || any(is.na(dims)) || any(dims <= 0)) {
       if (verbose) {
         message("Error: Invalid dimensions (", paste(dims, collapse = " x "), "), cannot create sparse matrix")
@@ -167,14 +150,14 @@ ReadSparseMatrix <- function(h5_group, verbose = FALSE) {
 
     tryCatch({
       sparse_mat <- Matrix::sparseMatrix(
-        i = i_vals + 1L,  # Convert to 1-based if needed
+        i = i_vals + 1L,
         p = p_vals,
         x = x_vals,
         dims = dims,
         index1 = TRUE
       )
 
-      return(sparse_mat)  # Keep as sparse!
+      return(sparse_mat)
     }, error = function(e) {
       if (verbose) {
         message("Error creating dgCMatrix sparse matrix: ", conditionMessage(e))
@@ -255,55 +238,27 @@ AssembleAssay <- function(assay, file, slots = NULL, verbose = TRUE) {
   }
   assay.group <- file[['assays']][[assay]]
 
-  # Helper function for safe path checking
-  safe_exists <- function(group, path) {
-    tryCatch(
-      expr = {
-        group$exists(name = path)
-      },
-      error = function(e) {
-        # If exists() fails, try checking names directly
-        path %in% names(group)
-      }
-    )
-  }
+  safe_exists <- CreateCachedExistsChecker()
 
-  # Helper function to read datasets that might be 2D (V5 compatibility)
   safe_read_dataset <- function(dataset, dataset_name = "") {
     if (length(dataset$dims) > 1) {
-      # V5: 2D datasets are often dummy data, check for real data elsewhere
-      if (dataset_name == "features" && safe_exists(assay.group, "meta.data/_index")) {
-        # V5 feature names are in meta.data/_index
-        return(as.character(assay.group[["meta.data/_index"]][]))
-      } else {
-        # Fallback: read first column and ensure it's character
-        result <- SafeH5DRead(dataset)
-        return(as.character(result))
-      }
+      result <- SafeH5DRead(dataset)
+      return(as.character(result))
     } else {
-      # 1D dataset - standard read
       return(as.character(dataset[]))
     }
   }
 
-  # CRITICAL: Get features FIRST before they're used in read_matrix_data
-  if (safe_exists(assay.group, "meta.data/_index")) {
-    # V5: Use the full feature index for proper sparse matrix reconstruction
-    features <- FixFeatures(features = as.character(assay.group[["meta.data/_index"]][]))
-    if (verbose) {
-      message("Using V5 full feature space: ", length(features), " features")
-    }
-  } else {
-    # V4 or direct features
-    features <- FixFeatures(features = safe_read_dataset(assay.group[['features']], "features"))
-    if (verbose) {
-      message("Using direct features: ", length(features), " features")
-    }
+  features <- GetFeaturesV5Safe(h5_group = assay.group, verbose = verbose)
+  if (is.null(features)) {
+    features <- safe_read_dataset(assay.group[['features']], "features")
+  }
+  features <- FixFeatures(features = features)
+  if (verbose) {
+    message("Loaded ", length(features), " features for assay")
   }
 
-  # Helper function to read matrices, handling both direct and V5 sparse layers
   read_matrix_data <- function(slot_name) {
-    # Use ReadV5Layer if available (handles both V4 and V5 structures)
     if (exists("ReadV5Layer", envir = asNamespace("SeuratDisk"))) {
       mat <- ReadV5Layer(
         h5_group = assay.group,
@@ -451,34 +406,31 @@ AssembleAssay <- function(assay, file, slots = NULL, verbose = TRUE) {
     # Continue without setting key if it fails
   })
   # Add remaining slots/layers (V5 compatibility)
+  # Check assay type once before loop - optimization to avoid repeated type checking
+  is_assay5 <- inherits(obj, "Assay5")
+
   for (slot in slots) {
-    # Skip slots that were used for initial object creation
-    # Only skip counts if it was used for initialization (which happens when 'counts' is in slots)
+    # Skip slots already used for initialization
     if (slot == 'counts' && 'counts' %in% slots) {
       if (verbose) {
         message("Skipping slot '", slot, "' - already used for object initialization")
       }
       next
     }
-    # Only skip data if it was used for initialization (which only happens when counts is NOT in slots)
     if (slot == 'data' && !('counts' %in% slots) && 'data' %in% slots) {
       if (verbose) {
         message("Skipping slot '", slot, "' - already used for object initialization")
       }
       next
     }
-    
-    # Check if this slot/layer is already populated - use layer parameter for V5
+
     slot_empty <- tryCatch({
-      if (inherits(obj, "Assay5")) {
-        # V5: Use layer parameter
+      if (is_assay5) {
         IsMatrixEmpty(x = GetAssayData(object = obj, layer = slot))
       } else {
-        # V4: Use slot parameter  
         IsMatrixEmpty(x = GetAssayData(object = obj, slot = slot))
       }
     }, error = function(e) {
-      # If we can't check, assume empty
       TRUE
     })
     
@@ -486,11 +438,9 @@ AssembleAssay <- function(assay, file, slots = NULL, verbose = TRUE) {
       if (verbose) {
         message("Adding ", slot, " for ", assay)
       }
-      # Try to read the matrix data, skip if it doesn't exist
       tryCatch({
         dat <- read_matrix_data(slot)
 
-        # Skip if matrix couldn't be read
         if (is.null(dat)) {
           if (verbose) {
             message("Skipping slot '", slot, "' - not found in file")
@@ -505,12 +455,9 @@ AssembleAssay <- function(assay, file, slots = NULL, verbose = TRUE) {
           features
         }
 
-        # Set data using V5-compatible approach
-        if (inherits(obj, "Assay5")) {
-          # V5: Use layer parameter
+        if (is_assay5) {
           obj <- SetAssayData(object = obj, layer = slot, new.data = dat)
         } else {
-          # V4: Use slot parameter
           obj <- SetAssayData(object = obj, slot = slot, new.data = dat)
         }
 
@@ -554,9 +501,7 @@ AssembleAssay <- function(assay, file, slots = NULL, verbose = TRUE) {
       message("Adding miscellaneous information for ", assay)
     }
     tryCatch({
-      # Try to set misc slot if it exists
       if ('misc' %in% slotNames(obj)) {
-        # Use SafeH5GroupToList to handle 3D+ arrays
         slot(object = obj, name = 'misc') <- SafeH5GroupToList(h5obj = assay.group[['misc']], recursive = TRUE)
       } else {
         if (verbose) {
@@ -569,21 +514,18 @@ AssembleAssay <- function(assay, file, slots = NULL, verbose = TRUE) {
       }
     })
   }
-  # Handle S4 class reconstruction - completely skip for Assay5 objects
-  # CRITICAL: Check object type FIRST before any S4 operations
+  # Handle S4 class reconstruction - skip for Assay5 objects
   if (verbose) {
     message("Object class check: ", class(obj))
     message("Is Assay5: ", inherits(obj, "Assay5"))
     message("Has s4class attr: ", assay.group$attr_exists(attr_name = 's4class'))
   }
-  
+
   if (inherits(obj, "Assay5")) {
     if (verbose) {
       message("Detected Assay5 object - skipping all S4 reconstruction to preserve object integrity")
     }
-    # For Assay5, we're completely done - do not touch the object at all
   } else if (assay.group$attr_exists(attr_name = 's4class')) {
-    # Only do S4 reconstruction for older Assay objects (V4 and below)
     if (verbose) {
       message("Processing legacy Assay object with S4 reconstruction")
     }
@@ -770,9 +712,8 @@ AssembleImage <- function(image, file, verbose = TRUE) {
     NULL
   }
 
-  # Try to construct a proper Seurat spatial image object (VisiumV1/VisiumV2)
-  # if we have the necessary components
-  if (!is.null(s4class) && s4class %in% c('VisiumV1', 'VisiumV2')) {
+  # Construct spatial image object (VisiumV1/VisiumV2/SliceImage)
+  if (!is.null(s4class) && s4class %in% c('VisiumV1', 'VisiumV2', 'SliceImage')) {
     tryCatch({
       # Get image data
       image_data <- NULL
@@ -838,6 +779,9 @@ AssembleImage <- function(image, file, verbose = TRUE) {
               Cells(x = file)
             }
 
+            # Note: Centroids are already filtered per library during conversion
+            # No need to filter again here
+
             # Read centroid parameters
             radius_val <- if (centroids_group$exists('radius')) {
               centroids_group[['radius']][]
@@ -854,7 +798,7 @@ AssembleImage <- function(image, file, verbose = TRUE) {
             nsides_val <- if (centroids_group$exists('nsides')) {
               centroids_group[['nsides']][]
             } else {
-              8L
+              0L  # 0 = infinite sides (circle), returns centroids not polygon vertices
             }
 
             # Create Centroids object using SeuratObject function
@@ -890,22 +834,90 @@ AssembleImage <- function(image, file, verbose = TRUE) {
         }
       }
 
-      # For VisiumV1, try reductions/spatial for coordinates dataframe
-      if (s4class == 'VisiumV1' && file$exists(name = 'reductions/spatial')) {
-        if (verbose) {
-          message("Reading spatial coordinates from reduction for VisiumV1")
-        }
-        spatial_reduc <- file[['reductions/spatial']]
-        if (spatial_reduc$exists(name = 'cell.embeddings')) {
-          coords_mat <- as.matrix(spatial_reduc[['cell.embeddings']])
+      # For VisiumV1 and SliceImage, read coordinates from reductions or image group
+      if (s4class %in% c('VisiumV1', 'SliceImage')) {
+        if (file$exists(name = 'reductions/spatial')) {
+          if (verbose) {
+            message("Reading spatial coordinates from reduction for VisiumV1/SliceImage")
+          }
+          spatial_reduc <- file[['reductions/spatial']]
+          if (spatial_reduc$exists(name = 'cell.embeddings')) {
+            coords_mat <- as.matrix(spatial_reduc[['cell.embeddings']])
+            all_cells <- Cells(x = file)
 
-          # Create coordinate dataframe for VisiumV1
-          coordinates <- data.frame(
-            imagerow = coords_mat[, 2],  # Y coordinate
-            imagecol = coords_mat[, 1],  # X coordinate
-            row.names = Cells(x = file),
-            stringsAsFactors = FALSE
-          )
+            # Filter coordinates to only cells from this library
+            # Check for library ID in meta.data (could be sangerID, library_id, etc.)
+            cells_to_keep <- all_cells
+            if (file$exists(name = 'meta.data')) {
+              meta_group <- file[['meta.data']]
+              # Try common library ID column names
+              lib_col_names <- c('sangerID', 'library_id', 'sample', 'batch')
+              lib_col_found <- FALSE
+
+              for (col_name in lib_col_names) {
+                if (meta_group$exists(col_name)) {
+                  col_obj <- meta_group[[col_name]]
+
+                  # Handle both simple datasets and factor/categorical structures
+                  if (inherits(col_obj, 'H5Group')) {
+                    # It's a factor with values and levels
+                    if (col_obj$exists('values') && col_obj$exists('levels')) {
+                      values_int <- col_obj[['values']]$read()  # 0-indexed integers
+                      levels_str <- col_obj[['levels']]$read()   # level strings
+                      # Convert to 1-indexed for R and map to levels
+                      lib_ids <- levels_str[values_int + 1]
+                    } else {
+                      lib_ids <- NULL
+                    }
+                  } else {
+                    # Simple dataset
+                    lib_ids <- as.character(col_obj$read())
+                  }
+
+                  if (!is.null(lib_ids)) {
+                    # Filter to cells matching this image name
+                    cells_to_keep <- all_cells[lib_ids == image]
+                    lib_col_found <- TRUE
+                    if (verbose) {
+                      message("  Filtering to ", length(cells_to_keep), " cells from library ", image)
+                    }
+                    break
+                  }
+                }
+              }
+
+              if (!lib_col_found && verbose) {
+                message("  Warning: No library ID column found, using all cells")
+              }
+            }
+
+            # Filter coords_mat to only include matching cells
+            cell_indices <- which(all_cells %in% cells_to_keep)
+            coords_mat_filtered <- coords_mat[cell_indices, , drop = FALSE]
+
+            # Create coordinate dataframe for VisiumV1
+            # reductions/spatial/cell.embeddings is transposed from h5ad obsm/X_spatial
+            # h5ad stores [X, Y] = [imagecol, imagerow] format (verified with scanpy)
+            # After transpose: column 1 = imagecol (X), column 2 = imagerow (Y)
+            coordinates <- data.frame(
+              imagerow = coords_mat_filtered[, 2],  # Y from column 2
+              imagecol = coords_mat_filtered[, 1],  # X from column 1
+              row.names = cells_to_keep,
+              stringsAsFactors = FALSE
+            )
+          }
+        } else if (img_group$exists(name = 'coordinates')) {
+          if (verbose) {
+            message("Reading spatial coordinates from image group (SliceImage format)")
+          }
+          tryCatch({
+            coords_group <- img_group[['coordinates']]
+            coordinates <- as.data.frame(x = coords_group, row.names = Cells(x = file))
+          }, error = function(e) {
+            if (verbose) {
+              message("Could not read coordinates from image group: ", conditionMessage(e))
+            }
+          })
         }
       }
 
@@ -936,7 +948,7 @@ AssembleImage <- function(image, file, verbose = TRUE) {
             Class = 'VisiumV2',
             image = image_data,
             scale.factors = scale_factors,
-            molecules = list(),  # Empty molecules
+            molecules = list(),
             boundaries = boundaries_list,
             assay = assay,
             key = image_key
@@ -947,15 +959,14 @@ AssembleImage <- function(image, file, verbose = TRUE) {
             message("Error creating VisiumV2 object: ", conditionMessage(e))
           }
         })
-      } else if (s4class == 'VisiumV1' && can_create_v1) {
-        # VisiumV1 - simpler structure with coordinates dataframe
+      } else if (s4class %in% c('VisiumV1', 'SliceImage') && can_create_v1) {
         if (verbose) {
-          message("Creating VisiumV1 object with ", nrow(coordinates), " spots")
+          message("Creating ", s4class, " object with ", nrow(coordinates), " spots")
         }
 
         tryCatch({
           obj <- new(
-            Class = 'VisiumV1',
+            Class = s4class,
             image = image_data,
             scale.factors = scale_factors,
             coordinates = coordinates,
@@ -966,7 +977,7 @@ AssembleImage <- function(image, file, verbose = TRUE) {
           return(obj)
         }, error = function(e) {
           if (verbose) {
-            message("Error creating VisiumV1 object: ", conditionMessage(e))
+            message("Error creating ", s4class, " object: ", conditionMessage(e))
           }
         })
       }

@@ -1,3 +1,4 @@
+#' @include UtilsAssayCompat.R
 #' @title Seurat V5 Compatibility Functions
 #' @description Functions for handling Seurat V5 object structures
 #' @keywords internal
@@ -8,56 +9,11 @@ NULL
 # V5-specific helper functions
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-#' Safely get assay data using layer or slot parameter
-#'
-#' @param object An Assay or Assay5 object
-#' @param layer Layer name (preferred for V5)
-#' @return Matrix data or NULL
-#' @keywords internal
-#'
-SafeGetAssayData <- function(object, layer) {
-  for (param in list(list(layer = layer), list(slot = layer))) {
-    result <- tryCatch(
-      do.call(GetAssayData, c(list(object = object), param)),
-      error = function(e) NULL
-    )
-    if (!is.null(result)) return(result)
-  }
-  return(NULL)
-}
+# Removed: SafeGetAssayData() - duplicate of GetAssayDataCompat() in UtilsAssayCompat.R
+# Use GetAssayDataCompat(object, layer_or_slot) instead
 
-#' Get layers from an Assay5 object safely
-#'
-#' @param object An Assay or Assay5 object
-#' @return Character vector of available layers
-#' @keywords internal
-#'
-SafeGetLayers <- function(object) {
-  if (inherits(x = object, what = 'Assay5')) {
-    # V5 Assays use Layers() function
-    layers <- tryCatch(
-      expr = Layers(object = object),
-      error = function(e) {
-        # Fallback to checking slots directly
-        slots <- slotNames(x = object)
-        intersect(x = slots, y = c("counts", "data", "scale.data"))
-      }
-    )
-  } else {
-    # V3/V4 Assays - check for non-empty slots
-    # Use a helper function to handle both layer and slot parameters
-    layers <- c()
-    for (lyr in c("counts", "data", "scale.data")) {
-      data <- SafeGetAssayData(object = object, layer = lyr)
-      if (!is.null(data) && !IsMatrixEmpty(x = data)) {
-        layers <- c(layers, lyr)
-      }
-    }
-  }
-  return(layers)
-}
-
-# Note: ReadH5Direct removed - use SafeH5DRead from H5DAccess.R instead
+# Removed: SafeGetLayers() - duplicate of GetAssayLayersCompat() in UtilsAssayCompat.R
+# Use GetAssayLayersCompat(object) instead
 
 #' Transfer metadata from V5 h5Seurat to h5ad
 #'
@@ -166,7 +122,7 @@ TransferMetadataV5 <- function(source, dfile, dname = "obs", index = NULL, verbo
         attr_name = attr.name,
         robj = encoding.info[i],
         dtype = GuessDType(x = encoding.info[i]),
-        space = Scalar()
+        space = H5S$new(type = "scalar")
       )
     }
   }
@@ -183,8 +139,7 @@ TransferMetadataV5 <- function(source, dfile, dname = "obs", index = NULL, verbo
 WriteH5GroupAssay5 <- function(x, name, hgroup, verbose = TRUE) {
   xgroup <- hgroup$create_group(name = name)
 
-  # Get available layers
-  layers <- SafeGetLayers(object = x)
+  layers <- GetAssayLayersCompat(object = x, verbose = verbose)
 
   # Write each layer
   for (layer in layers) {

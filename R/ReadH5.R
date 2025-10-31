@@ -470,22 +470,32 @@ IsCompound <- function(x) {
 #'
 #' @keywords internal
 #'
-CompoundToGroup <- function(src, dst, dname, order, index = NULL) {
+CompoundToGroup <- function(src, dst, dname, order, index = NULL, name_map_fn = NULL) {
   dst$create_group(name = dname)
   dgroup <- dst[[dname]]
 
-  for (i in src$get_type()$get_cpd_labels()) {
+  cpd_labels <- src$get_type()$get_cpd_labels()
+  for (i in cpd_labels) {
     values <- src$read(fields = i)
     if (!is.null(x = index)) {
       values <- values[index]
     }
-    dgroup$create_dataset(name = i, robj = values)
+    # Apply name mapping if function is provided
+    mapped_name <- if (!is.null(name_map_fn)) name_map_fn(i) else i
+    dgroup$create_dataset(name = mapped_name, robj = values)
   }
 
   if (src$attr_exists(attr_name = order)) {
+    original_order <- h5attr(x = src, which = order)
+    # Apply name mapping to order if function is provided
+    if (!is.null(name_map_fn)) {
+      mapped_order <- sapply(original_order, name_map_fn)
+    } else {
+      mapped_order <- original_order
+    }
     dgroup$create_attr(
       attr_name = order,
-      robj = h5attr(x = src, which = order)
+      robj = mapped_order
     )
   }
 

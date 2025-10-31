@@ -215,7 +215,8 @@ ConvertSeuratSpatialToH5AD <- function(seurat_obj, h5ad_file,
   coords <- GetTissueCoordinates(img_obj)
 
   # Convert to h5ad format (cells x 2 matrix)
-  spatial_matrix <- as.matrix(coords[, c("imagerow", "imagecol")])
+  # AnnData/squidpy convention: [X, Y] = [imagecol, imagerow]
+  spatial_matrix <- as.matrix(coords[, c("imagecol", "imagerow")])
 
   # Create obsm group if not exists
   if (!h5ad$exists("obsm")) {

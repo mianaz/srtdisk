@@ -208,6 +208,145 @@ LoadH5Seurat.h5Seurat <- function(
   verbose = TRUE,
   ...
 ) {
+  # Check if this is multi-library spatial data
+  # Multi-library data has:
+  # 1. Multiple images with boundaries/centroids
+  # 2. Each library has different cells
+  # 3. A library ID column in meta.data
+
+  is_multilibrary <- FALSE
+  library_col <- NULL
+
+  if (file$exists(name = 'images')) {
+    img_names <- names(file[['images']])
+
+    # Check if we have multiple images with centroids
+    images_with_centroids <- c()
+    for (img_name in img_names) {
+      img_group <- file[['images']][[img_name]]
+      if (img_group$exists('boundaries')) {
+        boundaries_group <- img_group[['boundaries']]
+        if (boundaries_group$exists('centroids')) {
+          centroids_group <- boundaries_group[['centroids']]
+          if (centroids_group$exists('cells')) {
+            images_with_centroids <- c(images_with_centroids, img_name)
+          }
+        }
+      }
+    }
+
+    # If we have 2+ images with centroids, check for library ID column
+    if (length(images_with_centroids) >= 2) {
+      if (file$exists('meta.data')) {
+        meta_group <- file[['meta.data']]
+        for (col_name in c('sangerID', 'library_id', 'sample', 'batch')) {
+          if (meta_group$exists(col_name)) {
+            library_col <- col_name
+            is_multilibrary <- TRUE
+            break
+          }
+        }
+      }
+    }
+  }
+
+  # If multi-library, create separate Seurat objects for each library
+  if (is_multilibrary && is.null(images)) {
+    if (verbose) {
+      message("Detected multi-library spatial data")
+      message("Loading as a list of Seurat objects (one per library)")
+    }
+
+    # Get library IDs
+    meta_group <- file[['meta.data']]
+    col_obj <- meta_group[[library_col]]
+
+    # Handle factor structure
+    if (inherits(col_obj, 'H5Group')) {
+      if (col_obj$exists('values') && col_obj$exists('levels')) {
+        values_int <- col_obj[['values']]$read()
+        levels_str <- col_obj[['levels']]$read()
+        lib_ids <- levels_str[values_int + 1]
+      } else {
+        lib_ids <- as.character(col_obj$read())
+      }
+    } else {
+      lib_ids <- as.character(col_obj$read())
+    }
+
+    unique_libs <- unique(lib_ids)
+
+    if (verbose) {
+      message("Found ", length(unique_libs), " libraries: ", paste(unique_libs, collapse = ", "))
+    }
+
+    # Create list of Seurat objects
+    seurat_list <- list()
+
+    for (lib in unique_libs) {
+      if (verbose) {
+        message("\nLoading library: ", lib)
+      }
+
+      # Load WITHOUT images first (to avoid cell mismatch errors)
+      obj <- as.Seurat(
+        x = file,
+        assays = assays,
+        reductions = reductions,
+        graphs = graphs,
+        neighbors = neighbors,
+        images = character(0),  # Don't load images yet
+        meta.data = meta.data,
+        commands = commands,
+        misc = misc,
+        tools = tools,
+        verbose = verbose,
+        ...
+      )
+
+      # Filter to only cells from this library
+      cells_in_lib <- lib_ids == lib
+      cell_names <- Cells(file)
+      cells_to_keep <- cell_names[cells_in_lib]
+
+      if (length(cells_to_keep) > 0) {
+        # Subset cells first
+        obj <- subset(obj, cells = cells_to_keep)
+
+        # Now add the image for this library
+        if (verbose) {
+          message("  Adding image for library ", lib)
+        }
+
+        tryCatch({
+          img_obj <- AssembleImage(image = lib, file = file, verbose = FALSE)
+          obj@images[[lib]] <- img_obj
+
+          if (verbose) {
+            message("  Successfully added image ", lib)
+          }
+        }, error = function(e) {
+          if (verbose) {
+            message("  Could not load image ", lib, ": ", conditionMessage(e))
+          }
+        })
+
+        seurat_list[[lib]] <- obj
+
+        if (verbose) {
+          message("  Loaded ", ncol(obj), " cells from library ", lib)
+        }
+      }
+    }
+
+    if (verbose) {
+      message("\nReturning list of ", length(seurat_list), " Seurat objects")
+    }
+
+    return(seurat_list)
+  }
+
+  # Otherwise, load as single Seurat object
   return(as.Seurat(
     x = file,
     assays = assays,
@@ -334,8 +473,31 @@ as.Seurat.h5Seurat <- function(
       verbose = verbose
       )
   }
-  # Load SpatialImages
-  if (packageVersion(pkg = 'Seurat') >= numeric_version(x = spatial.version)) {
+  # Load SpatialImages (Seurat v5 or SliceImage objects from v4)
+  has_slice_images <- FALSE
+  if (packageVersion(pkg = 'Seurat') < numeric_version(x = spatial.version)) {
+    if (x$exists(name = 'images')) {
+      has_slice_images <- tryCatch({
+        img_names <- names(x[['images']])
+        if (length(img_names) > 0) {
+          any(sapply(img_names, function(img_name) {
+            img_group <- x[['images']][[img_name]]
+            if (img_group$attr_exists(attr_name = 's4class')) {
+              s4class <- h5attr(x = img_group, which = 's4class')
+              return(s4class == 'SliceImage')
+            }
+            return(FALSE)
+          }))
+        } else {
+          FALSE
+        }
+      }, error = function(e) {
+        FALSE
+      })
+    }
+  }
+
+  if (packageVersion(pkg = 'Seurat') >= numeric_version(x = spatial.version) || has_slice_images) {
     images <- GetImages(images = images, index = index, assays = assays)
     for (image in images) {
       if (verbose) {

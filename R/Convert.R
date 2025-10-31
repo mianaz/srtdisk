@@ -30,6 +30,10 @@ NULL
 #' @param overwrite Logical; if \code{TRUE}, overwrite an existing destination file.
 #'   Default is \code{FALSE}.
 #' @param verbose Logical; if \code{TRUE} (default), show progress updates
+#' @param standardize Logical; if \code{TRUE}, convert Seurat-style metadata column names
+#'   to scanpy/AnnData conventions when converting to h5ad format. For example,
+#'   \code{nCount_RNA} becomes \code{n_counts}, \code{nFeature_RNA} becomes \code{n_genes}.
+#'   Only applicable for h5Seurat → h5ad conversions. Default is \code{FALSE}.
 #' @param ... Arguments passed to specific conversion methods
 #'
 #' @return If \code{source} is a character path, invisibly returns the destination
@@ -91,7 +95,7 @@ NULL
 #'
 #' @export
 #'
-Convert <- function(source, dest, assay, overwrite = FALSE, verbose = TRUE, ...) {
+Convert <- function(source, dest, assay, overwrite = FALSE, verbose = TRUE, standardize = FALSE, ...) {
   if (!missing(x = dest) && !is.character(x = dest)) {
     stop("'dest' must be a filename or type", call. = FALSE)
   }
@@ -114,6 +118,7 @@ Convert.character <- function(
   assay,
   overwrite = FALSE,
   verbose = TRUE,
+  standardize = FALSE,
   ...
 ) {
   hfile <- Connect(filename = source, force = TRUE)
@@ -137,6 +142,7 @@ Convert.character <- function(
     assay = assay,
     overwrite = overwrite,
     verbose = verbose,
+    standardize = standardize,
     ...
   )
   dfile$close_all()
@@ -188,6 +194,7 @@ Convert.h5Seurat <- function(
   assay = DefaultAssay(object = source),
   overwrite = FALSE,
   verbose = TRUE,
+  standardize = FALSE,
   ...
 ) {
   type <- FileType(file = dest)
@@ -201,7 +208,8 @@ Convert.h5Seurat <- function(
       dest = dest,
       assay = assay,
       overwrite = overwrite,
-      verbose = verbose
+      verbose = verbose,
+      standardize = standardize
     ),
     stop("Unable to convert h5Seurat files to ", type, " files", call. = FALSE)
   )
@@ -355,6 +363,48 @@ H5ADToH5Seurat <- function(
       # rownames(x = source[[dset]])
     }
     return(rownames)
+  }
+  # Read categorical feature names from H5AD
+  #
+  # @param dset Name of var dataframe group (e.g., 'raw/var' or 'var')
+  #
+  # @return Returns feature names (gene symbols) if categorical encoding exists, NULL otherwise
+  #
+  ReadCategoricalFeatures <- function(dset) {
+    # Check if feature_name exists and is a categorical group
+    feature_name_path <- paste0(dset, '/feature_name')
+    if (!source$exists(name = feature_name_path)) {
+      return(NULL)
+    }
+
+    feature_name_group <- source[[feature_name_path]]
+    if (!inherits(x = feature_name_group, what = 'H5Group')) {
+      return(NULL)
+    }
+
+    # Check for categorical encoding
+    if (!isTRUE(x = AttrExists(x = feature_name_group, name = 'encoding-type'))) {
+      return(NULL)
+    }
+
+    encoding_type <- h5attr(x = feature_name_group, which = 'encoding-type')
+    if (encoding_type != 'categorical') {
+      return(NULL)
+    }
+
+    # Read categories and codes
+    if (!feature_name_group$exists(name = 'categories') ||
+        !feature_name_group$exists(name = 'codes')) {
+      return(NULL)
+    }
+
+    categories <- feature_name_group[['categories']]$read()
+    codes <- feature_name_group[['codes']]$read()
+
+    # Decode: categories[codes] (R uses 1-based indexing, codes are 0-based)
+    feature_names <- categories[codes + 1]
+
+    return(as.character(feature_names))
   }
   # Read compound HDF5 dataset using Python h5py
   #
@@ -703,12 +753,28 @@ except Exception as e:
   var_compound_handled <- FALSE
 
   if (inherits(x = source[[features.source]], what = 'H5Group')) {
-    features.dset <- GetRownames(dset = features.source)
-    assay.group$obj_copy_from(
-      src_loc = source,
-      src_name = paste(features.source, features.dset, sep = '/'),
-      dst_name = 'features'
-    )
+    # Try to read categorical feature_name (gene symbols) first
+    categorical_features <- ReadCategoricalFeatures(dset = features.source)
+
+    if (!is.null(categorical_features)) {
+      # Use gene symbols from categorical encoding
+      if (verbose) {
+        message("Using gene symbols from categorical feature_name encoding")
+      }
+      assay.group$create_dataset(
+        name = 'features',
+        robj = categorical_features,
+        dtype = GuessDType(x = categorical_features[1])
+      )
+    } else {
+      # Fallback to index dataset (typically Ensembl IDs)
+      features.dset <- GetRownames(dset = features.source)
+      assay.group$obj_copy_from(
+        src_loc = source,
+        src_name = paste(features.source, features.dset, sep = '/'),
+        dst_name = 'features'
+      )
+    }
   } else {
     # When var is an H5D dataset (e.g., compound datatype), try to read it with Python
     if (verbose) {
@@ -730,8 +796,10 @@ except Exception as e:
         message("  Successfully read compound var dataset with ", nrow(var_data), " features")
       }
 
-      # Extract feature names from the 'index' column or first column
-      feature_names <- if ('index' %in% names(var_data)) {
+      # Extract feature names: prioritize feature_name (gene symbols) over index (Ensembl IDs)
+      feature_names <- if ('feature_name' %in% names(var_data)) {
+        as.character(var_data$feature_name)
+      } else if ('index' %in% names(var_data)) {
         as.character(var_data$index)
       } else {
         as.character(var_data[[1]])
@@ -743,7 +811,13 @@ except Exception as e:
         assay.group$create_group(name = 'meta.features')
       }
       for (col_name in names(var_data)) {
-        if (col_name == 'index' || col_name == names(var_data)[1]) {
+        # Skip the column used for feature names (rownames)
+        # If using feature_name for rownames, preserve index (Ensembl IDs) as metadata
+        if ('feature_name' %in% names(var_data)) {
+          if (col_name == 'feature_name') {
+            next  # Skip feature_name as it's used for rownames
+          }
+        } else if (col_name == 'index' || col_name == names(var_data)[1]) {
           next  # Skip the index column as it's used for rownames
         }
         col_data <- var_data[[col_name]]
@@ -836,12 +910,28 @@ except Exception as e:
   scaled <- !is.null(x = ds.map['scale.data']) && !is.na(x = ds.map['scale.data'])
   if (scaled) {
     if (inherits(x = source[['var']], what = 'H5Group')) {
-      scaled.dset <- GetRownames(dset = 'var')
-      assay.group$obj_copy_from(
-        src_loc = source,
-        src_name = paste0('var/', scaled.dset),
-        dst_name = 'scaled.features'
-      )
+      # Try to read categorical feature_name for scaled features
+      scaled_categorical_features <- ReadCategoricalFeatures(dset = 'var')
+
+      if (!is.null(scaled_categorical_features)) {
+        # Use gene symbols from categorical encoding
+        if (verbose) {
+          message("Using gene symbols from categorical feature_name encoding for scaled features")
+        }
+        assay.group$create_dataset(
+          name = 'scaled.features',
+          robj = scaled_categorical_features,
+          dtype = GuessDType(x = scaled_categorical_features[1])
+        )
+      } else {
+        # Fallback to index dataset
+        scaled.dset <- GetRownames(dset = 'var')
+        assay.group$obj_copy_from(
+          src_loc = source,
+          src_name = paste0('var/', scaled.dset),
+          dst_name = 'scaled.features'
+        )
+      }
     } else {
       # When var is an H5D dataset, use the same feature names as before
       scaled_feature_names <- tryCatch(
@@ -1240,6 +1330,13 @@ except Exception as e:
     if (inherits(x = source[['obsm']], what = 'H5Group')) {
       for (reduc in names(x = source[['obsm']])) {
         sreduc <- gsub(pattern = '^X_', replacement = '', x = reduc)
+
+        # Skip spatial - it will be stored in boundaries/centroids for VisiumV2
+        if (sreduc == 'spatial') {
+          message("Skipping ", reduc, " - spatial data stored in boundaries/centroids")
+          next
+        }
+
         reduc.group <- dfile[['reductions']]$create_group(name = sreduc)
         message("Adding ", reduc, " as cell embeddings for ", sreduc)
         Transpose(
@@ -1520,11 +1617,11 @@ except Exception as e:
             dtype = GuessDType(x = assay)
           )
 
-          # s4class attribute (VisiumV1 is a safe default for spatial data)
+          # s4class attribute (VisiumV2 for spatial data)
           img_h5$create_attr(
             attr_name = 's4class',
-            robj = 'VisiumV1',
-            dtype = GuessDType(x = 'VisiumV1')
+            robj = 'VisiumV2',
+            dtype = GuessDType(x = 'VisiumV2')
           )
 
           # global attribute (make image globally available)
@@ -1628,10 +1725,202 @@ except Exception as e:
             }
 
             sf_value <- sf_src[[sf_h5ad_name]]$read()
+
+            # Convert diameter to radius for spot and fiducial
+            if (sf_h5ad_name %in% c('spot_diameter_fullres', 'fiducial_diameter_fullres')) {
+              sf_value <- sf_value / 2.0
+            }
+
             sf_group$create_dataset(
               name = sf_h5seurat_name,
               robj = sf_value,
               dtype = GuessDType(x = sf_value)
+            )
+          }
+        }
+
+        # Create boundaries/centroids structure for VisiumV2
+        # This requires spatial coordinates from obsm/X_spatial
+        if (source$exists(name = 'obsm/X_spatial')) {
+          if (verbose) {
+            message("    Creating boundaries/centroids for VisiumV2")
+          }
+
+          # Read spatial coordinates (shape: 2 x n_cells in h5ad)
+          coords_h5ad <- source[['obsm/X_spatial']]$read()
+
+          # Get cell names from the h5Seurat file (already loaded earlier)
+          cell_names <- as.character(dfile[['cell.names']]$read())
+
+          # Get library IDs to filter cells for this library
+          # Try common library ID column names
+          lib_id_col <- NULL
+          lib_ids_vec <- NULL
+          for (col_name in c('sangerID', 'library_id', 'sample', 'batch')) {
+            if (source$exists(paste0('obs/', col_name))) {
+              lib_id_obj <- source[[paste0('obs/', col_name)]]
+
+              # Handle categorical/factor structure
+              if (inherits(lib_id_obj, 'H5Group')) {
+                if (lib_id_obj$exists('codes') && lib_id_obj$exists('categories')) {
+                  codes <- lib_id_obj[['codes']]$read()
+                  categories <- lib_id_obj[['categories']]$read()
+                  lib_ids_vec <- categories[codes + 1]  # Convert to 1-indexed
+                  lib_id_col <- col_name
+                  break
+                }
+              } else {
+                lib_ids_vec <- as.character(lib_id_obj$read())
+                lib_id_col <- col_name
+                break
+              }
+            }
+          }
+
+          # Filter cells for this library
+          if (!is.null(lib_ids_vec)) {
+            cell_mask <- lib_ids_vec == lib_id
+            if (sum(cell_mask) == 0) {
+              if (verbose) {
+                message("    Warning: No cells found for library ", lib_id, ", skipping centroids")
+              }
+            } else {
+              filtered_coords <- coords_h5ad[, cell_mask, drop = FALSE]
+              filtered_cells <- cell_names[cell_mask]
+
+              if (verbose) {
+                message("    Filtered to ", length(filtered_cells), " cells for library ", lib_id)
+              }
+
+              # Transpose from (2, n) to (n, 2) format for centroids
+              # In h5ad, coordinates are stored as [Y, X] in row/column format
+              coords_matrix <- t(filtered_coords)  # Now (n, 2) with [Y, X]
+
+              # Swap columns from [Y, X] to [X, Y] for Seurat
+              # Strategy 1: Simple XY Flip (see tests/RECOMMENDATION.md)
+              coords_matrix <- coords_matrix[, c(2, 1)]
+
+              # Note: Coordinates are kept in full resolution
+              # Seurat's GetTissueCoordinates() will handle scaling via scale.factors
+              # when called with scale = "lowres" or scale = "hires"
+
+              # Calculate radius from scale factors (in full resolution)
+              radius <- if (img_h5$exists('scale.factors/spot')) {
+                img_h5[['scale.factors/spot']]$read()
+              } else {
+                # Default Visium spot diameter is ~143 pixels in full res
+                # (based on spot_diameter_fullres from the data)
+                71.5  # radius = diameter / 2
+              }
+
+              # Create boundaries group
+              if (!img_h5$exists('boundaries')) {
+                boundaries_group <- img_h5$create_group('boundaries')
+              } else {
+                boundaries_group <- img_h5[['boundaries']]
+              }
+
+              # Create centroids group
+              if (boundaries_group$exists('centroids')) {
+                boundaries_group$link_delete('centroids')
+              }
+              centroids_group <- boundaries_group$create_group('centroids')
+
+              # Store coords (n x 2 matrix)
+              centroids_group$create_dataset(
+                name = 'coords',
+                robj = coords_matrix,
+                dtype = GuessDType(x = coords_matrix)
+              )
+
+              # Store cell names
+              centroids_group$create_dataset(
+                name = 'cells',
+                robj = filtered_cells,
+                dtype = GuessDType(x = filtered_cells)
+              )
+
+              # Store radius (spot radius for visualization)
+              centroids_group$create_dataset(
+                name = 'radius',
+                robj = radius,
+                dtype = GuessDType(x = radius)
+              )
+
+              # Store nsides (0 = infinite sides/circle, returns centroids not vertices)
+              centroids_group$create_dataset(
+                name = 'nsides',
+                robj = 0L,
+                dtype = GuessDType(x = 0L)
+              )
+
+              # Store theta (rotation angle, 0 for Visium)
+              centroids_group$create_dataset(
+                name = 'theta',
+                robj = 0.0,
+                dtype = GuessDType(x = 0.0)
+              )
+
+              if (verbose) {
+                message("    Created centroids with ", nrow(coords_matrix), " spots")
+              }
+            }
+          } else {
+            if (verbose) {
+              message("    Warning: No library ID column found, using all cells for centroids")
+            }
+
+            # Use all cells if no library ID found
+            coords_matrix <- t(coords_h5ad)  # Now (n, 2) with [Y, X]
+
+            # Swap columns from [Y, X] to [X, Y] for Seurat
+            coords_matrix <- coords_matrix[, c(2, 1)]
+
+            radius <- if (img_h5$exists('scale.factors/spot')) {
+              img_h5[['scale.factors/spot']]$read()
+            } else {
+              71.5  # Default radius in full resolution
+            }
+
+            if (!img_h5$exists('boundaries')) {
+              boundaries_group <- img_h5$create_group('boundaries')
+            } else {
+              boundaries_group <- img_h5[['boundaries']]
+            }
+
+            if (boundaries_group$exists('centroids')) {
+              boundaries_group$link_delete('centroids')
+            }
+            centroids_group <- boundaries_group$create_group('centroids')
+
+            centroids_group$create_dataset(
+              name = 'coords',
+              robj = coords_matrix,
+              dtype = GuessDType(x = coords_matrix)
+            )
+
+            centroids_group$create_dataset(
+              name = 'cells',
+              robj = cell_names,
+              dtype = GuessDType(x = cell_names)
+            )
+
+            centroids_group$create_dataset(
+              name = 'radius',
+              robj = radius,
+              dtype = GuessDType(x = radius)
+            )
+
+            centroids_group$create_dataset(
+              name = 'nsides',
+              robj = 0L,
+              dtype = GuessDType(x = 0L)
+            )
+
+            centroids_group$create_dataset(
+              name = 'theta',
+              robj = 0.0,
+              dtype = GuessDType(x = 0.0)
             )
           }
         }
@@ -1752,7 +2041,8 @@ H5SeuratToH5AD <- function(
   dest,
   assay = DefaultAssay(object = source),
   overwrite = FALSE,
-  verbose = TRUE
+  verbose = TRUE,
+  standardize = FALSE
 ) {
   if (file.exists(dest)) {
     if (overwrite) {
@@ -1763,6 +2053,33 @@ H5SeuratToH5AD <- function(
   }
   rownames <- '_index'
   dfile <- H5File$new(filename = dest, mode = WriteMode(overwrite = FALSE))
+
+  # Define mapping tables for Seurat to scanpy naming conventions
+  if (standardize) {
+    if (verbose) {
+      message("Standardization enabled: will convert Seurat names to scanpy conventions")
+    }
+    # Cell-level metadata (obs) mappings
+    obs_name_map <- c(
+      "nCount_RNA" = "n_counts",
+      "nFeature_RNA" = "n_genes",
+      "percent.mt" = "percent_mito",
+      "seurat_clusters" = "clusters"
+    )
+
+    # Feature-level metadata (var) mappings
+    var_name_map <- c(
+      "vst.variable" = "highly_variable",
+      "vst.mean" = "means",
+      "vst.variance" = "dispersions",
+      "vst.variance.standardized" = "dispersions_norm",
+      "vst.variance.expected" = "dispersions_expected"
+    )
+  } else {
+    obs_name_map <- character(0)
+    var_name_map <- character(0)
+  }
+
   # Transfer data frames from h5Seurat files to H5AD files
   #
   # @param src Source dataset
@@ -1772,6 +2089,19 @@ H5SeuratToH5AD <- function(
   # @return Invisibly returns \code{NULL}
   #
   TransferDF <- function(src, dname, index) {
+    # Helper function to apply name mapping based on destination type
+    apply_name_map <- function(col_name, dest_type) {
+      if (!standardize) return(col_name)
+
+      name_map <- if (dest_type == "obs") obs_name_map else var_name_map
+
+      # If column name has a mapping, use it; otherwise keep original
+      if (col_name %in% names(name_map)) {
+        return(unname(name_map[col_name]))
+      }
+      return(col_name)
+    }
+
     # Handle V5 environment-wrapped metadata
     if (dname == "obs" && is.environment(x = src)) {
       # Extract from environment if possible
@@ -1794,76 +2124,104 @@ H5SeuratToH5AD <- function(
           for (col in names(x = meta_group)) {
             if (col == '__categories' || col == '_index') next
 
+            # Apply name mapping if standardize is enabled
+            mapped_col <- apply_name_map(col, "obs")
+
             if (IsFactor(x = meta_group[[col]])) {
               # Use newer anndata format: each categorical is a group with categories/codes
-              dfile[['obs']]$create_group(name = col)
+              dfile[['obs']]$create_group(name = mapped_col)
 
-              # Add codes dataset (0-based indices)
-              dfile[['obs']][[col]]$create_dataset(
+              # Convert codes to 0-based indices
+              codes_values <- meta_group[[col]][['values']][index] - 1L
+              n_categories <- length(meta_group[[col]][['levels']][])
+
+              # Choose appropriate integer dtype based on number of categories
+              # This ensures scanpy reads categorical data correctly
+              codes_dtype <- if (n_categories <= 127) {
+                hdf5r::h5types$H5T_NATIVE_INT8
+              } else if (n_categories <= 255) {
+                hdf5r::h5types$H5T_NATIVE_UINT8
+              } else if (n_categories <= 32767) {
+                hdf5r::h5types$H5T_NATIVE_INT16
+              } else if (n_categories <= 65535) {
+                hdf5r::h5types$H5T_NATIVE_UINT16
+              } else {
+                hdf5r::h5types$H5T_NATIVE_INT32
+              }
+
+              # Add codes dataset with proper dtype for scanpy compatibility
+              dfile[['obs']][[mapped_col]]$create_dataset(
                 name = 'codes',
-                robj = meta_group[[col]][['values']][index] - 1L,
-                dtype = meta_group[[col]][['values']]$get_type()
+                robj = codes_values,
+                dtype = codes_dtype
               )
 
               # Add encoding attributes to codes
-              dfile[['obs']][[col]][['codes']]$create_attr(
+              dfile[['obs']][[mapped_col]][['codes']]$create_attr(
                 attr_name = 'encoding-type',
                 robj = 'array',
                 dtype = GuessDType(x = 'array'),
-                space = Scalar()
+                space = H5S$new(type = "scalar")
               )
-              dfile[['obs']][[col]][['codes']]$create_attr(
+              dfile[['obs']][[mapped_col]][['codes']]$create_attr(
                 attr_name = 'encoding-version',
                 robj = '0.2.0',
                 dtype = GuessDType(x = '0.2.0'),
-                space = Scalar()
+                space = H5S$new(type = "scalar")
               )
 
               # Add categories dataset
-              dfile[['obs']][[col]]$create_dataset(
+              dfile[['obs']][[mapped_col]]$create_dataset(
                 name = 'categories',
                 robj = as.character(meta_group[[col]][['levels']][]),
                 dtype = StringType('utf8')
               )
 
               # Add encoding attributes to categories
-              AddAnndataEncoding(dfile[['obs']][[col]][['categories']], encoding_type = 'string-array')
+              AddAnndataEncoding(dfile[['obs']][[mapped_col]][['categories']], encoding_type = 'string-array')
 
               # Add attributes to the categorical group
-              dfile[['obs']][[col]]$create_attr(
+              dfile[['obs']][[mapped_col]]$create_attr(
                 attr_name = 'encoding-type',
                 robj = 'categorical',
                 dtype = GuessDType(x = 'categorical'),
-                space = Scalar()
+                space = H5S$new(type = "scalar")
               )
-              dfile[['obs']][[col]]$create_attr(
+              dfile[['obs']][[mapped_col]]$create_attr(
                 attr_name = 'encoding-version',
                 robj = '0.2.0',
                 dtype = GuessDType(x = '0.2.0'),
-                space = Scalar()
+                space = H5S$new(type = "scalar")
               )
-              dfile[['obs']][[col]]$create_attr(
+              dfile[['obs']][[mapped_col]]$create_attr(
                 attr_name = 'ordered',
                 robj = FALSE,
                 dtype = GuessDType(x = FALSE),
-                space = Scalar()
+                space = H5S$new(type = "scalar")
               )
             } else {
               # Regular column
               dfile[['obs']]$create_dataset(
-                name = col,
+                name = mapped_col,
                 robj = if (is.null(index)) meta_group[[col]][] else meta_group[[col]][index],
                 dtype = meta_group[[col]]$get_type()
               )
             }
           }
 
-          # Add column order
+          # Add column order with mapped names
           if (meta_group$attr_exists(attr_name = 'colnames')) {
+            original_colnames <- h5attr(x = meta_group, which = 'colnames')
+            if (standardize) {
+              # Apply mapping to column names
+              mapped_colnames <- sapply(original_colnames, function(cn) apply_name_map(cn, "obs"))
+            } else {
+              mapped_colnames <- original_colnames
+            }
             dfile[['obs']]$create_attr(
               attr_name = 'column-order',
-              robj = h5attr(x = meta_group, which = 'colnames'),
-              dtype = GuessDType(x = h5attr(x = meta_group, which = 'colnames'))
+              robj = mapped_colnames,
+              dtype = GuessDType(x = mapped_colnames)
             )
           }
 
@@ -1877,7 +2235,7 @@ H5SeuratToH5AD <- function(
                 attr_name = attr.name,
                 robj = encoding.info[i],
                 dtype = GuessDType(x = encoding.info[i]),
-                space = Scalar()
+                space = H5S$new(type = "scalar")
               )
             }
           }
@@ -1897,87 +2255,123 @@ H5SeuratToH5AD <- function(
     }
 
     if (inherits(x = src, what = 'H5D')) {
+      # Create a name mapping function for this dname
+      map_fn <- if (standardize) {
+        function(col_name) apply_name_map(col_name, dname)
+      } else {
+        NULL
+      }
       CompoundToGroup(
         src = src,
         dst = dfile,
         dname = dname,
         order = 'column-order',
-        index = index
+        index = index,
+        name_map_fn = map_fn
       )
     } else if (inherits(x = src, what = 'H5Group')) {
       dfile$create_group(name = dname)
       for (i in src$names) {
+        # Apply name mapping if standardize is enabled
+        mapped_i <- apply_name_map(i, dname)
+
         if (IsFactor(x = src[[i]])) {
           # Use newer anndata format: each categorical is a group with categories/codes
-          dfile[[dname]]$create_group(name = i)
+          dfile[[dname]]$create_group(name = mapped_i)
 
-          # Add codes dataset (0-based indices)
-          dfile[[dname]][[i]]$create_dataset(
+          # Convert codes to 0-based indices
+          codes_values <- src[[i]][['values']][index] - 1L
+          n_categories <- length(src[[i]][['levels']][])
+
+          # Choose appropriate integer dtype based on number of categories
+          # This ensures scanpy reads categorical data correctly
+          codes_dtype <- if (n_categories <= 127) {
+            hdf5r::h5types$H5T_NATIVE_INT8
+          } else if (n_categories <= 255) {
+            hdf5r::h5types$H5T_NATIVE_UINT8
+          } else if (n_categories <= 32767) {
+            hdf5r::h5types$H5T_NATIVE_INT16
+          } else if (n_categories <= 65535) {
+            hdf5r::h5types$H5T_NATIVE_UINT16
+          } else {
+            hdf5r::h5types$H5T_NATIVE_INT32
+          }
+
+          # Add codes dataset with proper dtype for scanpy compatibility
+          dfile[[dname]][[mapped_i]]$create_dataset(
             name = 'codes',
-            robj = src[[i]][['values']][index] - 1L,
-            dtype = src[[H5Path(i, 'values')]]$get_type()
+            robj = codes_values,
+            dtype = codes_dtype
           )
 
           # Add encoding attributes to codes
-          dfile[[dname]][[i]][['codes']]$create_attr(
+          dfile[[dname]][[mapped_i]][['codes']]$create_attr(
             attr_name = 'encoding-type',
             robj = 'array',
             dtype = GuessDType(x = 'array'),
-            space = Scalar()
+            space = H5S$new(type = "scalar")
           )
-          dfile[[dname]][[i]][['codes']]$create_attr(
+          dfile[[dname]][[mapped_i]][['codes']]$create_attr(
             attr_name = 'encoding-version',
             robj = '0.2.0',
             dtype = GuessDType(x = '0.2.0'),
-            space = Scalar()
+            space = H5S$new(type = "scalar")
           )
 
           # Add categories dataset
-          dfile[[dname]][[i]]$create_dataset(
+          dfile[[dname]][[mapped_i]]$create_dataset(
             name = 'categories',
             robj = as.character(src[[i]][['levels']][]),
             dtype = StringType('utf8')
           )
 
           # Add encoding attributes to categories
-          AddAnndataEncoding(dfile[[dname]][[i]][['categories']], encoding_type = 'string-array')
+          AddAnndataEncoding(dfile[[dname]][[mapped_i]][['categories']], encoding_type = 'string-array')
 
           # Add attributes to the categorical group
-          AddAnndataEncoding(dfile[[dname]][[i]], encoding_type = 'categorical')
-          dfile[[dname]][[i]]$create_attr(
+          AddAnndataEncoding(dfile[[dname]][[mapped_i]], encoding_type = 'categorical')
+          dfile[[dname]][[mapped_i]]$create_attr(
             attr_name = 'ordered',
             robj = FALSE,
             dtype = GuessDType(x = FALSE),
-            space = Scalar()
+            space = H5S$new(type = "scalar")
           )
         } else {
           # Regular dataset
           dfile[[dname]]$create_dataset(
-            name = i,
+            name = mapped_i,
             robj = src[[i]][index],
             dtype = src[[i]]$get_type()
           )
 
           # Add encoding attributes
-          dfile[[dname]][[i]]$create_attr(
+          dfile[[dname]][[mapped_i]]$create_attr(
             attr_name = 'encoding-type',
             robj = 'array',
             dtype = GuessDType(x = 'array'),
-            space = Scalar()
+            space = H5S$new(type = "scalar")
           )
-          dfile[[dname]][[i]]$create_attr(
+          dfile[[dname]][[mapped_i]]$create_attr(
             attr_name = 'encoding-version',
             robj = '0.2.0',
             dtype = GuessDType(x = '0.2.0'),
-            space = Scalar()
+            space = H5S$new(type = "scalar")
           )
         }
       }
+      # Add column order with mapped names
       if (src$attr_exists(attr_name = 'colnames')) {
+        original_colnames <- h5attr(x = src, which = 'colnames')
+        if (standardize) {
+          # Apply mapping to column names
+          mapped_colnames <- sapply(original_colnames, function(cn) apply_name_map(cn, dname))
+        } else {
+          mapped_colnames <- original_colnames
+        }
         dfile[[dname]]$create_attr(
           attr_name = 'column-order',
-          robj = h5attr(x = src, which = 'colnames'),
-          dtype = GuessDType(x = h5attr(x = src, which = 'colnames'))
+          robj = mapped_colnames,
+          dtype = GuessDType(x = mapped_colnames)
         )
       }
       encoding.info <- c('type' = 'dataframe', 'version' = '0.2.0')
@@ -1992,7 +2386,7 @@ H5SeuratToH5AD <- function(
           attr_name = attr.name,
           robj = attr.value,
           dtype = GuessDType(x = attr.value),
-          space = Scalar()
+          space = H5S$new(type = "scalar")
         )
       }
     }
@@ -2014,7 +2408,7 @@ H5SeuratToH5AD <- function(
           attr_name = attr.name,
           robj = attr.value,
           dtype = GuessDType(x = attr.value),
-          space = Scalar()
+          space = H5S$new(type = "scalar")
         )
       }
 
@@ -2204,13 +2598,13 @@ H5SeuratToH5AD <- function(
     attr_name = 'encoding-type',
     robj = 'string-array',
     dtype = GuessDType(x = 'string-array'),
-    space = Scalar()
+    space = H5S$new(type = "scalar")
   )
   dfile[['var']][[rownames]]$create_attr(
     attr_name = 'encoding-version',
     robj = '0.2.0',
     dtype = GuessDType(x = '0.2.0'),
-    space = Scalar()
+    space = H5S$new(type = "scalar")
   )
 
   # Add _index attribute pointing to itself
@@ -2218,7 +2612,7 @@ H5SeuratToH5AD <- function(
     attr_name = rownames,
     robj = rownames,
     dtype = GuessDType(x = rownames),
-    space = Scalar()
+    space = H5S$new(type = "scalar")
   )
 
   # Add highly variable genes information if available
@@ -2282,7 +2676,7 @@ H5SeuratToH5AD <- function(
       attr_name = attr.name,
       robj = attr.value,
       dtype = GuessDType(x = attr.value),
-      space = Scalar()
+      space = H5S$new(type = "scalar")
     )
   }
   
@@ -2379,19 +2773,19 @@ H5SeuratToH5AD <- function(
       attr_name = 'encoding-type',
       robj = 'string-array',
       dtype = GuessDType(x = 'string-array'),
-      space = Scalar()
+      space = H5S$new(type = "scalar")
     )
     dfile[['raw/var']][[rownames]]$create_attr(
       attr_name = 'encoding-version',
       robj = '0.2.0',
       dtype = GuessDType(x = '0.2.0'),
-      space = Scalar()
+      space = H5S$new(type = "scalar")
     )
     dfile[['raw/var']]$create_attr(
       attr_name = rownames,
       robj = rownames,
       dtype = GuessDType(x = rownames),
-      space = Scalar()
+      space = H5S$new(type = "scalar")
     )
     # Add dataframe encoding attributes to raw/var group (required for AnnData)
     # Only add column-order if it doesn't already exist (TransferDF may have added it)
@@ -2426,7 +2820,7 @@ H5SeuratToH5AD <- function(
         attr_name = attr.name,
         robj = attr.value,
         dtype = GuessDType(x = attr.value),
-        space = Scalar()
+        space = H5S$new(type = "scalar")
       )
     }
   }
@@ -2461,11 +2855,29 @@ H5SeuratToH5AD <- function(
               # Use newer anndata format: each categorical is a group with categories/codes
               dfile[['obs']]$create_group(name = col)
 
-              # Add codes dataset (0-based indices)
+              # Convert codes to 0-based indices
+              codes_values <- meta.src[[col]][['values']][] - 1L
+              n_categories <- length(meta.src[[col]][['levels']][])
+
+              # Choose appropriate integer dtype based on number of categories
+              # This ensures scanpy reads categorical data correctly
+              codes_dtype <- if (n_categories <= 127) {
+                hdf5r::h5types$H5T_NATIVE_INT8
+              } else if (n_categories <= 255) {
+                hdf5r::h5types$H5T_NATIVE_UINT8
+              } else if (n_categories <= 32767) {
+                hdf5r::h5types$H5T_NATIVE_INT16
+              } else if (n_categories <= 65535) {
+                hdf5r::h5types$H5T_NATIVE_UINT16
+              } else {
+                hdf5r::h5types$H5T_NATIVE_INT32
+              }
+
+              # Add codes dataset with proper dtype for scanpy compatibility
               dfile[['obs']][[col]]$create_dataset(
                 name = 'codes',
-                robj = meta.src[[col]][['values']][] - 1L,
-                dtype = meta.src[[col]][['values']]$get_type()
+                robj = codes_values,
+                dtype = codes_dtype
               )
 
               # Add encoding attributes to codes
@@ -2473,13 +2885,13 @@ H5SeuratToH5AD <- function(
                 attr_name = 'encoding-type',
                 robj = 'array',
                 dtype = GuessDType(x = 'array'),
-                space = Scalar()
+                space = H5S$new(type = "scalar")
               )
               dfile[['obs']][[col]][['codes']]$create_attr(
                 attr_name = 'encoding-version',
                 robj = '0.2.0',
                 dtype = GuessDType(x = '0.2.0'),
-                space = Scalar()
+                space = H5S$new(type = "scalar")
               )
 
               # Add categories dataset
@@ -2494,13 +2906,13 @@ H5SeuratToH5AD <- function(
                 attr_name = 'encoding-type',
                 robj = 'string-array',
                 dtype = GuessDType(x = 'string-array'),
-                space = Scalar()
+                space = H5S$new(type = "scalar")
               )
               dfile[['obs']][[col]][['categories']]$create_attr(
                 attr_name = 'encoding-version',
                 robj = '0.2.0',
                 dtype = GuessDType(x = '0.2.0'),
-                space = Scalar()
+                space = H5S$new(type = "scalar")
               )
 
               # Add attributes to the categorical group
@@ -2508,19 +2920,19 @@ H5SeuratToH5AD <- function(
                 attr_name = 'encoding-type',
                 robj = 'categorical',
                 dtype = GuessDType(x = 'categorical'),
-                space = Scalar()
+                space = H5S$new(type = "scalar")
               )
               dfile[['obs']][[col]]$create_attr(
                 attr_name = 'encoding-version',
                 robj = '0.2.0',
                 dtype = GuessDType(x = '0.2.0'),
-                space = Scalar()
+                space = H5S$new(type = "scalar")
               )
               dfile[['obs']][[col]]$create_attr(
                 attr_name = 'ordered',
                 robj = FALSE,
                 dtype = GuessDType(x = FALSE),
-                space = Scalar()
+                space = H5S$new(type = "scalar")
               )
             } else {
               # Handle regular columns
@@ -2535,13 +2947,13 @@ H5SeuratToH5AD <- function(
                 attr_name = 'encoding-type',
                 robj = 'array',
                 dtype = GuessDType(x = 'array'),
-                space = Scalar()
+                space = H5S$new(type = "scalar")
               )
               dfile[['obs']][[col]]$create_attr(
                 attr_name = 'encoding-version',
                 robj = '0.2.0',
                 dtype = GuessDType(x = '0.2.0'),
-                space = Scalar()
+                space = H5S$new(type = "scalar")
               )
             }
           }, error = function(e) {
@@ -2572,7 +2984,7 @@ H5SeuratToH5AD <- function(
               attr_name = attr.name,
               robj = encoding.info[i],
               dtype = GuessDType(x = encoding.info[i]),
-              space = Scalar()
+              space = H5S$new(type = "scalar")
             )
           }
         }
@@ -2602,13 +3014,13 @@ H5SeuratToH5AD <- function(
       attr_name = 'encoding-type',
       robj = 'string-array',
       dtype = GuessDType(x = 'string-array'),
-      space = Scalar()
+      space = H5S$new(type = "scalar")
     )
     dfile[['obs']][[rownames]]$create_attr(
       attr_name = 'encoding-version',
       robj = '0.2.0',
       dtype = GuessDType(x = '0.2.0'),
-      space = Scalar()
+      space = H5S$new(type = "scalar")
     )
 
     # Add _index attribute pointing to itself
@@ -2616,7 +3028,7 @@ H5SeuratToH5AD <- function(
       attr_name = rownames,
       robj = rownames,
       dtype = GuessDType(x = rownames),
-      space = Scalar()
+      space = H5S$new(type = "scalar")
     )
 
     # Ensure encoding attributes exist for anndata compatibility
@@ -2630,7 +3042,7 @@ H5SeuratToH5AD <- function(
             attr_name = attr.name,
             robj = encoding.info[i],
             dtype = GuessDType(x = encoding.info[i]),
-            space = Scalar()
+            space = H5S$new(type = "scalar")
           )
         }
       }
@@ -2793,13 +3205,13 @@ H5SeuratToH5AD <- function(
           attr_name = 'encoding-type',
           robj = 'array',
           dtype = GuessDType(x = 'array'),
-          space = Scalar()
+          space = H5S$new(type = "scalar")
         )
         obsm[['spatial']]$create_attr(
           attr_name = 'encoding-version',
           robj = '0.2.0',
           dtype = GuessDType(x = '0.2.0'),
-          space = Scalar()
+          space = H5S$new(type = "scalar")
         )
       }
     }
@@ -2866,55 +3278,82 @@ H5SeuratToH5AD <- function(
       # Create spatial group in uns
       spatial_uns <- dfile[['uns']]$create_group(name = 'spatial')
 
-      # All images from the same Seurat object belong to one library
-      lib_id <- 'library_1'
-      lib_group <- spatial_uns$create_group(name = lib_id)
-
-      # Add scale factors once (they're the same for all FOVs)
-      first_img <- source[['images']][[images[1]]]
-      if (first_img$exists(name = 'scale.factors')) {
-        sf_group <- lib_group$create_group(name = 'scalefactors')
-        sf_src <- first_img[['scale.factors']]
-        sf_map <- c(
-          hires = 'tissue_hires_scalef',
-          lowres = 'tissue_lowres_scalef',
-          spot = 'spot_diameter_fullres',
-          fiducial = 'fiducial_diameter_fullres'
-        )
-        for (sf_name in sf_src$names) {
-          dst_name <- sf_map[[sf_name]]
-          if (is.null(dst_name)) {
-            dst_name <- sf_name
-          }
-          sf_value <- sf_src[[sf_name]][]
-          sf_group$create_dataset(
-            name = dst_name,
-            robj = sf_value,
-            dtype = h5types$H5T_NATIVE_DOUBLE,
-            space = Scalar(),
-            chunk_dims = NULL
-          )
-        }
-      }
-
-      # Add metadata
-      meta_group <- lib_group$create_group(name = 'metadata')
-
-      # Create images group to hold all resolution images
-      images_group <- lib_group$create_group(name = 'images')
-
-      # Process each image (hires, lowres, etc.) and add to the same library
+      # Each Seurat image becomes a separate library in h5ad format
+      # This matches the multi-library structure expected by scanpy/squidpy
       for (img_name in images) {
         img_group <- source[['images']][[img_name]]
 
-        # Add image if available
+        # Use the Seurat image name as the library ID (e.g., 'anterior1')
+        lib_id <- img_name
+        lib_group <- spatial_uns$create_group(name = lib_id)
+
+        # Add scale factors for this library
+        if (img_group$exists(name = 'scale.factors')) {
+          sf_group <- lib_group$create_group(name = 'scalefactors')
+          sf_src <- img_group[['scale.factors']]
+          sf_map <- c(
+            hires = 'tissue_hires_scalef',
+            lowres = 'tissue_lowres_scalef',
+            spot = 'spot_diameter_fullres',
+            fiducial = 'fiducial_diameter_fullres'
+          )
+          for (sf_name in sf_src$names) {
+            dst_name <- sf_map[[sf_name]]
+            if (is.null(dst_name)) {
+              dst_name <- sf_name
+            }
+            sf_value <- sf_src[[sf_name]][]
+            sf_group$create_dataset(
+              name = dst_name,
+              robj = sf_value,
+              dtype = h5types$H5T_NATIVE_DOUBLE,
+              space = H5S$new(type = "scalar"),
+              chunk_dims = NULL
+            )
+          }
+        }
+
+        # Add metadata
+        meta_group <- lib_group$create_group(name = 'metadata')
+
+        # Create images group with standard h5ad keys ('hires', 'lowres')
+        images_group <- lib_group$create_group(name = 'images')
+
+        # Add primary image as 'lowres' and 'hires'
         if (img_group$exists(name = 'image')) {
           img_data <- img_group[['image']]$read()
           if (length(dim(img_data)) == 3L) {
             img_arr <- aperm(img_data, c(3L, 2L, 1L))
-            # Use the actual image name (hires, lowres, etc.)
+
+            # Check for high-resolution image in attributes
+            has_hires <- FALSE
+            if (!is.null(img_group[['image']]$attr_names) &&
+                'hires.image' %in% img_group[['image']]$attr_names) {
+              hires_data <- h5attr(x = img_group[['image']], which = 'hires.image')
+              if (!is.null(hires_data) && length(dim(hires_data)) == 3L) {
+                # hires.image is already in correct dimensions (channels x width x height)
+                images_group$create_dataset(
+                  name = 'hires',
+                  robj = hires_data,
+                  dtype = h5types$H5T_NATIVE_DOUBLE
+                )
+                has_hires <- TRUE
+              }
+            }
+
+            # If no separate hires image, use the primary image for both hires and lowres
+            # This ensures compatibility with squidpy which defaults to 'hires'
+            if (!has_hires) {
+              images_group$create_dataset(
+                name = 'hires',
+                robj = img_arr,
+                dtype = h5types$H5T_NATIVE_DOUBLE
+              )
+            }
+
+            # Always create lowres
             images_group$create_dataset(
-              name = img_name,
+              name = 'lowres',
               robj = img_arr,
               dtype = h5types$H5T_NATIVE_DOUBLE
             )
@@ -3144,7 +3583,7 @@ H5SeuratToH5AD <- function(
           attr_name = 'encoding-type',
           robj = 'dict',
           dtype = GuessDType(x = 'dict'),
-          space = Scalar()
+          space = H5S$new(type = "scalar")
         )
       }
       # Add encoding-version
@@ -3153,7 +3592,7 @@ H5SeuratToH5AD <- function(
           attr_name = 'encoding-version',
           robj = '0.1.0',
           dtype = GuessDType(x = '0.1.0'),
-          space = Scalar()
+          space = H5S$new(type = "scalar")
         )
       }
     }
@@ -3167,7 +3606,7 @@ H5SeuratToH5AD <- function(
           attr_name = 'encoding-type',
           robj = 'array',
           dtype = GuessDType(x = 'array'),
-          space = Scalar()
+          space = H5S$new(type = "scalar")
         )
       }
       if (!dfile[['obsm']][[reduc_name]]$attr_exists(attr_name = 'encoding-version')) {
@@ -3175,7 +3614,7 @@ H5SeuratToH5AD <- function(
           attr_name = 'encoding-version',
           robj = '0.2.0',
           dtype = GuessDType(x = '0.2.0'),
-          space = Scalar()
+          space = H5S$new(type = "scalar")
         )
       }
     }
