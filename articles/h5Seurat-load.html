@@ -774,33 +774,40 @@ resources such as <a href="https://cellxgene.cziscience.com">cellxgene</a>. The
 h5Seurat, and reuse the partial loading patterns demonstrated above.</p>
 <div id="downloading-the-heart-visium-dataset" class="section level3">
 <h3>Downloading the Heart Visium dataset</h3>
-<p>The CZ Biohub Spatial Atlas heart dataset is available as an
-<code>.h5ad</code> file. The snippet below downloads the data to a
-user-defined cache directory; the chunk is not evaluated during vignette
-rendering to avoid large downloads.</p>
-<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" tabindex="-1"></a>heart_url <span class="ot">&lt;-</span> <span class="st">&quot;https://datasets.cellxgene.cziscience.com/3c84ef48-2cc2-4327-90a1-4f4cb57de168.h5ad&quot;</span></span>
-<span id="cb21-2"><a href="#cb21-2" tabindex="-1"></a>cache_dir <span class="ot">&lt;-</span> fs<span class="sc">::</span><span class="fu">path_home_r</span>(<span class="st">&quot;.cache&quot;</span>, <span class="st">&quot;srtdisk&quot;</span>, <span class="st">&quot;data&quot;</span>)</span>
-<span id="cb21-3"><a href="#cb21-3" tabindex="-1"></a>fs<span class="sc">::</span><span class="fu">dir_create</span>(cache_dir, <span class="at">recurse =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb21-4"><a href="#cb21-4" tabindex="-1"></a></span>
-<span id="cb21-5"><a href="#cb21-5" tabindex="-1"></a>heart_h5ad <span class="ot">&lt;-</span> fs<span class="sc">::</span><span class="fu">path</span>(cache_dir, <span class="st">&quot;heart_visium.h5ad&quot;</span>)</span>
-<span id="cb21-6"><a href="#cb21-6" tabindex="-1"></a></span>
-<span id="cb21-7"><a href="#cb21-7" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span>fs<span class="sc">::</span><span class="fu">file_exists</span>(heart_h5ad)) {</span>
-<span id="cb21-8"><a href="#cb21-8" tabindex="-1"></a>    <span class="fu">download.file</span>(heart_url, <span class="at">destfile =</span> heart_h5ad, <span class="at">mode =</span> <span class="st">&quot;wb&quot;</span>, <span class="at">quiet =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb21-9"><a href="#cb21-9" tabindex="-1"></a>}</span></code></pre></div>
+<p>The CZ Biohub Spatial Atlas heart dataset is distributed as an
+AnnData (<code>.h5ad</code>) archive that contains multiple Visium
+libraries. The command below downloads the file to the working
+directory; the chunk remains disabled during vignette builds to avoid
+large network transfers.</p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" tabindex="-1"></a><span class="fu">download.file</span>(<span class="at">url =</span> <span class="st">&quot;https://datasets.cellxgene.cziscience.com/8cc521c8-c4ff-4cba-a07b-cae67a9dcba9.h5ad&quot;</span>,</span>
+<span id="cb21-2"><a href="#cb21-2" tabindex="-1"></a>    <span class="at">destfile =</span> <span class="st">&quot;sn.heart.h5ad&quot;</span>, <span class="at">mode =</span> <span class="st">&quot;wb&quot;</span>)</span></code></pre></div>
 </div>
-<div id="converting-to-h5seurat" class="section level3">
-<h3>Converting to h5Seurat</h3>
-<p>Once the AnnData file is present, converting and loading it follows
-the same pattern as earlier sections. The conversion is disabled during
-knitting because it requires Python dependencies, but the code is ready
-to copy and run in an interactive session.</p>
-<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" tabindex="-1"></a>heart_h5seurat <span class="ot">&lt;-</span> fs<span class="sc">::</span><span class="fu">path</span>(cache_dir, <span class="st">&quot;heart_visium.h5seurat&quot;</span>)</span>
+<div id="converting-and-isolating-a-single-library" class="section level3">
+<h3>Converting and isolating a single library</h3>
+<p>After downloading, convert the AnnData file to h5Seurat, load it, and
+pull out one Visium library. The metadata column that labels libraries
+is typically named <code>library_id</code>; adjust
+<code>library_column</code> below if your download uses a different
+field.</p>
+<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" tabindex="-1"></a><span class="fu">Convert</span>(<span class="st">&quot;sn.heart.h5ad&quot;</span>, <span class="at">dest =</span> <span class="st">&quot;sn.heart.h5seurat&quot;</span>, <span class="at">overwrite =</span> <span class="cn">TRUE</span>, <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
 <span id="cb22-2"><a href="#cb22-2" tabindex="-1"></a></span>
-<span id="cb22-3"><a href="#cb22-3" tabindex="-1"></a><span class="fu">Convert</span>(heart_h5ad, <span class="at">dest =</span> heart_h5seurat, <span class="at">overwrite =</span> <span class="cn">TRUE</span>, <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb22-3"><a href="#cb22-3" tabindex="-1"></a>heart <span class="ot">&lt;-</span> <span class="fu">LoadH5Seurat</span>(<span class="st">&quot;sn.heart.h5seurat&quot;</span>)</span>
 <span id="cb22-4"><a href="#cb22-4" tabindex="-1"></a></span>
-<span id="cb22-5"><a href="#cb22-5" tabindex="-1"></a>heart <span class="ot">&lt;-</span> <span class="fu">LoadH5Seurat</span>(heart_h5seurat, <span class="at">assays =</span> <span class="fu">list</span>(<span class="at">Spatial =</span> <span class="st">&quot;counts&quot;</span>), <span class="at">images =</span> <span class="cn">NULL</span>,</span>
-<span id="cb22-6"><a href="#cb22-6" tabindex="-1"></a>    <span class="at">reductions =</span> <span class="cn">NA</span>, <span class="at">graphs =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb22-7"><a href="#cb22-7" tabindex="-1"></a>heart</span></code></pre></div>
+<span id="cb22-5"><a href="#cb22-5" tabindex="-1"></a>library_column <span class="ot">&lt;-</span> <span class="st">&quot;library_id&quot;</span></span>
+<span id="cb22-6"><a href="#cb22-6" tabindex="-1"></a>metadata <span class="ot">&lt;-</span> heart[[]]</span>
+<span id="cb22-7"><a href="#cb22-7" tabindex="-1"></a><span class="fu">stopifnot</span>(library_column <span class="sc">%in%</span> <span class="fu">names</span>(metadata))</span>
+<span id="cb22-8"><a href="#cb22-8" tabindex="-1"></a></span>
+<span id="cb22-9"><a href="#cb22-9" tabindex="-1"></a>library_ids <span class="ot">&lt;-</span> <span class="fu">unique</span>(metadata[[library_column]])</span>
+<span id="cb22-10"><a href="#cb22-10" tabindex="-1"></a>selected_id <span class="ot">&lt;-</span> library_ids[[<span class="dv">1</span>]]</span>
+<span id="cb22-11"><a href="#cb22-11" tabindex="-1"></a></span>
+<span id="cb22-12"><a href="#cb22-12" tabindex="-1"></a>selected_cells <span class="ot">&lt;-</span> <span class="fu">rownames</span>(metadata)[metadata[[library_column]] <span class="sc">==</span> selected_id]</span>
+<span id="cb22-13"><a href="#cb22-13" tabindex="-1"></a></span>
+<span id="cb22-14"><a href="#cb22-14" tabindex="-1"></a>heart_library <span class="ot">&lt;-</span> <span class="fu">subset</span>(heart, <span class="at">cells =</span> selected_cells)</span>
+<span id="cb22-15"><a href="#cb22-15" tabindex="-1"></a></span>
+<span id="cb22-16"><a href="#cb22-16" tabindex="-1"></a><span class="fu">SaveH5Seurat</span>(heart_library, <span class="at">filename =</span> <span class="fu">sprintf</span>(<span class="st">&quot;sn.heart.%s.h5seurat&quot;</span>, selected_id),</span>
+<span id="cb22-17"><a href="#cb22-17" tabindex="-1"></a>    <span class="at">overwrite =</span> <span class="cn">TRUE</span>, <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb22-18"><a href="#cb22-18" tabindex="-1"></a></span>
+<span id="cb22-19"><a href="#cb22-19" tabindex="-1"></a>heart_library</span></code></pre></div>
 <p>You can now explore and append additional data just as we did with
 the brain example, taking advantage of on-disk storage to manage large
 spatial datasets.</p>
