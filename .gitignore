@@ -10,8 +10,8 @@ inst/doc
 doc
 Meta
 
-# Ignore extra pkgdown files
-*_files
+# Note: *_files pattern removed on gh-pages to allow article images
+# On main branch, pkgdown _files are ignored but on gh-pages we need them
 
 # Ignore data and script files in the top-level directory
 /*.loom
