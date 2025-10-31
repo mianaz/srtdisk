@@ -218,6 +218,48 @@ brain2 <- AppendData("anterior1.h5Seurat", brain2)
 brain2
 ```
 
-## h5Seurat files and SeuratData
+## Working with external Visium datasets
 
-Coming soon!
+While `SeuratData` provides curated examples, many Visium datasets are shared as AnnData (`.h5ad`) files through resources such as [cellxgene](https://cellxgene.cziscience.com). The `srtdisk` package can download these files, convert them to h5Seurat, and reuse the partial loading patterns demonstrated above.
+
+### Downloading the Heart Visium dataset
+
+The CZ Biohub Spatial Atlas heart dataset is available as an `.h5ad` file. The snippet below downloads the data to a user-defined cache directory; the chunk is not evaluated during vignette rendering to avoid large downloads.
+
+```{r heart_visium_download, eval = FALSE}
+heart_url <- "https://datasets.cellxgene.cziscience.com/3c84ef48-2cc2-4327-90a1-4f4cb57de168.h5ad"
+cache_dir <- fs::path_home_r(".cache", "srtdisk", "data")
+fs::dir_create(cache_dir, recurse = TRUE)
+
+heart_h5ad <- fs::path(cache_dir, "heart_visium.h5ad")
+
+if (!fs::file_exists(heart_h5ad)) {
+  download.file(heart_url, destfile = heart_h5ad, mode = "wb", quiet = TRUE)
+}
+```
+
+### Converting to h5Seurat
+
+Once the AnnData file is present, converting and loading it follows the same pattern as earlier sections. The conversion is disabled during knitting because it requires Python dependencies, but the code is ready to copy and run in an interactive session.
+
+```{r heart_visium_convert, eval = FALSE}
+heart_h5seurat <- fs::path(cache_dir, "heart_visium.h5seurat")
+
+Convert(
+  heart_h5ad,
+  dest = heart_h5seurat,
+  overwrite = TRUE,
+  verbose = FALSE
+)
+
+heart <- LoadH5Seurat(
+  heart_h5seurat,
+  assays = list("Spatial" = "counts"),
+  images = NULL,
+  reductions = NA,
+  graphs = FALSE
+)
+heart
+```
+
+You can now explore and append additional data just as we did with the brain example, taking advantage of on-disk storage to manage large spatial datasets.
