@@ -34,6 +34,7 @@ roundtrip_*
 full_v5_*
 rna_only_*
 v4_test.*
+inst/testdata/
 
 # Ignore temporary debugging files
 debug_*
