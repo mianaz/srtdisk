@@ -1,5 +1,4 @@
 #' @include zzz.R
-#' @include UtilsAssayCompat.R
 #' @importFrom methods setOldClass setClassUnion setGeneric setMethod slotNames
 #' slot tryNew
 #' @importFrom Seurat GetAssayData Key VariableFeatures Misc Embeddings Loadings
@@ -95,26 +94,12 @@ ImageWrite <- function(x, name, hgroup, verbose = TRUE) {
   # Write out slots other than assay
   slots <- setdiff(x = slotNames(x = x), y = c('assay', 'global'))
   for (slot in slots) {
-    slot_value <- tryCatch({
-      slot(object = x, name = slot)
-    }, error = function(e) {
-      if (slot == 'key') {
-        paste0(name, '_')
-      } else {
-        NULL
-      }
-    })
-
-    if (!is.null(slot_value)) {
-      WriteH5Group(
-        x = slot_value,
-        name = slot,
-        hgroup = xgroup,
-        verbose = verbose
-      )
-    } else if (verbose) {
-      message("Skipping slot '", slot, "' for image '", name, "' (unable to access)")
-    }
+    WriteH5Group(
+      x = slot(object = x, name = slot),
+      name = slot,
+      hgroup = xgroup,
+      verbose = verbose
+    )
   }
   return(invisible(x = NULL))
 }
@@ -244,25 +229,45 @@ setMethod(
 
 # Simplified V5 Assay5 support
 WriteH5GroupAssay5 <- function(x, name, hgroup, verbose = TRUE) {
+  # Direct implementation - no recursive call
   xgroup <- hgroup$create_group(name = name)
+
+  # Helper function to convert BPCells objects to dgCMatrix
+  ConvertBPCellsIfNeeded <- function(mat) {
+    if (is.null(mat)) return(NULL)
+
+    # Check if it's a BPCells object (RenameDims, IterableMatrix, etc.)
+    if (inherits(mat, "IterableMatrix") ||
+        inherits(mat, "RenameDims") ||
+        (is.object(mat) && !inherits(mat, c("dgCMatrix", "dgTMatrix", "matrix")))) {
+      # Check if BPCells package is available
+      if (requireNamespace("BPCells", quietly = TRUE) ||
+          inherits(mat, "RenameDims")) {
+        if (verbose) {
+          message("Converting BPCells object to dgCMatrix")
+        }
+        # Convert to dgCMatrix
+        mat <- tryCatch(
+          as(mat, "dgCMatrix"),
+          error = function(e) {
+            warning("Failed to convert BPCells object: ", e$message, call. = FALSE)
+            mat
+          }
+        )
+      }
+    }
+    return(mat)
+  }
 
   # Get layers (V5 compatible)
   layers <- if (inherits(x = x, what = 'Assay5')) {
-    tryCatch(Layers(object = x), error = function(e) .STANDARD_LAYERS)
+    tryCatch(Layers(object = x), error = function(e) c("counts", "data"))
   } else {
-    .STANDARD_LAYERS
+    c("counts", "data", "scale.data")
   }
 
   # Use V5 layer structure if available
-  # Check in the package namespace since WriteV5Layer is internal
-  use_v5 <- tryCatch({
-    exists("WriteV5Layer", where = asNamespace("srtdisk"), mode = "function")
-  }, error = function(e) {
-    # Fallback: try without namespace
-    exists("WriteV5Layer", mode = "function")
-  })
-
-  if (use_v5) {
+  if (exists("WriteV5Layer", where = asNamespace("SeuratDisk"), mode = "function")) {
     # Write each layer using V5 format
     for (layer in layers) {
       dat <- tryCatch(
@@ -271,20 +276,17 @@ WriteH5GroupAssay5 <- function(x, name, hgroup, verbose = TRUE) {
       )
 
       # Convert BPCells objects if needed
-      dat <- ConvertBPCellsMatrix(dat, verbose = verbose)
+      dat <- ConvertBPCellsIfNeeded(dat)
 
       if (!is.null(dat) && !IsMatrixEmpty(x = dat)) {
-        if (verbose) message("Adding ", layer, " for ", name)
-
-        # Get feature names from the assay
-        feat_names <- tryCatch(SeuratObject::Features(x),
-          error = function(e) tryCatch(rownames(dat), error = function(e2) rownames(x)))
-
+        if (verbose) {
+          message("Adding ", layer, " for ", name)
+        }
         WriteV5Layer(
           h5_group = xgroup,
           layer_name = layer,
           matrix_data = dat,
-          features = feat_names,
+          features = rownames(x),
           verbose = verbose
         )
       }
@@ -292,8 +294,13 @@ WriteH5GroupAssay5 <- function(x, name, hgroup, verbose = TRUE) {
   } else {
     # Fallback to old method
     for (layer in layers) {
-      dat <- tryCatch(GetAssayData(object = x, layer = layer), error = function(e) NULL)
-      dat <- ConvertBPCellsMatrix(dat, verbose = verbose)
+      dat <- tryCatch(
+        GetAssayData(object = x, layer = layer),
+        error = function(e) NULL
+      )
+
+      # Convert BPCells objects if needed
+      dat <- ConvertBPCellsIfNeeded(dat)
 
       if (!is.null(dat) && !IsMatrixEmpty(x = dat)) {
         if (verbose) {
@@ -304,14 +311,9 @@ WriteH5GroupAssay5 <- function(x, name, hgroup, verbose = TRUE) {
     }
   }
 
-  # Write features - get from SeuratObject::Features or rownames
-  feat_names <- tryCatch({
-    SeuratObject::Features(x)
-  }, error = function(e) {
-    rownames(x)
-  })
-  if (!is.null(feat_names)) {
-    WriteH5Group(x = feat_names, name = 'features', hgroup = xgroup, verbose = verbose)
+  # Write features
+  if (!is.null(rownames(x))) {
+    WriteH5Group(x = rownames(x), name = 'features', hgroup = xgroup, verbose = verbose)
   }
 
   # Write key
@@ -320,21 +322,6 @@ WriteH5GroupAssay5 <- function(x, name, hgroup, verbose = TRUE) {
     robj = Key(object = x),
     dtype = GuessDType(x = Key(object = x))
   )
-
-  # Write out variable features
-  if (length(x = VariableFeatures(object = x))) {
-    if (verbose) {
-      message("Adding variable features for ", name)
-    }
-    WriteH5Group(
-      x = VariableFeatures(object = x),
-      name = 'variable.features',
-      hgroup = xgroup,
-      verbose = verbose
-    )
-  } else if (verbose) {
-    message("No variable features found for ", name)
-  }
 
   # Mark as Assay5
   xgroup$create_attr(
@@ -351,15 +338,6 @@ WriteH5GroupAssay5 <- function(x, name, hgroup, verbose = TRUE) {
 #'
 #' @rdname WriteH5Group
 #'
-# Add explicit method for Assay5 since it doesn't inherit from Assay in S4
-setMethod(
-  f = 'WriteH5Group',
-  signature = c('x' = 'Assay5'),
-  definition = function(x, name, hgroup, verbose = TRUE) {
-    return(WriteH5GroupAssay5(x = x, name = name, hgroup = hgroup, verbose = verbose))
-  }
-)
-
 setMethod(
   f = 'WriteH5Group',
   signature = c('x' = 'Assay'),
@@ -369,11 +347,22 @@ setMethod(
       return(WriteH5GroupAssay5(x = x, name = name, hgroup = hgroup, verbose = verbose))
     }
 
+    # Helper to convert BPCells if needed
+    ConvertBPCellsIfNeeded <- function(mat) {
+      if (is.null(mat)) return(NULL)
+      if (inherits(mat, "IterableMatrix") || inherits(mat, "RenameDims")) {
+        if (verbose) message("Converting BPCells object to dgCMatrix")
+        mat <- tryCatch(as(mat, "dgCMatrix"), error = function(e) mat)
+      }
+      return(mat)
+    }
+
     xgroup <- hgroup$create_group(name = name)
     # Write out expression data
-    for (i in .STANDARD_LAYERS) {
-      dat <- GetAssayDataCompat(object = x, layer_or_slot = i)
-      dat <- ConvertBPCellsMatrix(dat, verbose = verbose)
+    # TODO: determine if empty matrices should be present
+    for (i in c('counts', 'data', 'scale.data')) {
+      dat <- SafeGetAssayData(object = x, layer = i)
+      dat <- ConvertBPCellsIfNeeded(dat)
       if (!is.null(dat) && !IsMatrixEmpty(x = dat)) {
         if (verbose) {
           message("Adding ", i, " for ", name)

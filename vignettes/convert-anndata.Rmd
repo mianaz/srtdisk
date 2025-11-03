@@ -3,23 +3,16 @@ title: 'Conversions: h5Seurat and AnnData'
 ---
 
 ```{r setup, include = FALSE}
-reticulate::use_condaenv("scverse", required = TRUE)
+python3 <- Sys.which(names = "python3")
 library(reticulate)
+use_python(python = python3)
 knitr::opts_chunk$set(
   message = FALSE,
   warning = FALSE,
   collapse = TRUE,
-  comment = "#>",
-  tidy=TRUE,
-  out.width = "100%",
-  dev = "png"
+  comment = "#>"
 )
-# Set matplotlib to use standard PNG format for Python chunks
-knitr::knit_engines$set(python = function(options) {
-  options$dev <- "png"
-  reticulate::eng_python(options)
-})
-#options(SeuratData.repo.use = "https://seurat.nygenome.org")
+# options(SeuratData.repo.use = "https://seurat.nygenome.org")
 ```
 
 ```{r cleanup, echo=FALSE, results='hide'}
@@ -27,52 +20,35 @@ outs <- c(
   "pbmc3k.h5Seurat",
   "pbmc3k.h5ad",
   "pbmc3k_final.h5ad",
-  "pbmc3k_final.h5seurat",
-  "stxBrain.h5ad",
-  "stxBrain.h5seurat",
-  "vis.heart.single.h5ad",
-  "vis.heart.single.h5seurat",
-  "vis.heart.h5ad",
-  "vis.heart.h5seurat"
+  "pbmc3k_final.h5seurat"
 )
-# Only remove files that exist to avoid warnings
-existing_files <- outs[file.exists(outs)]
-if (length(existing_files) > 0) {
-  file.remove(existing_files)
-}
+file.remove(outs)
 ```
 
-This vignette showcases how to convert from `Seurat` object to AnnData files via an intermediate step thorugh h5Seurat files. This allows interoperability between Seurat and [Scanpy](https://scanpy.readthedocs.io/)
+This vignette showcases how to convert between `Seurat` objects, h5Seurat files, and AnnData h5ad files. The workflows below enable interoperability between Seurat and [Scanpy](https://scanpy.readthedocs.io/).
 
 ```{r packages}
 library(Seurat)
 library(SeuratData)
-library(srtdisk)
+library(SeuratDisk)
 ```
 
 ## Converting from Seurat to AnnData via h5Seurat
 
 To showcase going from a `Seurat` object to an AnnData file, we'll use the processed version of the PBMC 3k dataset, available on [SeuratData](https://github.com/satijalab/seurat-data); this dataset was created following [Seurat's PBMC 3k tutorial](https://satijalab.org/seurat/v3.1/pbmc3k_tutorial.html)
 
-```{r get_data, message=FALSE, warning=FALSE}
+```{r get_data}
 InstallData("pbmc3k")
 data("pbmc3k.final")
-pbmc3k <- UpdateSeuratObject(pbmc3k.final)
-pbmc3k
+pbmc3k.final
 ```
 
 To see how this dataset was generated, please run `?pbmc3k.final`
 
-The dataset is annotated as below:
-```{r}
-DimPlot(pbmc3k, reduction = "umap", label = TRUE, pt.size = 0.5) + NoLegend()
-```
-
-
-Converting the `Seurat` object to an AnnData file is a two-step process. First, we save the `Seurat` object as an h5Seurat file using the `SaveH5Seurat()` function. For more details about saving `Seurat` objects to h5Seurat files, please see the h5Seurat-load vignette; after the file is saved, we can convert it to an AnnData file for use in Scanpy using the `Convert()` function. The conversion process handles both expression matrices and metadata, including support for Seurat v5 objects with multiple layers.
+Converting the `Seurat` object to an AnnData file is a two-step process. First, we [save the `Seurat` object](https://mojaveazure.github.io/seurat-disk/reference/SaveH5Seurat.html) as an h5Seurat file. For more details about saving `Seurat` objects to h5Seurat files, please see [this vignette](https://mojaveazure.github.io/seurat-disk/articles/h5Seurat-load.html); after the file is saved, we can [convert](https://mojaveazure.github.io/seurat-disk/reference/Convert.html) it to an AnnData file for use in Scanpy. Full details about the conversion processes are listed in the [manual page](https://mojaveazure.github.io/seurat-disk/reference/Convert.html) for the `Convert` function
 
 ```{r convert_seurat}
-SaveH5Seurat(pbmc3k, filename = "pbmc3k.h5Seurat")
+SaveH5Seurat(pbmc3k.final, filename = "pbmc3k.h5Seurat")
 Convert("pbmc3k.h5Seurat", dest = "h5ad")
 ```
 
@@ -82,15 +58,6 @@ We can view the AnnData file in Scanpy by using the `read_h5ad` function
 import scanpy
 adata = scanpy.read_h5ad("pbmc3k.h5ad")
 adata
-```
-
-And visualize the UMAP with cluster annotations:
-```{python plot_adata, fig.width=10, fig.height=8}
-import scanpy as sc
-import matplotlib.pyplot as plt
-
-# Plot with proper categorical coloring
-sc.pl.umap(adata, color='seurat_annotations', legend_loc='on data', legend_fontsize=8)
 ```
 
 ## Converting from AnnData to Seurat via h5Seurat
@@ -104,122 +71,33 @@ curl::curl_download(url, basename(url))
 
 To see how this dataset was created, please see [this script](https://gist.github.com/mojaveazure/922aa904b9ac212e627f522c2b816a52)
 
-```{python}
-import scanpy as sc
-import matplotlib.pyplot as plt
-adata = sc.read_h5ad("pbmc3k_final.h5ad")
-adata
-sc.pl.umap(adata, color='leiden', legend_loc='on data', legend_fontsize=8)
-```
 
-
-Converting the AnnData file to a `Seurat` object is also a two-step process. First, convert the AnnData file to an h5Seurat file using the `Convert()` function; this conversion supports both standard AnnData files and those with spatial data or multiple assay layers. Then, we load the h5Seurat file into a `Seurat` object using the `LoadH5Seurat()` function; for more details about loading `Seurat` objects from h5Seurat files, please see the h5Seurat-load vignette.
+Historically, converting an AnnData file to a `Seurat` object was a two-step process: convert the AnnData file to h5Seurat with [`Convert`](https://mojaveazure.github.io/seurat-disk/reference/Convert.html), then [load the h5Seurat file](https://mojaveazure.github.io/seurat-disk/reference/LoadH5Seurat.html). That workflow continues to be supported and remains a convenient way to materialise an on-disk h5Seurat representation for repeated use.
 
 ```{r convert_adata}
 Convert("pbmc3k_final.h5ad", dest = "h5seurat", overwrite = TRUE)
 pbmc3k <- LoadH5Seurat("pbmc3k_final.h5seurat")
 pbmc3k
-DimPlot(pbmc3k, reduction = "umap", label = TRUE, pt.size = 0.5, group.by="leiden") + NoLegend()
 ```
 
-## Visium Spatial Data Conversion
+### Direct `LoadH5AD`
 
-### Converting Spatial AnnData to Seurat
+SeuratDisk now supports loading AnnData files directly into `Seurat` objects without producing an intermediate h5Seurat file. This is the recommended approach when you simply want to bring an AnnData analysis into Seurat.
 
-We'll use mouse brain spatial transcriptomics data (stxBrain) from SeuratData to demonstrate Visium data conversion:
-
-```{r get_stxBrain}
-# Load stxBrain data from SeuratData
-InstallData("stxBrain")
-stxBrain <- LoadData('stxBrain', type = 'anterior1')
-stxBrain <- NormalizeData(stxBrain)
-SpatialFeaturePlot(stxBrain, features = "Ptprc")
-# Save as h5Seurat, then convert to h5ad
-SaveH5Seurat(stxBrain, filename = "stxBrain.h5Seurat", overwrite = TRUE)
-Convert("stxBrain.h5Seurat", dest = "h5ad", overwrite = TRUE)
+```{r load_direct}
+pbmc3k_direct <- LoadH5AD("pbmc3k_final.h5ad")
+pbmc3k_direct
 ```
 
-We can now load the AnnData file in Python and visualize it using Squidpy:
-```{python load_stxBrain, fig.width=10, fig.height=8}
-import squidpy as sq
-import scanpy as sc
-import matplotlib.pyplot as plt
-adata = sc.read_h5ad("stxBrain.h5ad")
-# Note: The Seurat image name 'anterior1' becomes the library_id
-# Image resolution keys are standardized as 'hires' and 'lowres'
-# By default, seurat only stores lowres images. it is copied to hires to avoid errors. 
-sq.pl.spatial_scatter(
-    adata,
-    color="Ptprc",
-    library_id="anterior1",
-    img_res_key="lowres",
-    size=1.5
-)
-plt.show()
+Both workflows yield equivalent in-memory objects; choose the path that best matches your downstream needs.
+
+### Spatial datasets
+
+When an AnnData file contains 10x Genomics Visium information, `LoadH5AD` reconstructs the spatial images, scalefactors, and coordinates so that Seurat spatial tooling works out of the box.
+
+```{r load_visium, eval = FALSE}
+brain <- LoadH5AD("visium_brain.h5ad", assay.name = "Spatial")
+SpatialFeaturePlot(brain, features = "PTPRC", images = Images(brain)[1])
 ```
 
-## Converting Spatial (Visium) Anndata to Seurat
-
-Data source: [Spatially resolved multiomics of human cardiac niches](https://cellxgene.cziscience.com/collections/3116d060-0a8e-4767-99bb-e866badea1ed)
-
-### Single Library Example
-
-First, let's work with a single library, HCAHeartST11702008:
-
-```{r load_heart_single, eval=FALSE}
-# Copy single-library heart data from testdata
-file.copy(
-  system.file("testdata", "vis.heart.single.h5ad", package = "srtdisk"),
-  "vis.heart.single.h5ad",
-  overwrite = TRUE
-)
-
-# Convert to h5seurat
-Convert("vis.heart.single.h5ad", dest = "h5seurat", overwrite = TRUE)
-
-# Load as Seurat object
-heart_single <- LoadH5Seurat("vis.heart.single.h5seurat")
-heart_single
-SpatialFeaturePlot(heart_single, features = "PTPRC")
-```
-
-
-### Multi-Library Example
-
-When an h5ad file contains multiple Visium libraries, `LoadH5Seurat` returns a list of Seurat objects (one per library):
-
-```{r load_heart_multi, eval=FALSE}
-# Copy multi-library heart data from testdata
-file.copy(
-  system.file("testdata", "vis.heart.h5ad", package = "srtdisk"),
-  "vis.heart.h5ad",
-  overwrite = TRUE
-)
-
-# Convert to h5seurat
-Convert("vis.heart.h5ad", dest = "h5seurat", overwrite = TRUE)
-
-# Load - returns a list of Seurat objects
-heart_list <- LoadH5Seurat("vis.heart.h5seurat")
-
-# Check the structure
-cat("Number of libraries:", length(heart_list), "\n")
-cat("Library names:", names(heart_list), "\n")
-
-# Each library is a separate Seurat object
-heart_list[[1]]
-```
-
-We can plot each library separately:
-
-```{r plot_heart_multi, fig.width=10, fig.height=8, eval=FALSE}
-# Plot PTPRC for the first library
-SpatialFeaturePlot(heart_list[[2]], features = "PTPRC")
-```
-
-
-## Session Info
-
-```{r sessionInfo}
-sessionInfo()
-```
+The call above expects that the AnnData file was exported by Scanpy (or similar) with the `uns['spatial']` hierarchy intact. After loading, standard Seurat spatial workflows—such as `SpatialFeaturePlot`, `Images`, and `GetTissueCoordinates`—operate as if the data originated in Seurat.

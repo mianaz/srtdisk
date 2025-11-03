@@ -129,10 +129,8 @@ as.data.frame.H5Group <- function(x, row.names = NULL, optional = FALSE, ...) {
           values <- as.integer(x = x[[i]][['values']][])
           levels <- x[[i]][['levels']][]
 
-          # Note: h5seurat files already store 1-based indices
-          # - When converting from h5ad: ColToFactor adds 1 (Convert.R:419)
-          # - When writing from Seurat: as.integer(factor) is already 1-based (WriteH5Group.R:699)
-          # Therefore, do NOT increment values here
+          # Convert 0-based indices (h5ad format) to 1-based indices (R format)
+          values <- values + 1L
 
           if (!is.null(x = idx)) {
             values <- values[order(idx)]
@@ -312,68 +310,37 @@ as.matrix.H5Group <- function(x, ...) {
 #' @method as.sparse H5D
 #' @export
 #'
-as.sparse.H5D <- function(x, ...) {
-  # Try to get dimensions
-  dims <- NULL
-
-  if (x$attr_exists(attr_name = 'dims')) {
-    dims <- as.integer(h5attr(x = x, which = 'dims'))
-  } else if (x$attr_exists(attr_name = 'shape')) {
-    dims <- as.integer(h5attr(x = x, which = 'shape'))
+as.sparse.H5D <- function(x) {
+  if (!x$attr_exists(attr_name = 'dims')) {
+    stop("Cannot create a sparse matrix without dimensions", call. = FALSE)
   }
 
-  # Validate dimensions
-  if (is.null(dims) || length(dims) < 2 || any(is.na(dims)) || any(dims <= 0)) {
-    stop("Cannot create a sparse matrix without valid dimensions (got: ",
-         paste(dims, collapse = " x "), ")", call. = FALSE)
-  }
-
-  tryCatch({
-    return(sparseMatrix(
-      i = x$read()[, 1],
-      j = x$read()[, 2],
-      x = x$read()[, 3],
-      dims = rev(x = dims)
-    ))
-  }, error = function(e) {
-    stop("Failed to create sparse matrix: ", conditionMessage(e), call. = FALSE)
-  })
+  return(sparseMatrix(
+    i = x$read()[, 1],
+    j = x$read()[, 2],
+    x = x$read()[, 3],
+    dims = rev(x = h5attr(x = x, which = 'dims'))
+  ))
 }
 
 #' @rdname as.sparse
 #' @method as.sparse H5Group
 #' @export
 #'
-as.sparse.H5Group <- function(x, ...) {
+as.sparse.H5Group <- function(x) {
   if (!all(c('indices', 'indptr', 'data') %in% names(x = x))) {
     stop("Not a sparse matrix", call. = FALSE)
   }
-
-  # Try to get dimensions
-  dims <- NULL
-
-  if (x$attr_exists(attr_name = 'dims')) {
-    dims <- as.integer(h5attr(x = x, which = 'dims'))
-  } else if (x$attr_exists(attr_name = 'shape')) {
-    dims <- as.integer(h5attr(x = x, which = 'shape'))
+  if (!x$attr_exists(attr_name = 'dims')) {
+    stop("Cannot create a sparse matrix without dimensions", call. = FALSE)
   }
 
-  # Validate dimensions
-  if (is.null(dims) || length(dims) < 2 || any(is.na(dims)) || any(dims <= 0)) {
-    stop("Cannot create a sparse matrix without valid dimensions (got: ",
-         paste(dims, collapse = " x "), ")", call. = FALSE)
-  }
-
-  tryCatch({
-    return(sparseMatrix(
-      i = as.integer(x = x[['indices']][] + 1),
-      p = as.integer(x = x[['indptr']][]),
-      x = as.vector(x = x[['data']][]),
-      dims = rev(x = dims)
-    ))
-  }, error = function(e) {
-    stop("Failed to create sparse matrix: ", conditionMessage(e), call. = FALSE)
-  })
+  return(sparseMatrix(
+    i = as.integer(x = x[['indices']][] + 1),
+    p = as.integer(x = x[['indptr']][]),
+    x = as.vector(x = x[['data']][]),
+    dims = rev(x = h5attr(x = x, which = 'dims'))
+  ))
 }
 
 #' Convert an HDF5 dataset to a factor
@@ -470,32 +437,22 @@ IsCompound <- function(x) {
 #'
 #' @keywords internal
 #'
-CompoundToGroup <- function(src, dst, dname, order, index = NULL, name_map_fn = NULL) {
+CompoundToGroup <- function(src, dst, dname, order, index = NULL) {
   dst$create_group(name = dname)
   dgroup <- dst[[dname]]
 
-  cpd_labels <- src$get_type()$get_cpd_labels()
-  for (i in cpd_labels) {
+  for (i in src$get_type()$get_cpd_labels()) {
     values <- src$read(fields = i)
     if (!is.null(x = index)) {
       values <- values[index]
     }
-    # Apply name mapping if function is provided
-    mapped_name <- if (!is.null(name_map_fn)) name_map_fn(i) else i
-    dgroup$create_dataset(name = mapped_name, robj = values)
+    dgroup$create_dataset(name = i, robj = values)
   }
 
   if (src$attr_exists(attr_name = order)) {
-    original_order <- h5attr(x = src, which = order)
-    # Apply name mapping to order if function is provided
-    if (!is.null(name_map_fn)) {
-      mapped_order <- sapply(original_order, name_map_fn)
-    } else {
-      mapped_order <- original_order
-    }
     dgroup$create_attr(
       attr_name = order,
-      robj = mapped_order
+      robj = h5attr(x = src, which = order)
     )
   }
 

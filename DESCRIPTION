@@ -8,23 +8,23 @@ Authors@R: c(
   person(given = 'Paul', family = 'Hoffman', email = 'phoffman@nygenome.org', role = 'aut', comment = c(ORCID = '0000-0002-7693-8957')),
   person(given = 'Rahul', family = 'Satija', email = 'rsatija@nygenome.org', role = 'aut', comment = c(ORCID = '0000-0001-9448-8833'))
   )
-Description: Extended implementation of SeuratDisk for Seurat v5 with enhanced
-  support for HDF5-based single cell file formats. The h5Seurat file format is
-  specifically designed for the storage and analysis of multi-modal single-cell
-  and spatially-resolved expression experiments, for example, from CITE-seq or
-  10X Visium technologies. It holds all molecular information and associated
-  metadata, including (for example) nearest-neighbor graphs, dimensional
-  reduction information, spatial coordinates and image data, and cluster labels.
-  We also support rapid and on-disk conversion between h5Seurat and AnnData
-  objects, with the goal of enhancing interoperability between Seurat and Scanpy.
-  This version includes Seurat v5 Assay5 compatibility and improved spatial data
-  handling.
-URL: https://mianaz.github.io/srtdisk/, https://github.com/mianaz/srtdisk
-BugReports: https://github.com/mianaz/srtdisk/issues
+Description: The h5Seurat file format is specifically designed for the storage
+  and analysis of multi-modal single-cell and spatially-resolved expression
+  experiments, for example, from CITE-seq or 10X Visium technologies. It holds
+  all molecular information and associated metadata, including (for example)
+  nearest-neighbor graphs, dimensional reduction information, spatial
+  coordinates and image data, and cluster labels. We also support rapid and
+  on-disk conversion between h5Seurat, AnnData, and MuData (h5mu) objects, with
+  the goal of enhancing interoperability between Seurat, Scanpy, and Muon.
+URL: https://mojaveazure.github.io/seurat-disk/, https://github.com/mojaveazure/seurat-disk
+BugReports: https://github.com/mojaveazure/seurat-disk/issues
 License: GPL-3 | file LICENSE
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.3.3
+Remotes:
+  satijalab/seurat-data,
+  PMBio/MuDataSeurat
 Depends:
   R (>= 3.6.0)
 Imports:
@@ -35,17 +35,17 @@ Imports:
   methods (>= 3.6.0),
   R6 (>= 2.4.1),
   rlang (>= 0.4.4),
-  Seurat (>= 3.2.0),
-  SeuratObject (>= 4.0.0),
+  Seurat (>= 5.0.0),
+  SeuratObject (>= 5.0.0),
   stats,
   stringi (>= 1.4.6),
   tools,
   utils,
-  withr (>= 2.1.2)
+  withr (>= 2.1.2),
+  MuDataSeurat
 Collate:
     'zzz.R'
     'GetObject.R'
-    'UtilsH5Access.R'
     'AssembleObject.R'
     'AppendData.R'
     'TestObject.R'
@@ -59,19 +59,20 @@ Collate:
     'Transpose.R'
     'Convert.R'
     'H5DAccess.R'
+    'LoadH5AD.R'
+    'LoadH5MU.R'
     'LoadH5Seurat.R'
     'loom.R'
     'loom_bindings.R'
     'LoadLoom.R'
+    'LoadSpatialDemoData.R'
     'ReadH5.R'
-    'UtilsAssayCompat.R'
+    'SaveH5MU.R'
     'WriteH5Group.R'
     'SaveH5Seurat.R'
     'SaveLoom.R'
     'SpatialConversion.R'
     'SpatialFOV.R'
-    'UtilsMatrix.R'
-    'UtilsSparseMatrix.R'
     'V5Compatibility.R'
     'V5LayerSupport.R'
     'h5Seurat_bindings.R'
@@ -79,6 +80,6 @@ Suggests:
     httr,
     knitr,
     rmarkdown,
+    SeuratData,
     testthat (>= 3.0.0)
 VignetteBuilder: knitr
-Config/testthat/edition: 3

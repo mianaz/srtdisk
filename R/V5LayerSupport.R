@@ -31,50 +31,70 @@ NULL
 #' @keywords internal
 #'
 WriteV5Layer <- function(h5_group, layer_name, matrix_data, features = NULL, verbose = FALSE) {
-  if (verbose) message(paste0("Writing V5 layer '", layer_name, "'"))
+  if (verbose) {
+    message("Writing V5 layer '", layer_name, "'")
+  }
 
+  # Create layers group if it doesn't exist
   if (!h5_group$exists("layers")) {
     h5_group$create_group("layers")
   }
   layers_group <- h5_group[["layers"]]
 
+  # Remove existing layer if present
   if (layers_group$exists(layer_name)) {
-    if (verbose) message(paste0("Removing existing layer '", layer_name, "'"))
+    if (verbose) {
+      message("Removing existing layer '", layer_name, "'")
+    }
     layers_group$link_delete(layer_name)
   }
 
+  # Check if matrix is sparse
   is_sparse <- inherits(matrix_data, "sparseMatrix") || inherits(matrix_data, "dgCMatrix")
 
   if (is_sparse) {
+    # Convert to dgCMatrix if needed
     if (!inherits(matrix_data, "dgCMatrix")) {
       matrix_data <- as(matrix_data, "dgCMatrix")
     }
 
+    # Create layer group for sparse matrix
     layer_group <- layers_group$create_group(layer_name)
 
-    # Write sparse matrix in CSC format (V5 standard)
+    # Write sparse matrix components in CSC format (V5 standard)
     layer_group[["data"]] <- matrix_data@x
-    layer_group[["indices"]] <- as.integer(matrix_data@i)
-    layer_group[["indptr"]] <- as.integer(matrix_data@p)
+    layer_group[["indices"]] <- as.integer(matrix_data@i)  # 0-based row indices
+    layer_group[["indptr"]] <- as.integer(matrix_data@p)   # Column pointers
 
+    # Add shape attribute
     layer_group$create_attr("shape", c(nrow(matrix_data), ncol(matrix_data)))
+
+    # Add encoding attributes for anndata compatibility
     layer_group$create_attr("encoding-type", "csc_matrix")
     layer_group$create_attr("encoding-version", "0.1.0")
 
-    if (verbose) message(paste0("  Wrote sparse matrix: ", length(matrix_data@x), " non-zero values, ",
-            "shape ", nrow(matrix_data), " x ", ncol(matrix_data)))
+    if (verbose) {
+      message("  Wrote sparse matrix: ", length(matrix_data@x), " non-zero values, ",
+              "shape ", nrow(matrix_data), " x ", ncol(matrix_data))
+    }
   } else {
+    # Write dense matrix directly
     layers_group[[layer_name]] <- as.matrix(matrix_data)
 
-    if (verbose) message(paste0("  Wrote dense matrix: shape ", nrow(matrix_data), " x ", ncol(matrix_data)))
+    if (verbose) {
+      message("  Wrote dense matrix: shape ", nrow(matrix_data), " x ", ncol(matrix_data))
+    }
   }
 
+  # Store features in meta.data if provided and not already there
   if (!is.null(features) && !h5_group$exists("meta.data")) {
     h5_group$create_group("meta.data")
   }
   if (!is.null(features) && !h5_group[["meta.data"]]$exists("_index")) {
     h5_group[["meta.data"]][["_index"]] <- features
-    if (verbose) message(paste0("  Stored ", length(features), " feature names"))
+    if (verbose) {
+      message("  Stored ", length(features), " feature names")
+    }
   }
 
   return(invisible(NULL))
@@ -95,31 +115,44 @@ WriteV5Layer <- function(h5_group, layer_name, matrix_data, features = NULL, ver
 #' @keywords internal
 #'
 ReadV5Layer <- function(h5_group, layer_name, features = NULL, cells = NULL, verbose = FALSE) {
+  # Check if layers group exists
   if (!h5_group$exists("layers")) {
-    if (verbose) message("No layers group found")
+    if (verbose) {
+      message("No layers group found")
+    }
     return(NULL)
   }
 
   layers_group <- h5_group[["layers"]]
 
+  # Check if specific layer exists
   if (!layers_group$exists(layer_name)) {
-    if (verbose) message(paste0("Layer '", layer_name, "' not found"))
+    if (verbose) {
+      message("Layer '", layer_name, "' not found")
+    }
     return(NULL)
   }
 
   layer_obj <- layers_group[[layer_name]]
 
+  # Check if it's a sparse matrix group or direct dataset
   if (inherits(layer_obj, "H5Group")) {
-    if (verbose) message(paste0("Reading sparse V5 layer '", layer_name, "'"))
+    # Sparse matrix format
+    if (verbose) {
+      message("Reading sparse V5 layer '", layer_name, "'")
+    }
 
+    # Use ReadSparseMatrix function if available
     if (exists("ReadSparseMatrix", envir = asNamespace("SeuratDisk"))) {
       mat <- ReadSparseMatrix(layer_obj, verbose = verbose)
     } else {
+      # Fallback implementation
       if (layer_obj$exists("data") && layer_obj$exists("indices") && layer_obj$exists("indptr")) {
         data_vals <- layer_obj[["data"]][]
-        indices <- layer_obj[["indices"]][] + 1L
+        indices <- layer_obj[["indices"]][] + 1L  # Convert to 1-based
         indptr <- layer_obj[["indptr"]][]
 
+        # Get dimensions
         if (layer_obj$attr_exists("shape")) {
           shape <- h5attr(x = layer_obj, which = "shape")
           nrows <- shape[1]
@@ -129,6 +162,7 @@ ReadV5Layer <- function(h5_group, layer_name, features = NULL, cells = NULL, ver
           nrows <- max(indices)
         }
 
+        # Create sparse matrix
         sparse_mat <- Matrix::sparseMatrix(
           i = indices,
           p = indptr,
@@ -144,26 +178,37 @@ ReadV5Layer <- function(h5_group, layer_name, features = NULL, cells = NULL, ver
       }
     }
   } else {
-    if (verbose) message(paste0("Reading dense V5 layer '", layer_name, "'"))
+    # Dense matrix format
+    if (verbose) {
+      message("Reading dense V5 layer '", layer_name, "'")
+    }
     mat <- as.matrix(layer_obj[,])
   }
 
+  # Validate and adjust dimensions if needed
   if (!is.null(features) && !is.null(cells)) {
     expected_nrows <- length(features)
     expected_ncols <- length(cells)
 
     if (nrow(mat) != expected_nrows || ncol(mat) != expected_ncols) {
+      # Check if transposed
       if (nrow(mat) == expected_ncols && ncol(mat) == expected_nrows) {
-        if (verbose) message("Transposing matrix to match expected dimensions")
+        if (verbose) {
+          message("Transposing matrix to match expected dimensions")
+        }
         mat <- t(mat)
       } else if (nrow(mat) < expected_nrows && ncol(mat) == expected_ncols) {
-        if (verbose) message("Expanding matrix to full feature space")
+        # Expand to full feature space
+        if (verbose) {
+          message("Expanding matrix to full feature space")
+        }
         full_mat <- matrix(0, nrow = expected_nrows, ncol = expected_ncols)
         full_mat[1:nrow(mat), ] <- mat
         mat <- full_mat
       }
     }
 
+    # Set dimension names
     rownames(mat) <- features
     colnames(mat) <- cells
   }
@@ -283,7 +328,8 @@ MigrateV4ToV5 <- function(h5_file, output_file = NULL, verbose = FALSE) {
           mat <- as.matrix(slot_obj[,])
 
           # Convert to sparse if beneficial
-          if (sum(mat == 0) / length(mat) > .SPARSITY_THRESHOLD) {
+          if (sum(mat == 0) / length(mat) > 0.9) {
+            # More than 90% zeros, make it sparse
             mat <- as(mat, "dgCMatrix")
           }
 

@@ -215,8 +215,7 @@ ConvertSeuratSpatialToH5AD <- function(seurat_obj, h5ad_file,
   coords <- GetTissueCoordinates(img_obj)
 
   # Convert to h5ad format (cells x 2 matrix)
-  # AnnData/squidpy convention: [X, Y] = [imagecol, imagerow]
-  spatial_matrix <- as.matrix(coords[, c("imagecol", "imagerow")])
+  spatial_matrix <- as.matrix(coords[, c("imagerow", "imagecol")])
 
   # Create obsm group if not exists
   if (!h5ad$exists("obsm")) {
@@ -289,57 +288,35 @@ ConvertSeuratSpatialToH5AD <- function(seurat_obj, h5ad_file,
 #'
 #' @param coords Spatial coordinates matrix
 #' @param metadata Additional metadata
+#'
 #' @return Technology type string
 #' @keywords internal
 DetectSpatialTechnology <- function(coords, metadata = NULL) {
-  # Check metadata for Visium indicators
+
+  # Check for Visium indicators
   if (!is.null(metadata) && length(metadata) > 0) {
-    has_visium_sf <- any(sapply(metadata, function(x)
-      "tissue_hires_scalef" %in% names(x$scalefactors)))
-    if (has_visium_sf) return("Visium")
+    # Look for Visium-specific scale factors
+    if (any(sapply(metadata, function(x) "tissue_hires_scalef" %in% names(x$scalefactors)))) {
+      return("Visium")
+    }
   }
 
-  # Check coordinate patterns (gridded vs continuous)
-  if (ncol(coords) != 2) return("Generic")
+  # Check coordinate patterns
+  if (ncol(coords) == 2) {
+    # Check if coordinates appear to be on a grid (Visium)
+    x_vals <- unique(coords[, 1])
+    y_vals <- unique(coords[, 2])
 
-  n_unique <- sapply(1:2, function(i) length(unique(coords[, i])))
-  ifelse(all(n_unique < nrow(coords) / 2), "Visium", "SlideSeq")
-}
-
-#' Read HDF5 image dataset with proper dimension handling
-#'
-#' @param dataset HDF5 dataset containing image data
-#' @return Array with proper dimensions (height x width x channels)
-#' @keywords internal
-ReadH5ImageDataset <- function(dataset) {
-  arr <- dataset$read()
-  dims <- dataset$dims
-
-  # Reorder dimensions if needed (HDF5 stores as channels x height x width)
-  if (length(dims) == 3L && dims[1] == 3L) {
-    arr <- aperm(arr, c(3L, 2L, 1L))
-  } else if (length(dims) == 3L && dims[3] == 3L) {
-    arr <- aperm(arr, c(1L, 2L, 3L))
+    if (length(x_vals) < nrow(coords) / 2 && length(y_vals) < nrow(coords) / 2) {
+      # Likely gridded data
+      return("Visium")
+    } else {
+      # Likely continuous coordinates
+      return("SlideSeq")
+    }
   }
 
-  # Normalize to [0, 1]
-  arr[arr < 0] <- 0
-  arr[arr > 1] <- 1
-  storage.mode(arr) <- 'double'
-  arr
-}
-
-#' Sanitize string to valid Seurat image key
-#'
-#' @param x String to sanitize
-#' @return Valid Seurat key ending with underscore
-#' @keywords internal
-SanitizeImageKey <- function(x) {
-  key <- gsub(pattern = '\\.+', replacement = '_', x = make.names(x))
-  key <- gsub(pattern = '_+', replacement = '_', x = key)
-  key <- gsub(pattern = '^_|_$', replacement = '', x = key)
-  if (nchar(key) == 0L) key <- 'spatial'
-  paste0(key, '_')
+  return("Generic")
 }
 
 #' Add Visium spatial data to Seurat object
@@ -380,6 +357,31 @@ AddVisiumSpatialData <- function(seurat_obj, coords, visium_data, h5ad,
     return(seurat_obj)
   }
 
+  read_image_dataset <- function(dataset) {
+    arr <- dataset$read()
+    dims <- dataset$dims
+    if (length(dims) == 3L && dims[1] == 3L) {
+      arr <- aperm(arr, c(3L, 2L, 1L))
+    } else if (length(dims) == 3L && dims[3] == 3L) {
+      arr <- aperm(arr, c(1L, 2L, 3L))
+    }
+    arr[arr < 0] <- 0
+    arr[arr > 1] <- 1
+    storage.mode(arr) <- 'double'
+    arr
+  }
+
+  sanitize_key <- function(x) {
+    key <- gsub(pattern = '\\.+', replacement = '_', x = make.names(x))
+    key <- gsub(pattern = '_+', replacement = '_', x = key)
+    key <- gsub(pattern = '^_', replacement = '', x = key)
+    key <- gsub(pattern = '_$', replacement = '', x = key)
+    if (nchar(key) == 0L) {
+      key <- 'spatial'
+    }
+    paste0(key, '_')
+  }
+
   spatial_uns <- tryCatch(h5ad[["uns/spatial"]], error = function(e) NULL)
   if (is.null(spatial_uns)) {
     return(seurat_obj)
@@ -394,7 +396,7 @@ AddVisiumSpatialData <- function(seurat_obj, coords, visium_data, h5ad,
 
     images_group <- lib_group[["images"]]
     lowres_img <- if (images_group$exists("lowres")) {
-      ReadH5ImageDataset(images_group[["lowres"]])
+      read_image_dataset(images_group[["lowres"]])
     } else {
       NULL
     }
@@ -403,7 +405,7 @@ AddVisiumSpatialData <- function(seurat_obj, coords, visium_data, h5ad,
     }
 
     hires_img <- if (images_group$exists("hires")) {
-      ReadH5ImageDataset(images_group[["hires"]])
+      read_image_dataset(images_group[["hires"]])
     } else {
       NULL
     }
@@ -433,7 +435,7 @@ AddVisiumSpatialData <- function(seurat_obj, coords, visium_data, h5ad,
       stringsAsFactors = FALSE
     )
 
-    image_key <- SanitizeImageKey(lib_id)
+    image_key <- sanitize_key(lib_id)
     fov <- CreateFOV(
       coords = coord_df[, c('imagerow', 'imagecol'), drop = FALSE],
       type = 'centroids',

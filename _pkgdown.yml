@@ -1,116 +1,35 @@
-url: https://mianaz.github.io/srtdisk/
 destination: docs
 
 template:
-  bootstrap: 5
-  bootswatch: flatly
+  params:
+    bootswatch: flatly
 
 development:
   mode: auto
 
-home:
-  strip_header: false
-  links:
-  - text: Browse source code
-    href: https://github.com/mianaz/srtdisk
-
 reference:
-  - title: "Package Information"
-    desc: "Overview and utilities"
+  - title: Package Information
     contents:
       - SeuratDisk
       - scdisk
-      - IsSCDisk
-      - RegisterSCDisk
-
-  - title: "h5Seurat Format"
-    desc: "Working with h5Seurat files - the native HDF5-based R/Seurat format"
+  - title: h5Seurat
     contents:
-      - SaveH5Seurat
-      - LoadH5Seurat
-      - h5Seurat-class
-      - h5Seurat-bindings
+      - matches("h5Seurat")
+      - matches("hSeurat")
+      - -matches("Convert")
+  - title: Interoperability
+    contents:
       - Connect
-      - h5SI
-
-  - title: "AnnData (h5ad) Format"
-    desc: "Converting between Seurat and Python AnnData format"
-    contents:
-      - H5ADToH5Seurat
-      - H5SeuratToH5AD
-
-  - title: "Loom Format"
-    desc: "Loading and saving Loom files for interoperability with loompy"
+      - Convert
+      - matches("SCDisk")
+  - title: Loom File Support
     contents:
       - LoadLoom
       - SaveLoom
       - loom-class
       - loom-bindings
-      - LoomLoading
-      - ValidateLoom
-
-  - title: "Format Conversion"
-    desc: "General conversion utilities between all supported formats"
-    contents:
-      - Convert
-      - FileType
-
-  - title: "Reading & Writing"
-    desc: "Low-level HDF5 reading and writing functions"
+  - title: Utility Functions
     contents:
       - ReadH5
-      - WriteH5Group
-      - BasicWrite
-      - ImageWrite
-      - SparseWrite
-      - WriteAttribute
-      - H5Exists
-      - H5Path
-
-  - title: "Object Operations"
-    desc: "Utilities for working with HDF5 objects and attributes"
-    contents:
-      - GetObject
-      - AssembleObject
-      - AppendData
       - Transpose
-      - PadMatrix
-
-  - title: "Testing & Validation"
-    desc: "Functions for testing and validating HDF5 files and Seurat objects"
-    contents:
-      - TestH5
-      - TestObject
-      - CheckMatrix
-      - IsMatrixEmpty
-
-  - title: "Data Type Utilities"
-    desc: "Utilities for handling data types and format conversions"
-    contents:
-      - GuessDType
-      - IsDType
-      - Scalar
-      - StringType
-      - BoolToInt
-      - Dims
-      - GetClass
-      - GetMargin
-      - GetParent
-      - SparsePointers
-      - ClosestVersion
-      - ChunkPoints
-      - MakeSpace
-
-  - title: "Metadata & Attributes"
-    desc: "Working with HDF5 attributes and metadata"
-    contents:
-      - PadNames
-      - RandomName
-      - Timestamp
-      - UpdateKey
-      - UpdateSlots
-      - FixFeatures
-      - CompoundToGroup
-      - Writeable
-      - WriteMode
-
+      - WriteH5Group

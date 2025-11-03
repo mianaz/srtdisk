@@ -1,7 +1,5 @@
-#' @include UtilsAssayCompat.R
 #' @title Seurat V5 Compatibility Functions
 #' @description Functions for handling Seurat V5 object structures
-#' @name V5Compatibility
 #' @keywords internal
 #'
 NULL
@@ -10,11 +8,80 @@ NULL
 # V5-specific helper functions
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-# Removed: SafeGetAssayData() - duplicate of GetAssayDataCompat() in UtilsAssayCompat.R
-# Use GetAssayDataCompat(object, layer_or_slot) instead
+#' Safely get assay data using layer or slot parameter
+#'
+#' @param object An Assay or Assay5 object
+#' @param layer Layer name (preferred for V5)
+#' @return Matrix data or NULL
+#' @keywords internal
+#'
+SafeGetAssayData <- function(object, layer) {
+  # Try layer parameter first (V5)
+  data <- tryCatch(
+    expr = GetAssayData(object = object, layer = layer),
+    error = function(e) {
+      # Fallback to slot parameter (V3/V4)
+      tryCatch(
+        expr = GetAssayData(object = object, slot = layer),
+        error = function(e2) NULL
+      )
+    }
+  )
+  return(data)
+}
 
-# Removed: SafeGetLayers() - duplicate of GetAssayLayersCompat() in UtilsAssayCompat.R
-# Use GetAssayLayersCompat(object) instead
+#' Get layers from an Assay5 object safely
+#'
+#' @param object An Assay or Assay5 object
+#' @return Character vector of available layers
+#' @keywords internal
+#'
+SafeGetLayers <- function(object) {
+  if (inherits(x = object, what = 'Assay5')) {
+    # V5 Assays use Layers() function
+    layers <- tryCatch(
+      expr = Layers(object = object),
+      error = function(e) {
+        # Fallback to checking slots directly
+        slots <- slotNames(x = object)
+        intersect(x = slots, y = c("counts", "data", "scale.data"))
+      }
+    )
+  } else {
+    # V3/V4 Assays - check for non-empty slots
+    # Use a helper function to handle both layer and slot parameters
+    layers <- c()
+    for (lyr in c("counts", "data", "scale.data")) {
+      data <- SafeGetAssayData(object = object, layer = lyr)
+      if (!is.null(data) && !IsMatrixEmpty(x = data)) {
+        layers <- c(layers, lyr)
+      }
+    }
+  }
+  return(layers)
+}
+
+#' Read HDF5 dataset with V5 compatibility
+#'
+#' @param dataset An H5D dataset object
+#' @param verbose Logical, print messages
+#' @return The data read from the dataset
+#' @keywords internal
+#'
+ReadH5Direct <- function(dataset, verbose = FALSE) {
+  if (length(dataset$dims) >= 2) {
+    # Try comma indexing first (most reliable)
+    tryCatch(
+      expr = dataset[,],
+      error = function(e) {
+        # Fallback to direct read
+        dataset$read()
+      }
+    )
+  } else {
+    dataset$read()
+  }
+}
 
 #' Transfer metadata from V5 h5Seurat to h5ad
 #'
@@ -123,7 +190,7 @@ TransferMetadataV5 <- function(source, dfile, dname = "obs", index = NULL, verbo
         attr_name = attr.name,
         robj = encoding.info[i],
         dtype = GuessDType(x = encoding.info[i]),
-        space = H5S$new(type = "scalar")
+        space = Scalar()
       )
     }
   }
@@ -131,7 +198,103 @@ TransferMetadataV5 <- function(source, dfile, dname = "obs", index = NULL, verbo
   return(invisible(x = NULL))
 }
 
-# Note: WriteH5GroupAssay5 is now defined in WriteH5Group.R to avoid duplication
+#' Write an Assay5 object to an HDF5 group
+#'
+#' @inheritParams WriteH5Group
+#' @return Invisibly returns NULL
+#' @keywords internal
+#'
+WriteH5GroupAssay5 <- function(x, name, hgroup, verbose = TRUE) {
+  xgroup <- hgroup$create_group(name = name)
+
+  # Get available layers
+  layers <- SafeGetLayers(object = x)
+
+  # Write each layer
+  for (layer in layers) {
+    dat <- tryCatch({
+      GetAssayData(object = x, layer = layer)
+    }, error = function(e) {
+      NULL
+    })
+
+    if (!is.null(dat) && !IsMatrixEmpty(x = dat)) {
+      if (verbose) {
+        message("Adding layer '", layer, "' for ", name)
+      }
+      WriteH5Group(x = dat, name = layer, hgroup = xgroup, verbose = verbose)
+
+      # For scale.data, add scaled features
+      if (layer == "scale.data" && !is.null(rownames(x = dat))) {
+        WriteH5Group(
+          x = rownames(x = dat),
+          name = 'scaled.features',
+          hgroup = xgroup,
+          verbose = verbose
+        )
+      }
+    }
+  }
+
+  # Write features
+  features <- rownames(x = x)
+  if (!is.null(features)) {
+    WriteH5Group(
+      x = features,
+      name = 'features',
+      hgroup = xgroup,
+      verbose = verbose
+    )
+  }
+
+  # Write key
+  xgroup$create_attr(
+    attr_name = 'key',
+    robj = Key(object = x),
+    dtype = GuessDType(x = Key(object = x))
+  )
+
+  # Write variable features
+  if (length(x = VariableFeatures(object = x))) {
+    if (verbose) {
+      message("Adding variable features for ", name)
+    }
+    WriteH5Group(
+      x = VariableFeatures(object = x),
+      name = 'variable.features',
+      hgroup = xgroup,
+      verbose = verbose
+    )
+  }
+
+  # Write meta.features
+  if (ncol(x = x[[]])) {
+    if (verbose) {
+      message("Adding feature-level metadata for ", name)
+    }
+    WriteH5Group(
+      x = x[[]],
+      name = 'meta.features',
+      hgroup = xgroup,
+      verbose = verbose
+    )
+  }
+
+  # Mark as Assay5
+  xgroup$create_attr(
+    attr_name = 's4class',
+    robj = 'SeuratObject::Assay5',
+    dtype = GuessDType(x = 'SeuratObject::Assay5')
+  )
+
+  xgroup$create_attr(
+    attr_name = 'assay.version',
+    robj = '5.0.0',
+    dtype = GuessDType(x = '5.0.0')
+  )
+
+  return(invisible(x = NULL))
+}
 
 #' Handle spatial data for V5 objects
 #'
@@ -339,7 +502,7 @@ ValidateSlotMapping <- function(object, verbose = TRUE) {
     for (slot in names(slot.status)) {
       status <- slot.status[[slot]]
       if (status$has.data) {
-        symbol <- if (status$mapped) "[+]" else "[-]"
+        symbol <- if (status$mapped) "✓" else "✗"
         message("  ", symbol, " ", slot,
                 if (!status$mapped) " (unmapped)" else "")
       }

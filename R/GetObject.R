@@ -94,18 +94,16 @@ GetAssays <- function(assays, index) {
     slots.use <- as.character(x = na.omit(object = slots.use[index[[i]]$slots]))
     assays[[i]] <- slots.use
   }
-  # Remove assays that have no matching slots (instead of throwing error)
-  # This allows loading specific slots from only the assays that have them
-  assays <- Filter(function(x) length(x) > 0, assays)
-
-  # Only error if NO assays remain
-  if (length(assays) == 0) {
-    stop(
-      "No assays found with the requested slots/layers",
-      call. = FALSE
-    )
+  for (i in seq_along(along.with = assays)) {
+    # V5 compatibility: Allow assays with any valid layers/slots, not just counts/data
+    if (length(assays[[i]]) == 0) {
+      stop(
+        "Call assays must have at least one layer/slot, missing for ",
+        names(x = assays)[i],
+        call. = FALSE
+      )
+    }
   }
-
   return(assays)
 }
 

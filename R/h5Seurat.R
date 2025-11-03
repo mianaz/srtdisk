@@ -258,29 +258,8 @@ h5Seurat <- R6Class(
           index$no.assay$graphs <- c(index$no.assay$graphs, graph)
         }
       }
-      # Get images (Seurat v5 or SliceImage from v4)
-      has_slice_images <- FALSE
-      if (version < numeric_version(x = spatial.version) && self$exists(name = 'images')) {
-        has_slice_images <- tryCatch({
-          img_names <- names(x = self[['images']])
-          if (length(img_names) > 0) {
-            any(sapply(img_names, function(img_name) {
-              img_group <- self[['images']][[img_name]]
-              if (img_group$attr_exists(attr_name = 's4class')) {
-                s4class <- h5attr(x = img_group, which = 's4class')
-                return(s4class == 'SliceImage')
-              }
-              return(FALSE)
-            }))
-          } else {
-            FALSE
-          }
-        }, error = function(e) {
-          FALSE
-        })
-      }
-
-      if (version >= numeric_version(x = spatial.version) || has_slice_images) {
+      # Get images
+      if (version >= numeric_version(x = spatial.version)) {
         for (image in names(x = self[['images']])) {
           img.group <- self[['images']][[image]]
           if (!img.group$attr_exists(attr_name = 'assay') || !img.group$attr_exists(attr_name = 's4class')) {
@@ -345,7 +324,9 @@ h5Seurat <- R6Class(
         stop(private$errors(type = 'mode'), call. = FALSE)
       }
       version <- ClosestVersion(query = version, targets = private$versions)
-      # Version message is now handled in SaveH5Seurat to show object version
+      if (verbose) {
+        message("Creating h5Seurat file for version ", version)
+      }
       self$set.version(version = version)
       if (numeric_version(x = version) >= numeric_version(x = '3.1.2')) {
         for (group in c('assays', 'commands', 'neighbors', 'graphs', 'misc', 'reductions', 'tools')) {
@@ -374,19 +355,16 @@ h5Seurat <- R6Class(
         # V5 specific initialization
         # Currently, we're keeping the same basic structure but can add
         # V5-specific requirements here as needed
+        if (verbose) {
+          message("Creating h5Seurat file for Seurat V5")
+        }
       }
       return(invisible(x = self))
     },
     validate = function(verbose = TRUE, ...) {
       if (self$mode %in% modes$new) {
-        # Use object version if already set, otherwise use package version
-        if (self$attr_exists(attr_name = 'version')) {
-          version <- h5attr(x = self, which = 'version')
-        } else {
-          version <- packageVersion(pkg = 'Seurat')
-        }
         private$create(
-          version = version,
+          version = packageVersion(pkg = 'Seurat'),
           verbose = verbose
         )
         return(invisible(x = NULL))
@@ -522,7 +500,7 @@ NULL
 #' @method DefaultAssay h5SI
 #' @export
 #'
-DefaultAssay.h5SI <- function(object, ...) {
+DefaultAssay.h5SI <- function(object) {
   return(attr(x = object, which = 'active.assay'))
 }
 

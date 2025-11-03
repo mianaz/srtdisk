@@ -2,9 +2,10 @@
 % Please edit documentation in R/h5Seurat_bindings.R
 \name{h5Seurat-bindings}
 \alias{h5Seurat-bindings}
-\alias{Cells.h5Seurat}
+\alias{safe_read_cells}
 \alias{Cells}
 \alias{DefaultAssay.h5Seurat}
+\alias{DefaultAssay}
 \alias{DefaultAssay<-.h5Seurat}
 \alias{Idents.h5Seurat}
 \alias{Idents}
@@ -18,7 +19,7 @@
 \alias{Stdev.h5Seurat}
 \title{Seurat bindings for h5Seurat files}
 \usage{
-\method{Cells}{h5Seurat}(x, ...)
+\method{Cells}{h5Seurat}(cell_dataset, verbose = FALSE)
 
 \method{DefaultAssay}{h5Seurat}(object, ...)
 
@@ -26,7 +27,7 @@
 
 \method{Idents}{h5Seurat}(object, ...)
 
-\method{IsGlobal}{H5Group}(object, ...)
+\method{IsGlobal}{H5Group}(object)
 
 \method{Key}{H5Group}(object, ...)
 
@@ -34,16 +35,7 @@
 
 \method{Project}{h5Seurat}(object, ...) <- value
 
-\method{Stdev}{h5Seurat}(object, reduction = "pca", ...)
-}
-\arguments{
-\item{x, object}{An h5Seurat file object}
-
-\item{...}{Additional arguments (ignored)}
-
-\item{value}{Value to set}
-
-\item{reduction}{Name of a dimensional reduction}
+\method{Stdev}{h5Seurat}(object, reduction = "pca")
 }
 \description{
 Seurat bindings for h5Seurat files
