@@ -5,8 +5,6 @@
 NULL
 
 #' @docType package
-#' @name srtdisk-package
-#' @rdname srtdisk-package
 #'
 #' @description
 #' Extended implementation of SeuratDisk for Seurat v5. Provides interfaces for

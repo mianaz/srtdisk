@@ -18,18 +18,21 @@ TSFormats(type = c("R", "loom"))
 \item{locale}{Change the timestamp of to the timezone of the locale as
 determined by \code{\link[base]{Sys.timezone}}}
 
-\item{tz}{A character string specifying the time zone to be used for
+\item{tz}{a character string specifying the time zone to be used for
     the conversion.  System-specific (see \code{\link[base]{as.POSIXlt}}), but
     \code{""} is the current time zone, and \code{"GMT"} is UTC.
     Invalid values are most commonly treated as UTC, on some platforms with
     a warning.}
 
-\item{format}{A character string.  The default for the \code{format}
+\item{format}{a character string.  The default for the \code{format}
     methods is
     \code{"\%Y-\%m-\%d \%H:\%M:\%S"} if any element has a time
     component which is not midnight, and \code{"\%Y-\%m-\%d"}
-    otherwise.  If \code{\link[base]{options}("digits.secs")} is set, up to
-    the specified number of digits will be printed for seconds.}
+    otherwise.  In the first case and if \code{digits} is not \code{NULL},
+    i.e., by default when \code{\link[base]{options}("digits.secs")} is set, up to
+    the specified number of digits will be printed for seconds, using
+    \code{"\%OS<n>"} instead of \code{"\%S"} in the format, see also
+    \sQuote{Details}.}
 
 \item{type}{Type of format to get, currently supports the following formats:
 \itemize{

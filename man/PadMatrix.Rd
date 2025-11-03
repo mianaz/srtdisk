@@ -6,7 +6,7 @@
 \alias{PadMatrix,H5Group-method}
 \title{Pad a matrix}
 \usage{
-PadMatrix(src, dest, dname, dims, index)
+PadMatrix()
 
 \S4method{PadMatrix}{H5D}(src, dest, dname, dims, index)
 

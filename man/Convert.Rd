@@ -5,11 +5,27 @@
 \alias{Convert.character}
 \alias{Convert.H5File}
 \alias{Convert.h5Seurat}
-\title{Convert an on-disk single-cell dataset to another format}
+\title{Convert HDF5-based single-cell datasets between formats}
 \usage{
-Convert(source, dest, assay, overwrite = FALSE, verbose = TRUE, ...)
+Convert(
+  source,
+  dest,
+  assay,
+  overwrite = FALSE,
+  verbose = TRUE,
+  standardize = FALSE,
+  ...
+)
 
-\method{Convert}{character}(source, dest, assay, overwrite = FALSE, verbose = TRUE, ...)
+\method{Convert}{character}(
+  source,
+  dest,
+  assay,
+  overwrite = FALSE,
+  verbose = TRUE,
+  standardize = FALSE,
+  ...
+)
 
 \method{Convert}{H5File}(
   source,
@@ -26,33 +42,59 @@ Convert(source, dest, assay, overwrite = FALSE, verbose = TRUE, ...)
   assay = DefaultAssay(object = source),
   overwrite = FALSE,
   verbose = TRUE,
+  standardize = FALSE,
   ...
 )
 }
 \arguments{
-\item{source}{Source dataset}
+\item{source}{Source dataset (filename path or H5File connection)}
 
-\item{dest}{Name of destination dataset}
+\item{dest}{Name/path of destination file. If only a file type is provided
+(e.g., "h5seurat", "h5ad"), the extension is appended to the source filename.
+Supported formats: h5seurat, h5ad}
 
-\item{assay}{Converting from \code{\link{h5Seurat}}: name of assay to write
-out; converting to \code{\link{h5Seurat}}: name to store assay data as}
+\item{assay}{For h5Seurat → other formats: name of assay to convert.
+For other formats → h5Seurat: name to assign to the assay.
+Default is "RNA".}
 
-\item{overwrite}{Overwrite existing \code{dest}}
+\item{overwrite}{Logical; if \code{TRUE}, overwrite an existing destination file.
+Default is \code{FALSE}.}
 
-\item{verbose}{Show progress updates}
+\item{verbose}{Logical; if \code{TRUE} (default), show progress updates}
 
-\item{...}{Arguments passed to other methods}
+\item{standardize}{Logical; if \code{TRUE}, convert Seurat-style metadata column names
+to scanpy/AnnData conventions when converting to h5ad format. For example,
+\code{nCount_RNA} becomes \code{n_counts}, \code{nFeature_RNA} becomes \code{n_genes}.
+Only applicable for h5Seurat → h5ad conversions. Default is \code{FALSE}.}
+
+\item{...}{Arguments passed to specific conversion methods}
 }
 \value{
-If \code{source} is a \code{character}, invisibly returns
-\code{dest}; otherwise, returns an \code{\link[hdf5r]{H5File}}, or
-filetype-specific subclass of \code{H5File} (eg. \code{\link{h5Seurat}}),
-connection to \code{dest}
+If \code{source} is a character path, invisibly returns the destination
+filename. Otherwise returns an H5File object connection to the destination file
+(e.g., \code{\link{h5Seurat}} for h5Seurat format).
 }
 \description{
-HDF5-based single-cell datasets can be converted from one format to another
-using minimal memory. Details about conversion formats implemented are
-provided below
+Rapidly convert between HDF5-based single-cell file formats (h5Seurat, h5ad, Loom)
+using minimal memory. This function enables seamless interoperability between
+R/Seurat and Python/scanpy/squidpy ecosystems. Conversions are performed on-disk
+without loading entire datasets into memory.
+}
+\details{
+\strong{Supported Conversion Pathways:}
+\itemize{
+  \item \code{h5ad ↔ h5Seurat}: Convert between Python AnnData and R Seurat formats
+  \item \code{Loom ↔ h5Seurat}: Convert Loom files (limited support)
+}
+
+\strong{Key Features:}
+\itemize{
+  \item Memory-efficient on-disk conversion (no full dataset loading)
+  \item Preserves expression matrices, metadata, and dimensional reductions
+  \item For Visium/spatial data: reconstructs images with scale factors
+  \item Handles multiple data layers (V5 compatibility)
+  \item Rapid conversion of large datasets (>100K cells)
+}
 }
 \section{AnnData/H5AD to h5Seurat}{
 
@@ -206,3 +248,35 @@ index (\code{source$index()}). It works in the following manner:
 }
 }
 
+\examples{
+\dontrun{
+library(SeuratDisk)
+
+# Convert h5ad (Python/scanpy) to h5Seurat (R/Seurat)
+Convert("python_data.h5ad", dest = "seurat_data.h5seurat")
+
+# Convert Seurat to h5ad format for Python analysis
+Convert("seurat_data.h5seurat", dest = "python_data.h5ad")
+
+# Quick format inference - just specify file extension
+Convert("data.h5ad", dest = "h5seurat")  # Creates data.h5seurat
+
+# Work with file connections for advanced use
+h5_connection <- Convert("data.h5ad", dest = "h5seurat")
+# ... perform additional operations ...
+h5_connection$close_all()
+
+# Visium spatial data example
+# h5ad from scanpy preserves Visium images
+Convert("visium_scanpy.h5ad", dest = "visium_seurat.h5seurat")
+visium <- LoadH5Seurat("visium_seurat.h5seurat")
+SpatialFeaturePlot(visium, features = "GENE_NAME")
+}
+
+}
+\seealso{
+\code{\link{SaveH5Seurat}} to save Seurat objects
+\code{\link{LoadH5Seurat}} to load h5Seurat files
+\code{\link{LoadH5AD}} to directly load h5ad files
+\code{\link{Connect}} to establish file connections
+}

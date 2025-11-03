@@ -369,8 +369,6 @@ LoadH5Seurat.h5Seurat <- function(
 #' Idents<- Idents Project<- Project
 #' AddMetaData
 #'
-#' @aliases as.Seurat
-#'
 #' @rdname LoadH5Seurat
 #' @method as.Seurat h5Seurat
 #' @export

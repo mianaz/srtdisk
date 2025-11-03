@@ -8,7 +8,7 @@
 \alias{as.loom.default}
 \alias{as.loom.H5File}
 \alias{as.loom.Seurat}
-\title{Save a \code{\link[Seurat]{Seurat}} object to a loom file}
+\title{Save a Seurat object to a Loom file}
 \usage{
 SaveLoom(object, filename, overwrite = FALSE, verbose = TRUE, ...)
 
@@ -37,21 +37,71 @@ as.loom(x, ...)
 )
 }
 \arguments{
-\item{object, x}{An object}
+\item{object}{A Seurat object to save}
 
-\item{filename}{Name of file to save the object to}
+\item{filename}{Name of file to save the object to. If not provided, defaults to
+\code{<ProjectName>.loom}. The .loom extension is added automatically if not present.}
 
-\item{overwrite}{Overwrite \code{filename} if present}
+\item{overwrite}{Logical; if \code{TRUE}, overwrite an existing file. Default is \code{FALSE}.}
 
-\item{verbose}{Show progress updates}
+\item{verbose}{Logical; if \code{TRUE} (default), show progress updates}
 
 \item{...}{Arguments passed to other methods}
 }
 \value{
-\code{SaveLoom}: Invisibly returns \code{filename}
+\code{SaveLoom}: Invisibly returns the filename of the saved file
 
 \code{as.loom}: A \code{\link{loom}} object
 }
 \description{
-Save a \code{\link[Seurat]{Seurat}} object to a loom file
+Export a Seurat object to Loom format (HDF5-based file format optimized for storing
+annotated matrices). Loom files are compatible with the loompy Python package and
+other tools in the bioinformatics community. This format is useful for sharing data
+with Python-based analysis workflows or archiving analysis results.
+}
+\details{
+The Loom format organizes data as follows:
+\itemize{
+  \item \code{/matrix}: Main expression matrix (features × cells)
+  \item \code{/row_attrs}: Feature/gene-level annotations
+  \item \code{/col_attrs}: Cell/sample-level metadata (cell names, cluster assignments, etc.)
+  \item \code{/layers}: Additional expression layers if present
+}
+
+When saving a Seurat object:
+\itemize{
+  \item Default assay data becomes the main matrix
+  \item Cell metadata and feature annotations are preserved
+  \item Dimensional reductions are stored in col_attrs
+  \item The SEURAT_ASSAY attribute stores the assay name for roundtrip loading
+}
+}
+\examples{
+\dontrun{
+library(Seurat)
+library(SeuratDisk)
+
+# Create a Seurat object (or use an existing one)
+seurat_obj <- CreateSeuratObject(counts = pbmc_small$RNA@counts)
+
+# Save to Loom format
+SaveLoom(seurat_obj, filename = "my_data.loom")
+
+# Save with overwrite if needed
+SaveLoom(seurat_obj, filename = "my_data.loom", overwrite = TRUE)
+
+# Load it back
+loaded_obj <- LoadLoom("my_data.loom")
+
+# For sharing with Python tools
+SaveLoom(seurat_obj, filename = "data_for_python.loom")
+# Use in Python with: adata = loompy.connect("data_for_python.loom")
+}
+
+}
+\seealso{
+\code{\link{LoadLoom}} to load Loom files back as Seurat objects
+\code{\link{SaveH5Seurat}} to save in h5Seurat format
+\code{\link{Convert}} for converting between formats
+\href{http://linnarssonlab.org/loompy/}{Loom documentation}
 }

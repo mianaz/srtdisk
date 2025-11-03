@@ -1,9 +1,9 @@
 library(srtdisk)
 
 test_that("pbmc_small roundtrip through h5Seurat succeeds", {
-  skip_if_not_installed("Seurat")
+  skip_if_not_installed("SeuratObject")
 
-  data("pbmc_small", package = "Seurat")
+  data("pbmc_small", package = "SeuratObject")
   expect_true(exists("pbmc_small"), info = "pbmc_small dataset failed to load")
 
   temp_h5seurat <- tempfile(fileext = ".h5seurat")

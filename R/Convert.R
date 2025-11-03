@@ -3634,7 +3634,7 @@ H5SeuratToH5AD <- function(
 #' @export
 #'
 readH5AD_obs <- function(file) {
-  suppressWarnings(expr = hfile <- SeuratDisk:: Connect(filename = file, force = TRUE))
+  suppressWarnings(expr = hfile <- Connect(filename = file, force = TRUE))
   hfile_obs <- hfile[['obs']]
   obs_groups <- setdiff(names(hfile_obs), c('__categories', '_index'))
   matrix <- as.data.frame(
@@ -3683,7 +3683,7 @@ readH5AD_obs <- function(file) {
 #' @export
 #' 
 readH5AD_obsm <-  function(file) {
-  hfile <- SeuratDisk:: Connect(filename = file, force = TRUE)
+  hfile <- Connect(filename = file, force = TRUE)
   hfile_obsm <- hfile[['obsm']]
   if (length(names(hfile_obsm)) == 0) {
     message('No obsm if found in this object')

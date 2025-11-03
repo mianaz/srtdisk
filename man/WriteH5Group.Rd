@@ -4,7 +4,7 @@
 \alias{WriteH5Group}
 \alias{WriteH5Group,ANY-method}
 \alias{WriteH5Group,array-method}
-\alias{WriteH5Group,Assay-method}
+\alias{WriteH5Group,Assay5-method}
 \alias{WriteH5Group,data.frame-method}
 \alias{WriteH5Group,dgCMatrix-method}
 \alias{WriteH5Group,DimReduc-method}
@@ -16,13 +16,13 @@
 \alias{WriteH5Group,SeuratCommand-method}
 \title{Write data to an HDF5 group}
 \usage{
-WriteH5Group(x, name, hgroup, verbose = TRUE)
+WriteH5Group()
 
 \S4method{WriteH5Group}{ANY}(x, name, hgroup, verbose = TRUE)
 
 \S4method{WriteH5Group}{array}(x, name, hgroup, verbose = TRUE)
 
-\S4method{WriteH5Group}{Assay}(x, name, hgroup, verbose = TRUE)
+\S4method{WriteH5Group}{Assay5}(x, name, hgroup, verbose = TRUE)
 
 \S4method{WriteH5Group}{data.frame}(x, name, hgroup, verbose = TRUE)
 

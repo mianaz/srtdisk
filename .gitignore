@@ -41,5 +41,10 @@ tests/strategy_comparison_output.txt
 # Ignore pkgdown site
 docs/
 
-# Ignore pkgdown site
-docs/
+# Ignore R package build artifacts
+*.tar.gz
+*.Rcheck/
+.Rcheck/
+
+# Ignore development directory
+devs/

@@ -10,7 +10,7 @@ NULL
 #' Append data from an h5Seurat file to a preexisting
 #' \code{\link[Seurat]{Seurat}} object
 #'
-#' @inheritParams LoadH5Seurat
+#' @param file Name of an h5Seurat file path (character) or connected h5Seurat file
 #' @param object A \code{\link[Seurat]{Seurat}} object to append data to
 #' @param assays One of:
 #' \itemize{
@@ -22,6 +22,12 @@ NULL
 #'   \item \code{NULL} for all assays
 #'   \item \code{FALSE} for no assays
 #' }
+#' @param reductions Which dimensional reductions to load; pass \code{NULL} for all,
+#'   a character vector for specific reductions, or \code{FALSE} for no reductions
+#' @param graphs Which graphs to load; pass \code{NULL} for all,
+#'   a character vector for specific graphs, or \code{FALSE} for no graphs
+#' @param images Which images to load; pass \code{NULL} for all,
+#'   a character vector for specific images, or \code{FALSE} for no images
 #' @param extras Extra information to load; supports any combination of the
 #' following values:
 #' \describe{
@@ -30,6 +36,8 @@ NULL
 #' }
 #' @param overwrite Overwrite existing data in \code{object} with data from
 #' \code{file}
+#' @param verbose Display progress messages
+#' @param ... Additional arguments passed to methods
 #'
 #' @return \code{object} with the extra data requested
 #'

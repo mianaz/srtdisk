@@ -25,48 +25,45 @@ GetNeighbors(neighbors, index)
 \arguments{
 \item{assays}{One of:
 \itemize{
- \item A character vector with names of assays
- \item A character vector with one or more of \code{counts}, \code{data},
- \code{scale.data} describing which slots of \strong{all assays} to load
- \item A named list where each entry is either the name of an assay or a vector
- describing which slots (described above) to take from which assay
- \item \code{NULL} for all assays
+ \item \code{NULL} (default): Load all assays
+ \item A character vector with names of assays to load (e.g., \code{c("RNA", "ADT")})
+ \item A character vector specifying which data layers to load for all assays:
+   \code{c("counts", "data")} loads only the counts and data layers, skipping scale.data
+ \item A named list for fine-grained control, e.g., \code{list(RNA = "data", ADT = c("data", "scale.data"))}
 }}
 
 \item{index}{An h5Seurat index (\code{\link{h5SI}}) object}
 
 \item{reductions}{One of:
 \itemize{
- \item A character vector with names of reductions
- \item \code{NULL} for all reductions
- \item \code{NA} for \link[Seurat:IsGlobal]{global} reductions
- \item \code{FALSE} for no reductions
+ \item \code{NULL} (default): Load all reductions (PCA, UMAP, etc.)
+ \item A character vector with names of specific reductions (e.g., \code{c("pca", "umap")})
+ \item \code{NA}: Load only global (assay-independent) reductions
+ \item \code{FALSE}: Skip loading all reductions
 }
-\strong{Note}: Only reductions associated with an assay loaded in
-\code{assays} or marked as \link[Seurat:IsGlobal]{global} will be loaded}
+\strong{Note}: Only reductions associated with a loaded assay or marked as global will be loaded.}
 
 \item{graphs}{One of:
 \itemize{
- \item A character vector with names of graphs
- \item \code{NULL} for all graphs
- \item \code{FALSE} for no graphs
+ \item \code{NULL} (default): Load all graphs
+ \item A character vector with specific graph names (e.g., \code{c("RNA_snn", "ADT_snn")})
+ \item \code{FALSE}: Skip loading graphs
 }
-\strong{Note}: Only graphs associated with an assay loaded in \code{assays}
-will be loaded}
+\strong{Note}: Only graphs associated with loaded assays will be available.}
 
 \item{images}{One of:
 \itemize{
- \item A character vector with names of images
- \item \code{NULL} for all images
- \item \code{NA} for \link[Seurat:IsGlobal]{global} images
- \item \code{FALSE} for no images
+ \item \code{NULL} (default): Load all images (for spatial experiments)
+ \item A character vector with image names
+ \item \code{NA}: Load only global images
+ \item \code{FALSE}: Skip images
 }}
 
 \item{neighbors}{One of:
 \itemize{
- \item A character vector with the names of neighbors
- \item \code{NULL} for all neighbors
- \item \code{FALSE} for no neighbors
+ \item \code{NULL} (default): Load all neighbor information
+ \item A character vector with neighbor names
+ \item \code{FALSE}: Skip neighbors
 }}
 }
 \value{

@@ -37,7 +37,7 @@ AttrExists <- function(x, name) {
 #' sparse matrices, if no dimensions are found in either the \dQuote{dims} or
 #' \dQuote{shape} attribute, returns \code{c(NA_integer_, NA_integer_)}
 #'
-#' @seealso \code{\href{../doc/h5Seurat-spec.html}{vignette("h5Seurat-spec")}}
+#' @seealso \href{../doc/h5Seurat-spec.html}{vignette("h5Seurat-spec")}
 #'
 #' @keywords internal
 #'

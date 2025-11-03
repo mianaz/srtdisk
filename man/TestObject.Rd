@@ -9,15 +9,15 @@
 \alias{IsMatrix}
 \title{Test an object's class}
 \usage{
-IsDataFrame(x)
+IsDataFrame()
 
-IsFactor(x)
+IsFactor()
 
-IsList(x)
+IsList()
 
-IsLogical(x)
+IsLogical()
 
-IsMatrix(x)
+IsMatrix()
 }
 \description{
 Generic functions for testing if an object satisfies class membership

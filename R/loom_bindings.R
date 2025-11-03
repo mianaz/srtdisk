@@ -4,6 +4,9 @@ NULL
 
 #' Seurat binding for loom files
 #'
+#' @param x,object A loom file object
+#' @param ... Additional arguments (ignored)
+#'
 #' @importFrom hdf5r h5attr list.groups
 #'
 #' @name loom-bindings
@@ -13,8 +16,6 @@ NULL
 
 #' @importFrom Seurat DefaultAssay
 #' @inheritParams Seurat::DefaultAssay
-#'
-#' @aliases DefaultAssay
 #'
 #' @rdname loom-bindings
 #' @method DefaultAssay loom

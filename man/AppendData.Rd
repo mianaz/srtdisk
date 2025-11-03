@@ -61,6 +61,8 @@ AppendData(
 )
 }
 \arguments{
+\item{file}{Name of an h5Seurat file path (character) or connected h5Seurat file}
+
 \item{object}{A \code{\link[Seurat]{Seurat}} object to append data to}
 
 \item{assays}{One of:
@@ -74,32 +76,14 @@ AppendData(
   \item \code{FALSE} for no assays
 }}
 
-\item{reductions}{One of:
-\itemize{
- \item A character vector with names of reductions
- \item \code{NULL} for all reductions
- \item \code{NA} for \link[Seurat:IsGlobal]{global} reductions
- \item \code{FALSE} for no reductions
-}
-\strong{Note}: Only reductions associated with an assay loaded in
-\code{assays} or marked as \link[Seurat:IsGlobal]{global} will be loaded}
+\item{reductions}{Which dimensional reductions to load; pass \code{NULL} for all,
+a character vector for specific reductions, or \code{FALSE} for no reductions}
 
-\item{graphs}{One of:
-\itemize{
- \item A character vector with names of graphs
- \item \code{NULL} for all graphs
- \item \code{FALSE} for no graphs
-}
-\strong{Note}: Only graphs associated with an assay loaded in \code{assays}
-will be loaded}
+\item{graphs}{Which graphs to load; pass \code{NULL} for all,
+a character vector for specific graphs, or \code{FALSE} for no graphs}
 
-\item{images}{One of:
-\itemize{
- \item A character vector with names of images
- \item \code{NULL} for all images
- \item \code{NA} for \link[Seurat:IsGlobal]{global} images
- \item \code{FALSE} for no images
-}}
+\item{images}{Which images to load; pass \code{NULL} for all,
+a character vector for specific images, or \code{FALSE} for no images}
 
 \item{extras}{Extra information to load; supports any combination of the
 following values:
@@ -111,9 +95,9 @@ following values:
 \item{overwrite}{Overwrite existing data in \code{object} with data from
 \code{file}}
 
-\item{verbose}{Show progress updates}
+\item{verbose}{Display progress messages}
 
-\item{...}{Arguments passed to other methods}
+\item{...}{Additional arguments passed to methods}
 }
 \value{
 \code{object} with the extra data requested

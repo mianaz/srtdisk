@@ -17,7 +17,7 @@ A class for connections to loom files
 \code{\link[hdf5r]{H5File}}
 }
 \section{Super classes}{
-\code{\link[hdf5r:H5RefClass]{hdf5r::H5RefClass}} -> \code{\link[hdf5r:H5File]{hdf5r::H5File}} -> \code{\link[SeuratDisk:scdisk]{SeuratDisk::scdisk}} -> \code{loom}
+\code{\link[hdf5r:H5RefClass]{hdf5r::H5RefClass}} -> \code{\link[hdf5r:H5File]{hdf5r::H5File}} -> \code{\link[srtdisk:scdisk]{srtdisk::scdisk}} -> \code{loom}
 }
 \section{Methods}{
 \subsection{Public methods}{
@@ -101,9 +101,9 @@ A class for connections to loom files
 <li><span class="pkg-link" data-pkg="hdf5r" data-topic="H5File" data-id="path_valid"><a href='../../hdf5r/html/H5File.html#method-H5File-path_valid'><code>hdf5r::H5File$path_valid()</code></a></span></li>
 <li><span class="pkg-link" data-pkg="hdf5r" data-topic="H5File" data-id="print"><a href='../../hdf5r/html/H5File.html#method-H5File-print'><code>hdf5r::H5File$print()</code></a></span></li>
 <li><span class="pkg-link" data-pkg="hdf5r" data-topic="H5File" data-id="unmount"><a href='../../hdf5r/html/H5File.html#method-H5File-unmount'><code>hdf5r::H5File$unmount()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="SeuratDisk" data-topic="scdisk" data-id="chunk.points"><a href='../../SeuratDisk/html/scdisk.html#method-scdisk-chunk.points'><code>SeuratDisk::scdisk$chunk.points()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="SeuratDisk" data-topic="scdisk" data-id="finalizer"><a href='../../SeuratDisk/html/scdisk.html#method-scdisk-finalizer'><code>SeuratDisk::scdisk$finalizer()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="SeuratDisk" data-topic="scdisk" data-id="initialize"><a href='../../SeuratDisk/html/scdisk.html#method-scdisk-initialize'><code>SeuratDisk::scdisk$initialize()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="srtdisk" data-topic="scdisk" data-id="chunk.points"><a href='../../srtdisk/html/scdisk.html#method-scdisk-chunk.points'><code>srtdisk::scdisk$chunk.points()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="srtdisk" data-topic="scdisk" data-id="finalizer"><a href='../../srtdisk/html/scdisk.html#method-scdisk-finalizer'><code>srtdisk::scdisk$finalizer()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="srtdisk" data-topic="scdisk" data-id="initialize"><a href='../../srtdisk/html/scdisk.html#method-scdisk-initialize'><code>srtdisk::scdisk$initialize()</code></a></span></li>
 </ul>
 </details>
 }}

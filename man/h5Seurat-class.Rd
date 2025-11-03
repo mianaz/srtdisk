@@ -17,7 +17,7 @@ A class for connections to h5Seurat files
 \code{\link[hdf5r]{H5File}}
 }
 \section{Super classes}{
-\code{\link[hdf5r:H5RefClass]{hdf5r::H5RefClass}} -> \code{\link[hdf5r:H5File]{hdf5r::H5File}} -> \code{\link[SeuratDisk:scdisk]{SeuratDisk::scdisk}} -> \code{h5Seurat}
+\code{\link[hdf5r:H5RefClass]{hdf5r::H5RefClass}} -> \code{\link[hdf5r:H5File]{hdf5r::H5File}} -> \code{\link[srtdisk:scdisk]{srtdisk::scdisk}} -> \code{h5Seurat}
 }
 \section{Methods}{
 \subsection{Public methods}{
@@ -25,6 +25,8 @@ A class for connections to h5Seurat files
 \item \href{#method-h5Seurat-index}{\code{h5Seurat$index()}}
 \item \href{#method-h5Seurat-set.version}{\code{h5Seurat$set.version()}}
 \item \href{#method-h5Seurat-version}{\code{h5Seurat$version()}}
+\item \href{#method-h5Seurat-detect.version}{\code{h5Seurat$detect.version()}}
+\item \href{#method-h5Seurat-is.v5}{\code{h5Seurat$is.v5()}}
 }
 }
 \if{html}{\out{
@@ -98,11 +100,11 @@ A class for connections to h5Seurat files
 <li><span class="pkg-link" data-pkg="hdf5r" data-topic="H5File" data-id="path_valid"><a href='../../hdf5r/html/H5File.html#method-H5File-path_valid'><code>hdf5r::H5File$path_valid()</code></a></span></li>
 <li><span class="pkg-link" data-pkg="hdf5r" data-topic="H5File" data-id="print"><a href='../../hdf5r/html/H5File.html#method-H5File-print'><code>hdf5r::H5File$print()</code></a></span></li>
 <li><span class="pkg-link" data-pkg="hdf5r" data-topic="H5File" data-id="unmount"><a href='../../hdf5r/html/H5File.html#method-H5File-unmount'><code>hdf5r::H5File$unmount()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="SeuratDisk" data-topic="scdisk" data-id="chunk.points"><a href='../../SeuratDisk/html/scdisk.html#method-scdisk-chunk.points'><code>SeuratDisk::scdisk$chunk.points()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="SeuratDisk" data-topic="scdisk" data-id="finalizer"><a href='../../SeuratDisk/html/scdisk.html#method-scdisk-finalizer'><code>SeuratDisk::scdisk$finalizer()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="SeuratDisk" data-topic="scdisk" data-id="initialize"><a href='../../SeuratDisk/html/scdisk.html#method-scdisk-initialize'><code>SeuratDisk::scdisk$initialize()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="SeuratDisk" data-topic="scdisk" data-id="last.modified"><a href='../../SeuratDisk/html/scdisk.html#method-scdisk-last.modified'><code>SeuratDisk::scdisk$last.modified()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="SeuratDisk" data-topic="scdisk" data-id="timestamp"><a href='../../SeuratDisk/html/scdisk.html#method-scdisk-timestamp'><code>SeuratDisk::scdisk$timestamp()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="srtdisk" data-topic="scdisk" data-id="chunk.points"><a href='../../srtdisk/html/scdisk.html#method-scdisk-chunk.points'><code>srtdisk::scdisk$chunk.points()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="srtdisk" data-topic="scdisk" data-id="finalizer"><a href='../../srtdisk/html/scdisk.html#method-scdisk-finalizer'><code>srtdisk::scdisk$finalizer()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="srtdisk" data-topic="scdisk" data-id="initialize"><a href='../../srtdisk/html/scdisk.html#method-scdisk-initialize'><code>srtdisk::scdisk$initialize()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="srtdisk" data-topic="scdisk" data-id="last.modified"><a href='../../srtdisk/html/scdisk.html#method-scdisk-last.modified'><code>srtdisk::scdisk$last.modified()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="srtdisk" data-topic="scdisk" data-id="timestamp"><a href='../../srtdisk/html/scdisk.html#method-scdisk-timestamp'><code>srtdisk::scdisk$timestamp()</code></a></span></li>
 </ul>
 </details>
 }}
@@ -143,5 +145,31 @@ Get the version attribute
 \if{html}{\out{<div class="r">}}\preformatted{h5Seurat$version()}\if{html}{\out{</div>}}
 }
 
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-h5Seurat-detect.version"></a>}}
+\if{latex}{\out{\hypertarget{method-h5Seurat-detect.version}{}}}
+\subsection{Method \code{detect.version()}}{
+Detect the Seurat version of the stored object
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{h5Seurat$detect.version()}\if{html}{\out{</div>}}
+}
+
+\subsection{Returns}{
+A string indicating the detected version ("V3", "V4", or "V5")
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-h5Seurat-is.v5"></a>}}
+\if{latex}{\out{\hypertarget{method-h5Seurat-is.v5}{}}}
+\subsection{Method \code{is.v5()}}{
+Check if this is a V5 format file
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{h5Seurat$is.v5()}\if{html}{\out{</div>}}
+}
+
+\subsection{Returns}{
+Logical indicating if file uses V5 format
+}
 }
 }
