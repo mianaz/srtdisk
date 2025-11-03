@@ -1,8 +1,0 @@
-pandoc: 3.8.2
-pkgdown: 2.1.3
-pkgdown_sha: ~
-articles:
-  convert-anndata: convert-anndata.html
-  h5Seurat-load: h5Seurat-load.html
-  h5Seurat-spec: h5Seurat-spec.html
-last_built: 2025-10-17T13:04Z
