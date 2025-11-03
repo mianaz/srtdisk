@@ -28,9 +28,11 @@ determined by \code{\link[base]{Sys.timezone}}}
     methods is
     \code{"\%Y-\%m-\%d \%H:\%M:\%S"} if any element has a time
     component which is not midnight, and \code{"\%Y-\%m-\%d"}
-    otherwise.  If \code{digits} is not \code{NULL}, i.e., by default when
-    \code{\link[base]{options}("digits.secs")} is set, up to
-    the specified number of digits will be printed for seconds.}
+    otherwise.  In the first case and if \code{digits} is not \code{NULL},
+    i.e., by default when \code{\link[base]{options}("digits.secs")} is set, up to
+    the specified number of digits will be printed for seconds, using
+    \code{"\%OS<n>"} instead of \code{"\%S"} in the format, see also
+    \sQuote{Details}.}
 
 \item{type}{Type of format to get, currently supports the following formats:
 \itemize{

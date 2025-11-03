@@ -9,30 +9,20 @@ H5SeuratToH5AD(
   dest,
   assay = DefaultAssay(object = source),
   overwrite = FALSE,
-  verbose = TRUE,
-  standardize = FALSE
+  verbose = TRUE
 )
 }
 \arguments{
-\item{source}{Source dataset (filename path or H5File connection)}
+\item{source}{Source dataset}
 
-\item{dest}{Name/path of destination file. If only a file type is provided
-(e.g., "h5seurat", "h5ad"), the extension is appended to the source filename.
-Supported formats: h5seurat, h5ad}
+\item{dest}{Name of destination dataset}
 
-\item{assay}{For h5Seurat → other formats: name of assay to convert.
-For other formats → h5Seurat: name to assign to the assay.
-Default is "RNA".}
+\item{assay}{Converting from \code{\link{h5Seurat}}: name of assay to write
+out; converting to \code{\link{h5Seurat}}: name to store assay data as}
 
-\item{overwrite}{Logical; if \code{TRUE}, overwrite an existing destination file.
-Default is \code{FALSE}.}
+\item{overwrite}{Overwrite existing \code{dest}}
 
-\item{verbose}{Logical; if \code{TRUE} (default), show progress updates}
-
-\item{standardize}{Logical; if \code{TRUE}, convert Seurat-style metadata column names
-to scanpy/AnnData conventions when converting to h5ad format. For example,
-\code{nCount_RNA} becomes \code{n_counts}, \code{nFeature_RNA} becomes \code{n_genes}.
-Only applicable for h5Seurat → h5ad conversions. Default is \code{FALSE}.}
+\item{verbose}{Show progress updates}
 }
 \value{
 Returns a handle to \code{dest} as an \code{\link[hdf5r]{H5File}}

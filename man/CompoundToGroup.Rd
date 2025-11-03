@@ -4,9 +4,9 @@
 \alias{CompoundToGroup}
 \title{Convert an HDF5 compound dataset to a group}
 \usage{
-CompoundToGroup(src, dst, dname, order, index = NULL, name_map_fn = NULL)
+CompoundToGroup(src, dst, dname, order, index = NULL)
 
-CompoundToGroup(src, dst, dname, order, index = NULL, name_map_fn = NULL)
+CompoundToGroup(src, dst, dname, order, index = NULL)
 }
 \arguments{
 \item{src}{Source compound dataset}

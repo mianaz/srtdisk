@@ -6,7 +6,7 @@
 \alias{print.h5SI}
 \title{Tools for handling h5Seurat indexes}
 \usage{
-\method{DefaultAssay}{h5SI}(object, ...)
+\method{DefaultAssay}{h5SI}(object)
 
 \method{print}{h5SI}(x, ...)
 }

@@ -6,7 +6,8 @@
 \alias{LoadH5Seurat.H5File}
 \alias{LoadH5Seurat.h5Seurat}
 \alias{as.Seurat.h5Seurat}
-\title{Load a Seurat object from an h5Seurat file}
+\alias{as.Seurat}
+\title{Load a saved \code{Seurat} object from an h5Seurat file}
 \usage{
 LoadH5Seurat(file, ...)
 
@@ -71,116 +72,69 @@ LoadH5Seurat(file, ...)
 )
 }
 \arguments{
-\item{file, x}{Name of an h5Seurat file path (character) or connected h5Seurat file to load}
+\item{file, x}{Name of h5Seurat or connected h5Seurat file to load}
 
 \item{...}{Arguments passed to other methods}
 
 \item{assays}{One of:
 \itemize{
- \item \code{NULL} (default): Load all assays
- \item A character vector with names of assays to load (e.g., \code{c("RNA", "ADT")})
- \item A character vector specifying which data layers to load for all assays:
-   \code{c("counts", "data")} loads only the counts and data layers, skipping scale.data
- \item A named list for fine-grained control, e.g., \code{list(RNA = "data", ADT = c("data", "scale.data"))}
+ \item A character vector with names of assays
+ \item A character vector with one or more of \code{counts}, \code{data},
+ \code{scale.data} describing which slots of \strong{all assays} to load
+ \item A named list where each entry is either the name of an assay or a vector
+ describing which slots (described above) to take from which assay
+ \item \code{NULL} for all assays
 }}
 
 \item{reductions}{One of:
 \itemize{
- \item \code{NULL} (default): Load all reductions (PCA, UMAP, etc.)
- \item A character vector with names of specific reductions (e.g., \code{c("pca", "umap")})
- \item \code{NA}: Load only global (assay-independent) reductions
- \item \code{FALSE}: Skip loading all reductions
+ \item A character vector with names of reductions
+ \item \code{NULL} for all reductions
+ \item \code{NA} for \link[Seurat:IsGlobal]{global} reductions
+ \item \code{FALSE} for no reductions
 }
-\strong{Note}: Only reductions associated with a loaded assay or marked as global will be loaded.}
+\strong{Note}: Only reductions associated with an assay loaded in
+\code{assays} or marked as \link[Seurat:IsGlobal]{global} will be loaded}
 
 \item{graphs}{One of:
 \itemize{
- \item \code{NULL} (default): Load all graphs
- \item A character vector with specific graph names (e.g., \code{c("RNA_snn", "ADT_snn")})
- \item \code{FALSE}: Skip loading graphs
+ \item A character vector with names of graphs
+ \item \code{NULL} for all graphs
+ \item \code{FALSE} for no graphs
 }
-\strong{Note}: Only graphs associated with loaded assays will be available.}
+\strong{Note}: Only graphs associated with an assay loaded in \code{assays}
+will be loaded}
 
 \item{neighbors}{One of:
 \itemize{
- \item \code{NULL} (default): Load all neighbor information
- \item A character vector with neighbor names
- \item \code{FALSE}: Skip neighbors
+ \item A character vector with the names of neighbors
+ \item \code{NULL} for all neighbors
+ \item \code{FALSE} for no neighbors
 }}
 
 \item{images}{One of:
 \itemize{
- \item \code{NULL} (default): Load all images (for spatial experiments)
- \item A character vector with image names
- \item \code{NA}: Load only global images
- \item \code{FALSE}: Skip images
+ \item A character vector with names of images
+ \item \code{NULL} for all images
+ \item \code{NA} for \link[Seurat:IsGlobal]{global} images
+ \item \code{FALSE} for no images
 }}
 
-\item{meta.data}{Logical; if \code{TRUE} (default), load cell metadata}
+\item{meta.data}{Load object metadata}
 
-\item{commands}{Logical; if \code{TRUE} (default), load command history.
-Commands are only loaded if their associated assays are loaded.}
+\item{commands}{Load command information \cr
+\strong{Note}: only commands associated with an assay loaded in
+\code{assays} will be loaded}
 
-\item{misc}{Logical; if \code{TRUE} (default when all assays loaded), load miscellaneous data}
+\item{misc}{Load miscellaneous data}
 
-\item{tools}{Logical; if \code{TRUE} (default when all assays loaded), load tool-specific information}
+\item{tools}{Load tool-specific information}
 
-\item{verbose}{Logical; if \code{TRUE} (default), show progress messages}
+\item{verbose}{Show progress updates}
 }
 \value{
-A \code{Seurat} object containing the requested components
+A \code{Seurat} object with the data requested
 }
 \description{
-Load a previously saved Seurat object from an h5Seurat file. This function supports
-flexible loading options, allowing you to load only the components you need (e.g.,
-specific assays, reductions) to minimize memory usage on large datasets.
-}
-\details{
-The h5Seurat format is highly flexible for selective loading. This is particularly useful when:
-\itemize{
-  \item Working with very large datasets where loading everything would exceed memory
-  \item You only need specific assays or reductions for downstream analysis
-  \item You want to quickly inspect object structure without full data loading
-}
-}
-\section{Seurat V5 Layer Support}{
-
-For Seurat V5 objects with multiple layers, you can selectively load layers per assay.
-For example, use \code{assays = list(RNA = "data")} to load only the normalized expression layer,
-skipping raw counts and scaled data.
-}
-
-\examples{
-\dontrun{
-library(SeuratDisk)
-
-# Load entire h5Seurat file
-seurat_obj <- LoadH5Seurat("data.h5seurat")
-
-# Load only specific assays
-seurat_obj <- LoadH5Seurat("data.h5seurat", assays = c("RNA", "ADT"))
-
-# Load only specific data layers (memory-efficient for large files)
-seurat_obj <- LoadH5Seurat("data.h5seurat", assays = c("data"))  # Only normalized expression
-
-# Load specific assays with different layers
-seurat_obj <- LoadH5Seurat(
-  "data.h5seurat",
-  assays = list(RNA = c("data", "scale.data"), ADT = "data")
-)
-
-# Load without reductions (faster)
-seurat_obj <- LoadH5Seurat("data.h5seurat", reductions = FALSE)
-
-# Load UMAP and PCA reductions only
-seurat_obj <- LoadH5Seurat("data.h5seurat", reductions = c("umap", "pca"))
-
-# Load spatial data without graphs (for Visium experiments)
-seurat_obj <- LoadH5Seurat("visium.h5seurat", images = TRUE, graphs = FALSE)
-}
-
-}
-\seealso{
-\code{\link{SaveH5Seurat}} to save a Seurat object to h5Seurat format
-\code{\link{Convert}} to convert to other formats
+Load a saved \code{Seurat} object from an h5Seurat file
 }

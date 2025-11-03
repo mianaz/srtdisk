@@ -7,20 +7,16 @@
 H5ADToH5Seurat(source, dest, assay = "RNA", overwrite = FALSE, verbose = TRUE)
 }
 \arguments{
-\item{source}{Source dataset (filename path or H5File connection)}
+\item{source}{Source dataset}
 
-\item{dest}{Name/path of destination file. If only a file type is provided
-(e.g., "h5seurat", "h5ad"), the extension is appended to the source filename.
-Supported formats: h5seurat, h5ad}
+\item{dest}{Name of destination dataset}
 
-\item{assay}{For h5Seurat → other formats: name of assay to convert.
-For other formats → h5Seurat: name to assign to the assay.
-Default is "RNA".}
+\item{assay}{Converting from \code{\link{h5Seurat}}: name of assay to write
+out; converting to \code{\link{h5Seurat}}: name to store assay data as}
 
-\item{overwrite}{Logical; if \code{TRUE}, overwrite an existing destination file.
-Default is \code{FALSE}.}
+\item{overwrite}{Overwrite existing \code{dest}}
 
-\item{verbose}{Logical; if \code{TRUE} (default), show progress updates}
+\item{verbose}{Show progress updates}
 }
 \value{
 Returns a handle to \code{dest} as an \code{\link{h5Seurat}} object

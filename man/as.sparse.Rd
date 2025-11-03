@@ -5,9 +5,9 @@
 \alias{as.sparse.H5Group}
 \title{Convert an HDF5 dataset to a sparse matrix}
 \usage{
-\method{as.sparse}{H5D}(x, ...)
+\method{as.sparse}{H5D}(x)
 
-\method{as.sparse}{H5Group}(x, ...)
+\method{as.sparse}{H5Group}(x)
 }
 \arguments{
 \item{x}{An HDF5 dataset or group}
