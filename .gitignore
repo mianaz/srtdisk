@@ -12,7 +12,8 @@ Thumbs.db
 # Ignore built vignettes
 inst/doc
 doc
-Meta
+articles
+docs
 
 # Ignore extra pkgdown files
 *_files
@@ -42,15 +43,7 @@ temp_*
 temp_files/
 
 # Ignore internal documentation
-**/CLAUDE.local.md
 CLAUDE.md
-EDGE_CASES_ANALYSIS.md
-V5_COMPATIBILITY_ANALYSIS.md
-PACKAGE_STATUS.md
-agents.md
-**/REFACTORING_STATUS.md
-**/PHASE*_FIXES*.md
-**/h5seurat_refactoring_plan.md
 
 # Ignore large test data files (keep test scripts)
 tests/*.rds
