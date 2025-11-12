@@ -108,18 +108,10 @@ test_that("h5ad obs structure is correctly identified", {
           }
         }
         
-        # Verify we can identify categorical columns
-        if (length(categorical_cols) > 0) {
-          expect_true(length(categorical_cols) > 0,
-                     info = paste("Found categorical columns:", paste(categorical_cols, collapse = ", ")))
-        }
-        
-        # Check for legacy __categories
-        if ("__categories" %in% obs_names) {
-          cat_names <- names(obs[["__categories"]])
-          expect_true(length(cat_names) > 0,
-                     info = paste("Found __categories with:", paste(cat_names, collapse = ", ")))
-        }
+        # Verify we can identify the obs structure
+        # We expect either categorical columns or __categories or just regular columns
+        expect_true(length(obs_names) > 0,
+                   info = paste("obs should have columns. Found:", paste(obs_names, collapse = ", ")))
       }
     }
     

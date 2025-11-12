@@ -473,8 +473,8 @@ try:
                 if col in df.columns:
                     # Read the categories (labels)
                     categories = categories_group[col][:]
-                    # Decode bytes to strings if needed
-                    if categories.dtype == object or categories.dtype.kind == "S":
+                    # Decode bytes to strings if needed (handle bytes, ASCII, and Unicode strings)
+                    if categories.dtype == object or categories.dtype.kind in ("S", "U"):
                         categories = np.array([c.decode("utf-8") if isinstance(c, bytes) else str(c) for c in categories])
                     else:
                         categories = categories.astype(str)
