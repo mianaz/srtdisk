@@ -76,9 +76,12 @@ Collate:
     'SaveLoom.R'
     'h5Seurat_bindings.R'
 Suggests:
+    formatR,
     httr,
     knitr,
+    reticulate,
     rmarkdown,
+    SeuratData,
     testthat (>= 3.0.0)
 VignetteBuilder: knitr
 Config/testthat/edition: 3

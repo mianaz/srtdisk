@@ -1,6 +1,11 @@
 ---
 title: "h5Seurat File Format Specification"
-output: rmarkdown::html_vignette
+output:
+  rmarkdown::html_document:
+    theme: cosmo
+    toc: true
+    toc_float: true
+    code_folding: show
 vignette: >
   %\VignetteIndexEntry{h5Seurat File Format Specification}
   %\VignetteEngine{knitr::rmarkdown}

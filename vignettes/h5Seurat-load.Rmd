@@ -1,6 +1,11 @@
 ---
 title: "Saving and Loading Data from an h5Seurat File"
-output: rmarkdown::html_vignette
+output:
+  rmarkdown::html_document:
+    theme: cosmo
+    toc: true
+    toc_float: true
+    code_folding: show
 vignette: >
   %\VignetteIndexEntry{Saving and Loading Data from an h5Seurat File}
   %\VignetteEngine{knitr::rmarkdown}
@@ -11,7 +16,7 @@ vignette: >
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  tidy = TRUE,
+  tidy = FALSE,
   message = FALSE,
   warning = FALSE
 )

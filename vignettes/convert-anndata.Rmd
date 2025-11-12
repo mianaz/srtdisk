@@ -1,5 +1,15 @@
 ---
 title: 'Conversions: h5Seurat and AnnData'
+output:
+  rmarkdown::html_document:
+    theme: cosmo
+    toc: true
+    toc_float: true
+    code_folding: show
+vignette: >
+  %\VignetteIndexEntry{Conversions: h5Seurat and AnnData}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
 
 ```{r setup, include = FALSE}
@@ -10,7 +20,7 @@ knitr::opts_chunk$set(
   warning = FALSE,
   collapse = TRUE,
   comment = "#>",
-  tidy=TRUE,
+  tidy = FALSE,
   out.width = "100%",
   dev = "png"
 )
@@ -166,7 +176,7 @@ Data source: [Spatially resolved multiomics of human cardiac niches](https://cel
 
 First, let's work with a single library, HCAHeartST11702008:
 
-```{r load_heart_single, eval=FALSE}
+```{r load_heart_single}
 # Copy single-library heart data from testdata
 file.copy(
   system.file("testdata", "vis.heart.single.h5ad", package = "srtdisk"),
@@ -188,7 +198,7 @@ SpatialFeaturePlot(heart_single, features = "PTPRC")
 
 When an h5ad file contains multiple Visium libraries, `LoadH5Seurat` returns a list of Seurat objects (one per library):
 
-```{r load_heart_multi, eval=FALSE}
+```{r load_heart_multi}
 # Copy multi-library heart data from testdata
 file.copy(
   system.file("testdata", "vis.heart.h5ad", package = "srtdisk"),
@@ -212,7 +222,7 @@ heart_list[[1]]
 
 We can plot each library separately:
 
-```{r plot_heart_multi, fig.width=10, fig.height=8, eval=FALSE}
+```{r plot_heart_multi, fig.width=10, fig.height=8}
 # Plot PTPRC for the first library
 SpatialFeaturePlot(heart_list[[2]], features = "PTPRC")
 ```
