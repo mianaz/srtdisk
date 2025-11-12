@@ -52,8 +52,11 @@ test_that("h5ad categorical columns are preserved in conversion", {
   has_factor_cols <- any(sapply(metadata, is.factor))
   
   # At least some metadata columns should be character or factor (not just numeric)
-  expect_true(has_character_cols || has_factor_cols || ncol(metadata) > 0,
-              info = paste("Metadata columns:", paste(names(metadata), collapse = ", ")))
+  # This verifies that categorical columns were preserved
+  expect_true(has_character_cols || has_factor_cols,
+              info = paste("Expected character or factor columns in metadata. Columns:",
+                          paste(names(metadata), collapse = ", "),
+                          "| Types:", paste(sapply(metadata, class), collapse = ", ")))
 })
 
 test_that("h5ad obs structure is correctly identified", {

@@ -497,6 +497,7 @@ except Exception as e:
     sys.stderr.write(str(e))
     sys.exit(1)
 ', h5file, dataset_path, dataset_path, temp_csv)
+    # sprintf arguments: h5file, dataset_path (for f[...]), dataset_path (for categories_path), temp_csv
 
     # Execute Python script
     result <- tryCatch({
