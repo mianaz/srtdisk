@@ -3,7 +3,7 @@ destination: docs
 
 template:
   bootstrap: 5
-  bootswatch: flatly
+  bootswatch: cosmo
 
 development:
   mode: auto
