@@ -481,14 +481,12 @@ try:
                     # Get the codes (integer indices) from the dataframe
                     codes = df[col].values
                     
-                    # Map codes to categories (codes are 0-based indices)
-                    # Handle -1 as missing/NA
+                    # Map codes to categories using vectorized operations (codes are 0-based indices)
+                    # Handle -1 or out-of-range codes as missing/NA
+                    valid_mask = (codes >= 0) & (codes < len(categories))
                     decoded = np.empty(len(codes), dtype=object)
-                    for i, code in enumerate(codes):
-                        if code >= 0 and code < len(categories):
-                            decoded[i] = categories[code]
-                        else:
-                            decoded[i] = None  # Will be NA in R
+                    decoded[valid_mask] = categories[codes[valid_mask]]
+                    decoded[~valid_mask] = None  # Will be NA in R
                     
                     df[col] = decoded
         
