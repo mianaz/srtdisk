@@ -1,26 +1,36 @@
 # Test categorical column preservation during h5ad to h5Seurat conversion
 library(srtdisk)
 
+# Helper function to locate test data directory
+get_testdata_dir <- function() {
+  testdata_dir <- system.file("testdata", package = "srtdisk")
+  if (!dir.exists(testdata_dir) || length(list.files(testdata_dir, pattern = "\\.h5ad$")) == 0) {
+    testdata_dir <- file.path("inst", "testdata")
+    if (!dir.exists(testdata_dir)) {
+      return(NULL)
+    }
+  }
+  
+  h5ad_files <- list.files(testdata_dir, pattern = "\\.h5ad$", full.names = TRUE)
+  if (length(h5ad_files) == 0) {
+    return(NULL)
+  }
+  
+  return(list(dir = testdata_dir, files = h5ad_files))
+}
+
 test_that("h5ad categorical columns are preserved in conversion", {
   # This test verifies that categorical obs columns (e.g., cell_type, condition)
   # are preserved when converting from h5ad to h5Seurat format
   
   skip_if_not_installed("Seurat")
   
-  testdata_dir <- system.file("testdata", package = "srtdisk")
-  if (!dir.exists(testdata_dir) || length(list.files(testdata_dir, pattern = "\\.h5ad$")) == 0) {
-    testdata_dir <- file.path("inst", "testdata")
-    if (!dir.exists(testdata_dir)) {
-      skip("Test data not available")
-    }
+  testdata <- get_testdata_dir()
+  if (is.null(testdata)) {
+    skip("Test data not available")
   }
   
-  h5ad_files <- list.files(testdata_dir, pattern = "\\.h5ad$", full.names = TRUE)
-  if (length(h5ad_files) == 0) {
-    skip("No h5ad test files found")
-  }
-  
-  test_file <- h5ad_files[1]
+  test_file <- testdata$files[1]
   temp_h5seurat <- tempfile(fileext = ".h5seurat")
   on.exit(unlink(temp_h5seurat), add = TRUE)
   
@@ -62,20 +72,12 @@ test_that("h5ad categorical columns are preserved in conversion", {
 test_that("h5ad obs structure is correctly identified", {
   # Test that we can correctly identify whether obs is a group or compound dataset
   
-  testdata_dir <- system.file("testdata", package = "srtdisk")
-  if (!dir.exists(testdata_dir) || length(list.files(testdata_dir, pattern = "\\.h5ad$")) == 0) {
-    testdata_dir <- file.path("inst", "testdata")
-    if (!dir.exists(testdata_dir)) {
-      skip("Test data not available")
-    }
+  testdata <- get_testdata_dir()
+  if (is.null(testdata)) {
+    skip("Test data not available")
   }
   
-  h5ad_files <- list.files(testdata_dir, pattern = "\\.h5ad$", full.names = TRUE)
-  if (length(h5ad_files) == 0) {
-    skip("No h5ad test files found")
-  }
-  
-  test_file <- h5ad_files[1]
+  test_file <- testdata$files[1]
   
   # Open the h5ad file and check obs structure
   tryCatch({
@@ -94,7 +96,6 @@ test_that("h5ad obs structure is correctly identified", {
       if (is_group) {
         # For groups, check if categorical columns exist
         obs_names <- names(obs)
-        message("obs is H5Group with contents: ", paste(obs_names, collapse = ", "))
         
         # Check for modern categorical format (groups with categories/codes)
         categorical_cols <- character(0)
@@ -107,19 +108,18 @@ test_that("h5ad obs structure is correctly identified", {
           }
         }
         
+        # Verify we can identify categorical columns
         if (length(categorical_cols) > 0) {
-          message("Found categorical columns in modern format: ", paste(categorical_cols, collapse = ", "))
+          expect_true(length(categorical_cols) > 0,
+                     info = paste("Found categorical columns:", paste(categorical_cols, collapse = ", ")))
         }
         
         # Check for legacy __categories
         if ("__categories" %in% obs_names) {
           cat_names <- names(obs[["__categories"]])
-          message("Found __categories with: ", paste(cat_names, collapse = ", "))
+          expect_true(length(cat_names) > 0,
+                     info = paste("Found __categories with:", paste(cat_names, collapse = ", ")))
         }
-      } else {
-        message("obs is H5D (compound dataset)")
-        # For compound datasets, check if __categories exists at obs/__categories
-        # Note: This might not exist if obs is a direct dataset
       }
     }
     

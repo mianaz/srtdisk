@@ -445,6 +445,7 @@ H5ADToH5Seurat <- function(
 
     # Python script to read compound dataset and save as CSV
     # This script handles categorical columns by decoding integer codes to category labels
+    # sprintf arguments: h5file, dataset_path (for reading data), dataset_path (for __categories path), temp_csv
     python_script <- sprintf('
 import h5py
 import pandas as pd
@@ -495,7 +496,6 @@ except Exception as e:
     sys.stderr.write(str(e))
     sys.exit(1)
 ', h5file, dataset_path, dataset_path, temp_csv)
-    # sprintf arguments: h5file, dataset_path (for f[...]), dataset_path (for categories_path), temp_csv
 
     # Execute Python script
     result <- tryCatch({
