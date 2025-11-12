@@ -444,15 +444,18 @@ H5ADToH5Seurat <- function(
     on.exit(unlink(temp_csv), add = TRUE)
 
     # Python script to read compound dataset and save as CSV
+    # This script handles categorical columns by decoding integer codes to category labels
     python_script <- sprintf('
 import h5py
 import pandas as pd
 import sys
+import numpy as np
 
 try:
     with h5py.File("%s", "r") as f:
         data = f["%s"][:]
         df = pd.DataFrame(data)
+        
         # Decode bytes to strings if needed
         for col in df.columns:
             if df[col].dtype == object:
@@ -460,11 +463,40 @@ try:
                     df[col] = df[col].str.decode("utf-8")
                 except:
                     pass
+        
+        # Handle categorical columns stored in __categories
+        categories_path = "%s/__categories"
+        if categories_path in f:
+            categories_group = f[categories_path]
+            for col in categories_group.keys():
+                if col in df.columns:
+                    # Read the categories (labels)
+                    categories = categories_group[col][:]
+                    # Decode bytes to strings if needed
+                    if categories.dtype == object or categories.dtype.kind == "S":
+                        categories = np.array([c.decode("utf-8") if isinstance(c, bytes) else str(c) for c in categories])
+                    else:
+                        categories = categories.astype(str)
+                    
+                    # Get the codes (integer indices) from the dataframe
+                    codes = df[col].values
+                    
+                    # Map codes to categories (codes are 0-based indices)
+                    # Handle -1 as missing/NA
+                    decoded = np.empty(len(codes), dtype=object)
+                    for i, code in enumerate(codes):
+                        if code >= 0 and code < len(categories):
+                            decoded[i] = categories[code]
+                        else:
+                            decoded[i] = None  # Will be NA in R
+                    
+                    df[col] = decoded
+        
         df.to_csv("%s", index=False)
 except Exception as e:
     sys.stderr.write(str(e))
     sys.exit(1)
-', h5file, dataset_path, temp_csv)
+', h5file, dataset_path, dataset_path, temp_csv)
 
     # Execute Python script
     result <- tryCatch({
