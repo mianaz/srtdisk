@@ -72,7 +72,7 @@ This allows interoperability between Seurat and <a href="https://scanpy.readthed
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://satijalab.org/seurat" class="external-link">Seurat</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="http://www.satijalab.org/seurat" class="external-link">SeuratData</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://mianaz.github.io/srtdisk/">srtdisk</a></span><span class="op">)</span></span></code></pre></div>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/miana/seuratdisk-V5" class="external-link">srtdisk</a></span><span class="op">)</span></span></code></pre></div>
 <div class="section level2">
 <h2 id="converting-from-seurat-to-anndata-via-h5seurat">Converting from Seurat to AnnData via h5Seurat<a class="anchor" aria-label="anchor" href="#converting-from-seurat-to-anndata-via-h5seurat"></a>
 </h2>
@@ -171,8 +171,7 @@ see the h5Seurat-load vignette.</p>
 <span><span class="co">#&gt; Active assay: RNA (13714 features, 1838 variable features)</span></span>
 <span><span class="co">#&gt;  3 layers present: counts, data, scale.data</span></span>
 <span><span class="co">#&gt;  2 dimensional reductions calculated: pca, umap</span></span>
-<span><span class="fu"><a href="https://satijalab.org/seurat/reference/DimPlot.html" class="external-link">DimPlot</a></span><span class="op">(</span><span class="va">pbmc3k</span>, reduction <span class="op">=</span> <span class="st">"umap"</span>, label <span class="op">=</span> <span class="cn">TRUE</span>, pt.size <span class="op">=</span> <span class="fl">0.5</span>, group.by <span class="op">=</span> <span class="st">"leiden"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu"><a href="https://satijalab.org/seurat/reference/SeuratTheme.html" class="external-link">NoLegend</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="https://satijalab.org/seurat/reference/DimPlot.html" class="external-link">DimPlot</a></span><span class="op">(</span><span class="va">pbmc3k</span>, reduction <span class="op">=</span> <span class="st">"umap"</span>, label <span class="op">=</span> <span class="cn">TRUE</span>, pt.size <span class="op">=</span> <span class="fl">0.5</span>, group.by<span class="op">=</span><span class="st">"leiden"</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://satijalab.org/seurat/reference/SeuratTheme.html" class="external-link">NoLegend</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p><img src="convert-anndata_files/figure-html/convert_adata-3.png" width="100%"></p>
 </div>
 <div class="section level2">
@@ -186,7 +185,7 @@ SeuratData to demonstrate Visium data conversion:</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Load stxBrain data from SeuratData</span></span>
 <span><span class="fu"><a href="https://satijalab.org/seurat/reference/InstallData.html" class="external-link">InstallData</a></span><span class="op">(</span><span class="st">"stxBrain"</span><span class="op">)</span></span>
-<span><span class="va">stxBrain</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://satijalab.org/seurat/reference/LoadData.html" class="external-link">LoadData</a></span><span class="op">(</span><span class="st">"stxBrain"</span>, type <span class="op">=</span> <span class="st">"anterior1"</span><span class="op">)</span></span>
+<span><span class="va">stxBrain</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://satijalab.org/seurat/reference/LoadData.html" class="external-link">LoadData</a></span><span class="op">(</span><span class="st">'stxBrain'</span>, type <span class="op">=</span> <span class="st">'anterior1'</span><span class="op">)</span></span>
 <span><span class="va">stxBrain</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://satijalab.org/seurat/reference/NormalizeData.html" class="external-link">NormalizeData</a></span><span class="op">(</span><span class="va">stxBrain</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://satijalab.org/seurat/reference/SpatialPlot.html" class="external-link">SpatialFeaturePlot</a></span><span class="op">(</span><span class="va">stxBrain</span>, features <span class="op">=</span> <span class="st">"Ptprc"</span><span class="op">)</span></span></code></pre></div>
 <p><img src="convert-anndata_files/figure-html/get_stxBrain-1.png" width="100%"></p>
@@ -225,8 +224,12 @@ resolved multiomics of human cardiac niches</a></p>
 <p>First, let’s work with a single library, HCAHeartST11702008:</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Copy single-library heart data from testdata</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/files.html" class="external-link">file.copy</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"testdata"</span>, <span class="st">"vis.heart.single.h5ad"</span>, package <span class="op">=</span> <span class="st">"srtdisk"</span><span class="op">)</span>,</span>
-<span>    <span class="st">"vis.heart.single.h5ad"</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/files.html" class="external-link">file.copy</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"testdata"</span>, <span class="st">"vis.heart.single.h5ad"</span>, package <span class="op">=</span> <span class="st">"srtdisk"</span><span class="op">)</span>,</span>
+<span>  <span class="st">"vis.heart.single.h5ad"</span>,</span>
+<span>  overwrite <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] TRUE</span></span>
 <span></span>
 <span><span class="co"># Convert to h5seurat</span></span>
 <span><span class="fu"><a href="../reference/Convert.html">Convert</a></span><span class="op">(</span><span class="st">"vis.heart.single.h5ad"</span>, dest <span class="op">=</span> <span class="st">"h5seurat"</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
@@ -234,7 +237,14 @@ resolved multiomics of human cardiac niches</a></p>
 <span><span class="co"># Load as Seurat object</span></span>
 <span><span class="va">heart_single</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/LoadH5Seurat.html">LoadH5Seurat</a></span><span class="op">(</span><span class="st">"vis.heart.single.h5seurat"</span><span class="op">)</span></span>
 <span><span class="va">heart_single</span></span>
+<span><span class="co">#&gt; An object of class Seurat </span></span>
+<span><span class="co">#&gt; 17912 features across 3533 samples within 1 assay </span></span>
+<span><span class="co">#&gt; Active assay: RNA (17912 features, 0 variable features)</span></span>
+<span><span class="co">#&gt;  2 layers present: counts, data</span></span>
+<span><span class="co">#&gt;  5 dimensional reductions calculated: means_cell_abundance_w_sf, prop, q05_cell_abundance_w_sf, q95_cell_abundance_w_sf, stds_cell_abundance_w_sf</span></span>
+<span><span class="co">#&gt;  1 spatial field of view present: HCAHeartST11702008</span></span>
 <span><span class="fu"><a href="https://satijalab.org/seurat/reference/SpatialPlot.html" class="external-link">SpatialFeaturePlot</a></span><span class="op">(</span><span class="va">heart_single</span>, features <span class="op">=</span> <span class="st">"PTPRC"</span><span class="op">)</span></span></code></pre></div>
+<p><img src="convert-anndata_files/figure-html/load_heart_single-3.png" width="100%"></p>
 </div>
 <div class="section level3">
 <h3 id="multi-library-example">Multi-Library Example<a class="anchor" aria-label="anchor" href="#multi-library-example"></a>
@@ -244,8 +254,12 @@ resolved multiomics of human cardiac niches</a></p>
 library):</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Copy multi-library heart data from testdata</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/files.html" class="external-link">file.copy</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"testdata"</span>, <span class="st">"vis.heart.h5ad"</span>, package <span class="op">=</span> <span class="st">"srtdisk"</span><span class="op">)</span>, <span class="st">"vis.heart.h5ad"</span>,</span>
-<span>    overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/files.html" class="external-link">file.copy</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"testdata"</span>, <span class="st">"vis.heart.h5ad"</span>, package <span class="op">=</span> <span class="st">"srtdisk"</span><span class="op">)</span>,</span>
+<span>  <span class="st">"vis.heart.h5ad"</span>,</span>
+<span>  overwrite <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] TRUE</span></span>
 <span></span>
 <span><span class="co"># Convert to h5seurat</span></span>
 <span><span class="fu"><a href="../reference/Convert.html">Convert</a></span><span class="op">(</span><span class="st">"vis.heart.h5ad"</span>, dest <span class="op">=</span> <span class="st">"h5seurat"</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
@@ -255,14 +269,23 @@ library):</p>
 <span></span>
 <span><span class="co"># Check the structure</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Number of libraries:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">heart_list</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Number of libraries: 3</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Library names:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">heart_list</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Library names: HCAHeartST11702008 HCAHeartST11702009 HCAHeartST11702010</span></span>
 <span></span>
 <span><span class="co"># Each library is a separate Seurat object</span></span>
-<span><span class="va">heart_list</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span></span></code></pre></div>
+<span><span class="va">heart_list</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span></span>
+<span><span class="co">#&gt; An object of class Seurat </span></span>
+<span><span class="co">#&gt; 17912 features across 3533 samples within 1 assay </span></span>
+<span><span class="co">#&gt; Active assay: RNA (17912 features, 0 variable features)</span></span>
+<span><span class="co">#&gt;  2 layers present: counts, data</span></span>
+<span><span class="co">#&gt;  5 dimensional reductions calculated: means_cell_abundance_w_sf, prop, q05_cell_abundance_w_sf, q95_cell_abundance_w_sf, stds_cell_abundance_w_sf</span></span>
+<span><span class="co">#&gt;  1 spatial field of view present: HCAHeartST11702008</span></span></code></pre></div>
 <p>We can plot each library separately:</p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Plot PTPRC for the first library</span></span>
 <span><span class="fu"><a href="https://satijalab.org/seurat/reference/SpatialPlot.html" class="external-link">SpatialFeaturePlot</a></span><span class="op">(</span><span class="va">heart_list</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span>, features <span class="op">=</span> <span class="st">"PTPRC"</span><span class="op">)</span></span></code></pre></div>
+<p><img src="convert-anndata_files/figure-html/plot_heart_multi-1.png" width="100%"></p>
 </div>
 </div>
 <div class="section level2">
@@ -338,8 +361,7 @@ library):</p>
 <span><span class="co">#&gt; [115] parallel_4.5.1         pkgdown_2.1.3          ggplot2_4.0.0         </span></span>
 <span><span class="co">#&gt; [118] dotCall64_1.2          listenv_0.9.1          viridisLite_0.4.2     </span></span>
 <span><span class="co">#&gt; [121] scales_1.4.0           ggridges_0.5.7         purrr_1.1.0           </span></span>
-<span><span class="co">#&gt; [124] crayon_1.5.3           rlang_1.1.6            cowplot_1.2.0         </span></span>
-<span><span class="co">#&gt; [127] formatR_1.14</span></span></code></pre></div>
+<span><span class="co">#&gt; [124] crayon_1.5.3           rlang_1.1.6            cowplot_1.2.0</span></span></code></pre></div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

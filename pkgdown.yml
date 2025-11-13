@@ -5,7 +5,7 @@ articles:
   convert-anndata: convert-anndata.html
   h5Seurat-load: h5Seurat-load.html
   h5Seurat-spec: h5Seurat-spec.html
-last_built: 2025-11-12T22:53Z
+last_built: 2025-11-13T18:20Z
 urls:
   reference: https://mianaz.github.io/srtdisk/reference
   article: https://mianaz.github.io/srtdisk/articles
