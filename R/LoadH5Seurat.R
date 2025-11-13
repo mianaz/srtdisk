@@ -396,7 +396,47 @@ as.Seurat.h5Seurat <- function(
     FUN.VALUE = logical(length = 1L)
   ))
   # Load Assays
+  # --- Begin: normalize 'assays' argument to a named list per-assay ---
+  # If the user passed a character vector of layer names (e.g. c("data")),
+  # and those values are not names of assays in the file index,
+  # treat that character vector as "layers to load for every assay".
+  if (is.character(assays) && length(assays) > 0) {
+    index_assays <- setdiff(x = names(x = index), y = c('global', 'no.assay'))
+
+    if (!is.null(index_assays) && length(index_assays) > 0) {
+      # If none of the provided strings match assay names, treat as layers for all assays
+      if (!any(assays %in% index_assays)) {
+        assays <- setNames(rep(list(as.character(assays)), length(index_assays)), index_assays)
+      } else {
+        # If the provided character vector contains both assay names and layer names,
+        # keep only entries that are actual assay names (safe behavior) — other patterns
+        # should be supplied as a named list by the caller for unambiguous behavior.
+        if (all(assays %in% index_assays)) {
+          # nothing to change: assays lists actual assay names
+        } else {
+          # If mixed, prefer explicit assay names
+          assays <- intersect(assays, index_assays)
+        }
+      }
+    }
+  }
+  # --- End normalization ---
+
+  # Now call GetAssays as usual
   assays <- GetAssays(assays = assays, index = index)
+
+  # Defensive fallback: if GetAssays returned nothing, default to all assays in the file
+  if (length(assays) == 0) {
+    index_assays <- setdiff(x = names(x = index), y = c('global', 'no.assay'))
+    if (!is.null(index_assays) && length(index_assays) > 0) {
+      assays <- setNames(rep(list(NULL), length(index_assays)), index_assays)
+      if (verbose) {
+        message("No valid assays requested; defaulting to all assays: ", paste(names(assays), collapse = ", "))
+      }
+    } else {
+      stop("No assays found in the h5Seurat file (index reports none).")
+    }
+  }
   if (!DefaultAssay(object = index) %in% names(x = assays)) {
     active.assay <- names(x = assays)[1]
     warning(
