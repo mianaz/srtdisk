@@ -237,8 +237,8 @@ AssembleAssay <- function(assay, file, slots = NULL, verbose = TRUE) {
     slots <- slots.assay
   }
   
-  # Check that slots is a non-empty character vector before calling match.arg
-  if (length(slots) == 0 || !is.character(slots)) {
+  # Check that slots is a non-empty character vector and contains valid values before calling match.arg
+  if (is.null(slots) || length(slots) == 0 || !any(slots %in% slots.assay)) {
     stop("'slots' must be a non-empty character vector. Available slots for assay '", 
          assay, "': ", paste(slots.assay, collapse = ", "), call. = FALSE)
   }
