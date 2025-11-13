@@ -36,7 +36,7 @@ generate HDF5 datatype specifications with specific string encodings"></head><bo
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Generate an HDF5 string dtype</h1>
-      <small class="dont-index">Source: <a href="https://github.com/mianaz/srtdisk/blob/HEAD/R/zzz.R" class="external-link"><code>R/zzz.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/mianaz/srtdisk/blob/main/R/zzz.R" class="external-link"><code>R/zzz.R</code></a></small>
       <div class="d-none name"><code>StringType.Rd</code></div>
     </div>
 
@@ -77,22 +77,10 @@ generate HDF5 datatype specifications with specific string encodings</p>
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># \donttest{</span></span></span>
-<span class="r-in"><span><span class="fu">SeuratDisk</span><span class="fu">:::</span><span class="fu"><a href="https://mojaveazure.github.io/seurat-disk/reference/StringType.html" class="external-link">StringType</a></span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Class: H5T_STRING</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Datatype: H5T_STRING {</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       STRSIZE H5T_VARIABLE;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       STRPAD H5T_STR_NULLTERM;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       CSET H5T_CSET_UTF8;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       CTYPE H5T_C_S1;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    }</span>
-<span class="r-in"><span><span class="fu">SeuratDisk</span><span class="fu">:::</span><span class="fu"><a href="https://mojaveazure.github.io/seurat-disk/reference/StringType.html" class="external-link">StringType</a></span><span class="op">(</span><span class="st">'ascii7'</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Class: H5T_STRING</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Datatype: H5T_STRING {</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       STRSIZE 7;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       STRPAD H5T_STR_NULLTERM;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       CSET H5T_CSET_ASCII;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       CTYPE H5T_C_S1;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    }</span>
+<span class="r-in"><span><span class="fu">SeuratDisk</span><span class="fu">:::</span><span class="fu">StringType</span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error in loadNamespace(x):</span> there is no package called ‘SeuratDisk’</span>
+<span class="r-in"><span><span class="fu">SeuratDisk</span><span class="fu">:::</span><span class="fu">StringType</span><span class="op">(</span><span class="st">'ascii7'</span><span class="op">)</span></span></span>
+<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error in loadNamespace(x):</span> there is no package called ‘SeuratDisk’</span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
@@ -106,7 +94,7 @@ generate HDF5 datatype specifications with specific string encodings</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
     </footer></div>
