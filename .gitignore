@@ -32,6 +32,8 @@ inst/testdata/
 
 # ignore working index files
 FUNCTION_INDEX.md
+CLAUDE.md
+README.html
 
 # ignore test output files
 tests/*.h5seurat

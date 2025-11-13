@@ -82,7 +82,7 @@ You can install it from [GitHub](`r github.url`) with:
 if (!requireNamespace("remotes", quietly = TRUE)) {
   install.packages("remotes")
 }
-remotes::install_github("mojaveazure/seurat-disk")
+remotes::install_github("mianaz/srtdisk")
 ```
 
 ## Dependencies
