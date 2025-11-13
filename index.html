@@ -58,157 +58,98 @@
 </h1></div>
 <!-- badges: start -->
 
-<div class="section level2">
-<h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
-</h2>
-<p>Extended implementation of SeuratDisk for Seurat v5 with enhanced support for HDF5-based single cell file formats. The h5Seurat file format is specifically designed for the storage and analysis of multi-modal single-cell and spatially-resolved expression experiments, for example, from CITE-seq or 10X Visium technologies. It holds all molecular information and associated metadata, including (for example) nearest-neighbor graphs, dimensional reduction information, spatial coordinates and image data, and cluster labels.</p>
-<p>We also support rapid and on-disk conversion between h5Seurat and AnnData objects, with the goal of enhancing interoperability between Seurat and Scanpy. This version includes <strong>Seurat v5 Assay5 compatibility</strong> and <strong>improved spatial data handling</strong>.</p>
-</div>
-<div class="section level2">
-<h2 id="key-features">Key Features<a class="anchor" aria-label="anchor" href="#key-features"></a>
-</h2>
-<ul>
-<li>
-<strong>Seurat V5 Assay5 Support</strong>: Full compatibility with Seurat v5 layer-based data structure</li>
-<li>
-<strong>h5Seurat ↔︎ h5ad Conversion</strong>: Seamless conversion between Seurat and AnnData formats</li>
-<li>
-<strong>Visium Spatial Data</strong>: Complete support for 10X Visium V1/V2 spatial transcriptomics</li>
-<li>
-<strong>On-Disk Operations</strong>: Memory-efficient file format conversion without loading full datasets</li>
-<li>
-<strong>Spatial Image Reconstruction</strong>: Automatic reconstruction of Visium images from h5ad files</li>
-</ul>
-</div>
+<!-- Interfaces for HDF5-based Single Cell File Formats -->
+<p>Extended implementation of SeuratDisk for Seurat v5 with enhanced support for HDF5-based single cell file formats. The h5Seurat file format is specifically designed for the storage and analysis of multi-modal single-cell and spatially-resolved expression experiments, for example, from CITE-seq or 10X Visium technologies. It holds all molecular information and associated metadata, including (for example) nearest-neighbor graphs, dimensional reduction information, spatial coordinates and image data, and cluster labels. We also support rapid and on-disk conversion between h5Seurat and AnnData objects, with the goal of enhancing interoperability between Seurat and Scanpy. This version includes Seurat v5 Assay5 compatibility and improved spatial data handling.</p>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
-<p>srtdisk is not currently available on CRAN. You can install it from GitHub with:</p>
+<p>srtdisk is not currently available on CRAN. You can install it from <a href="https://github.com/mianaz/srtdisk" class="external-link">GitHub</a> with:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"remotes"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"remotes"</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"miana/seuratdisk-v5"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"mianaz/srtdisk"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="quick-start">Quick Start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
+<h2 id="dependencies">Dependencies<a class="anchor" aria-label="anchor" href="#dependencies"></a>
 </h2>
-<div class="section level3">
-<h3 id="seurat-to-anndata-h5ad">Seurat to AnnData (h5ad)<a class="anchor" aria-label="anchor" href="#seurat-to-anndata-h5ad"></a>
-</h3>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://satijalab.org/seurat" class="external-link">Seurat</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://mianaz.github.io/srtdisk/">srtdisk</a></span><span class="op">)</span> <span class="co"># changed package name</span></span>
-<span></span>
-<span><span class="co"># Save Seurat object as h5Seurat</span></span>
-<span><span class="fu"><a href="reference/SaveH5Seurat.html">SaveH5Seurat</a></span><span class="op">(</span><span class="va">seurat_obj</span>, filename <span class="op">=</span> <span class="st">"data.h5Seurat"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Convert to h5ad for Python/Scanpy</span></span>
-<span><span class="fu"><a href="reference/Convert.html">Convert</a></span><span class="op">(</span><span class="st">"data.h5Seurat"</span>, dest <span class="op">=</span> <span class="st">"h5ad"</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="anndata-to-seurat">AnnData to Seurat<a class="anchor" aria-label="anchor" href="#anndata-to-seurat"></a>
-</h3>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Convert h5ad to h5Seurat</span></span>
-<span><span class="fu"><a href="reference/Convert.html">Convert</a></span><span class="op">(</span><span class="st">"data.h5ad"</span>, dest <span class="op">=</span> <span class="st">"h5seurat"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Load as Seurat object</span></span>
-<span><span class="va">seurat_obj</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/LoadH5Seurat.html">LoadH5Seurat</a></span><span class="op">(</span><span class="st">"data.h5seurat"</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="spatial-visium-data">Spatial Visium Data<a class="anchor" aria-label="anchor" href="#spatial-visium-data"></a>
-</h3>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Load Visium data from h5ad (created with Scanpy/Squidpy)</span></span>
-<span><span class="va">brain</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/Convert.html">Convert</a></span><span class="op">(</span><span class="st">"visium_brain.h5ad"</span>, dest <span class="op">=</span> <span class="st">"h5seurat"</span><span class="op">)</span></span>
-<span><span class="va">brain</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/LoadH5Seurat.html">LoadH5Seurat</a></span><span class="op">(</span><span class="st">"visium_brain.h5seurat"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Spatial images are automatically reconstructed</span></span>
-<span><span class="fu"><a href="https://satijalab.github.io/seurat-object/reference/Images.html" class="external-link">Images</a></span><span class="op">(</span><span class="va">brain</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://satijalab.org/seurat/reference/SpatialPlot.html" class="external-link">SpatialFeaturePlot</a></span><span class="op">(</span><span class="va">brain</span>, features <span class="op">=</span> <span class="st">"PTPRC"</span><span class="op">)</span></span></code></pre></div>
-</div>
-</div>
-<div class="section level2">
-<h2 id="supported-conversions">Supported Conversions<a class="anchor" aria-label="anchor" href="#supported-conversions"></a>
-</h2>
+<p>srtdisk depends on the following non-standard packages:</p>
 <table class="table">
+<colgroup>
+<col width="25%">
+<col width="25%">
+<col width="25%">
+<col width="25%">
+</colgroup>
 <thead><tr>
-<th>From</th>
-<th>To</th>
-<th>Support</th>
+<th align="center">Package</th>
+<th align="center">CRAN Webpage</th>
+<th align="center">Source</th>
+<th align="center">Website</th>
 </tr></thead>
 <tbody>
 <tr>
-<td>Seurat Object</td>
-<td>h5Seurat</td>
-<td>✓ Full</td>
+<td align="center">cli</td>
+<td align="center"><a href="https://cran.r-project.org/package=cli" class="external-link">CRAN</a></td>
+<td align="center"><a href="https://github.com/r-lib/cli" class="external-link">GitHub</a></td>
+<td align="center"><a href="https://cli.r-lib.org" class="external-link">Website</a></td>
 </tr>
 <tr>
-<td>h5Seurat</td>
-<td>Seurat Object</td>
-<td>✓ Full</td>
+<td align="center">crayon</td>
+<td align="center"><a href="https://cran.r-project.org/package=crayon" class="external-link">CRAN</a></td>
+<td align="center"><a href="https://github.com/r-lib/crayon" class="external-link">GitHub</a></td>
+<td align="center"><a href="https://r-lib.github.io/crayon/" class="external-link">Website</a></td>
 </tr>
 <tr>
-<td>h5Seurat</td>
-<td>h5ad</td>
-<td>✓ Full</td>
+<td align="center">hdf5r</td>
+<td align="center"><a href="https://cran.r-project.org/package=hdf5r" class="external-link">CRAN</a></td>
+<td align="center"><a href="https://github.com/hhoeflin/hdf5r/" class="external-link">GitHub</a></td>
+<td align="center"><a href="https://hhoeflin.github.io/hdf5r/" class="external-link">Website</a></td>
 </tr>
 <tr>
-<td>h5ad</td>
-<td>h5Seurat</td>
-<td>✓ Full</td>
+<td align="center">Matrix</td>
+<td align="center"><a href="https://cran.r-project.org/package=Matrix" class="external-link">CRAN</a></td>
+<td align="center">–</td>
+<td align="center"><a href="https://Matrix.R-forge.R-project.org" class="external-link">Website</a></td>
 </tr>
 <tr>
-<td>h5ad</td>
-<td>Seurat Object</td>
-<td>✓ Via h5Seurat</td>
+<td align="center">R6</td>
+<td align="center"><a href="https://cran.r-project.org/package=R6" class="external-link">CRAN</a></td>
+<td align="center"><a href="https://github.com/r-lib/R6" class="external-link">GitHub</a></td>
+<td align="center"><a href="https://r6.r-lib.org" class="external-link">Website</a></td>
 </tr>
 <tr>
-<td>Seurat Object</td>
-<td>h5ad</td>
-<td>✓ Via h5Seurat</td>
+<td align="center">rlang</td>
+<td align="center"><a href="https://cran.r-project.org/package=rlang" class="external-link">CRAN</a></td>
+<td align="center"><a href="https://github.com/r-lib/rlang" class="external-link">GitHub</a></td>
+<td align="center"><a href="https://rlang.r-lib.org" class="external-link">Website</a></td>
+</tr>
+<tr>
+<td align="center">Seurat</td>
+<td align="center"><a href="https://cran.r-project.org/package=Seurat" class="external-link">CRAN</a></td>
+<td align="center"><a href="https://github.com/satijalab/seurat" class="external-link">GitHub</a></td>
+<td align="center"><a href="https://satijalab.org/seurat" class="external-link">Website</a></td>
+</tr>
+<tr>
+<td align="center">SeuratObject</td>
+<td align="center"><a href="https://cran.r-project.org/package=SeuratObject" class="external-link">CRAN</a></td>
+<td align="center"><a href="https://github.com/satijalab/seurat-object" class="external-link">GitHub</a></td>
+<td align="center"><a href="https://satijalab.github.io/seurat-object/" class="external-link">Website</a></td>
+</tr>
+<tr>
+<td align="center">stringi</td>
+<td align="center"><a href="https://cran.r-project.org/package=stringi" class="external-link">CRAN</a></td>
+<td align="center"><a href="https://github.com/gagolews/stringi" class="external-link">GitHub</a></td>
+<td align="center"><a href="https://stringi.gagolewski.com/" class="external-link">Website</a></td>
+</tr>
+<tr>
+<td align="center">withr</td>
+<td align="center"><a href="https://cran.r-project.org/package=withr" class="external-link">CRAN</a></td>
+<td align="center"><a href="https://github.com/r-lib/withr#readme" class="external-link">GitHub</a></td>
+<td align="center"><a href="https://withr.r-lib.org" class="external-link">Website</a></td>
 </tr>
 </tbody>
 </table>
-</div>
-<div class="section level2">
-<h2 id="seurat-v5-compatibility">Seurat V5 Compatibility<a class="anchor" aria-label="anchor" href="#seurat-v5-compatibility"></a>
-</h2>
-<p>This package fully supports Seurat v5 Assay5 objects:</p>
-<ul>
-<li>
-<strong>Layer-based data storage</strong>: Automatic handling of counts/data/scale.data layers</li>
-<li>
-<strong>Assay5 conversion</strong>: Seamless conversion when saving to h5Seurat format</li>
-<li>
-<strong>Backward compatibility</strong>: Works with both legacy Assay and modern Assay5 objects</li>
-<li>
-<strong>Spatial data</strong>: Enhanced support for VisiumV1 and VisiumV2 formats</li>
-</ul>
-</div>
-<div class="section level2">
-<h2 id="documentation">Documentation<a class="anchor" aria-label="anchor" href="#documentation"></a>
-</h2>
-<p>See the vignettes for detailed usage:</p>
-<ul>
-<li>
-<strong><a href="vignettes/convert-anndata.Rmd">convert-anndata.Rmd</a></strong>: h5Seurat ↔︎ h5ad conversion workflows</li>
-<li>
-<strong><a href="vignettes/h5Seurat-load.Rmd">h5Seurat-load.Rmd</a></strong>: Saving and loading h5Seurat files</li>
-<li>
-<strong><a href="vignettes/h5Seurat-spec.Rmd">h5Seurat-spec.Rmd</a></strong>: h5Seurat file format specification</li>
-</ul>
-</div>
-<div class="section level2">
-<h2 id="system-requirements">System Requirements<a class="anchor" aria-label="anchor" href="#system-requirements"></a>
-</h2>
-<ul>
-<li>R &gt;= 3.6.0</li>
-<li>Seurat &gt;= 3.2.0</li>
-<li>SeuratObject &gt;= 4.0.0</li>
-<li>hdf5r &gt;= 1.3.0</li>
-</ul>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">
