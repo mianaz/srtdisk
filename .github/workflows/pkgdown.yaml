@@ -40,8 +40,8 @@ jobs:
       - name: Build site
         run: |
           # Build reference docs only, skip vignettes (built manually with large test data)
-          pkgdown::build_reference(new_process = FALSE, install = FALSE)
-          pkgdown::build_home(pkg = ".", override = list(destination = "docs"))
+          pkgdown::build_reference()
+          pkgdown::build_home()
         shell: Rscript {0}
 
       - name: Deploy to GitHub pages 🚀
