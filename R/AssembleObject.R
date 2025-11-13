@@ -232,6 +232,13 @@ AssembleAssay <- function(assay, file, slots = NULL, verbose = TRUE) {
   }
   slots.assay <- names(x = Filter(f = isTRUE, x = index[[assay]]$slots))
   slots <- slots %||% slots.assay
+  
+  # Check that slots is a non-empty character vector before calling match.arg
+  if (length(slots) == 0 || !is.character(slots)) {
+    stop("'slots' must be a non-empty character vector. Available slots: ", 
+         paste(slots.assay, collapse = ", "), call. = FALSE)
+  }
+  
   slots <- match.arg(arg = slots, choices = slots.assay, several.ok = TRUE)
   if (!any(c('counts', 'data') %in% slots)) {
     stop("At least one of 'counts' or 'data' must be loaded", call. = FALSE)
