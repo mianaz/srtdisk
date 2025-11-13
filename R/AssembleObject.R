@@ -231,12 +231,16 @@ AssembleAssay <- function(assay, file, slots = NULL, verbose = TRUE) {
     stop("Cannot find assay ", assay, " in this h5Seurat file", call. = FALSE)
   }
   slots.assay <- names(x = Filter(f = isTRUE, x = index[[assay]]$slots))
-  slots <- slots %||% slots.assay
+  
+  # Handle NULL slots (means load all available slots)
+  if (is.null(slots)) {
+    slots <- slots.assay
+  }
   
   # Check that slots is a non-empty character vector before calling match.arg
   if (length(slots) == 0 || !is.character(slots)) {
-    stop("'slots' must be a non-empty character vector. Available slots: ", 
-         paste(slots.assay, collapse = ", "), call. = FALSE)
+    stop("'slots' must be a non-empty character vector. Available slots for assay '", 
+         assay, "': ", paste(slots.assay, collapse = ", "), call. = FALSE)
   }
   
   slots <- match.arg(arg = slots, choices = slots.assay, several.ok = TRUE)
