@@ -20,8 +20,8 @@ Generate chunk points
 }
 \examples{
 \donttest{
-SeuratDisk:::ChunkPoints(100, 3)
-SeuratDisk:::ChunkPoints(100, NA)
+srtdisk:::ChunkPoints(100, 3)
+srtdisk:::ChunkPoints(100, NA)
 }
 
 }

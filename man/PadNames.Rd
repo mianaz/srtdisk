@@ -20,7 +20,7 @@ Add names for unnamed or partially named objects
 \examples{
 \donttest{
 a <- list(1, b = 2, 3)
-SeuratDisk:::PadNames(a)
+srtdisk:::PadNames(a)
 }
 
 }

@@ -37,24 +37,24 @@ for the customization of string types rather than defaulting to
 variable-length ASCII-encoded strings. Also encodes logicals as
 \code{\link[hdf5r]{H5T_INTEGER}} instead of \code{\link[hdf5r]{H5T_LOGICAL}}
 to ensure cross-language compatibility (controlled via
-\link[=SeuratDisk-package]{package options})
+\link[=srtdisk-package]{package options})
 }
 \examples{
 \donttest{
 # Characters can either be variable-width UTF8-encoded or
 # fixed-width ASCII-encoded
-SeuratDisk:::GuessDType(x = 'hello')
-SeuratDisk:::GuessDType(x = 'hello', stype = 'ascii7')
+srtdisk:::GuessDType(x = 'hello')
+srtdisk:::GuessDType(x = 'hello', stype = 'ascii7')
 
 # Data frames are a compound type; character columns follow the same rules
 # as character vectors
 df <- data.frame(x = c('g1', 'g2', 'g3'), y = 1, 2, 3, stringsAsFactors = FALSE)
-SeuratDisk:::GuessDType(x = df)
-SeuratDisk:::GuessDType(x = df, stype = 'ascii7')
+srtdisk:::GuessDType(x = df)
+srtdisk:::GuessDType(x = df, stype = 'ascii7')
 
 # Logicals are turned into integers to ensure compatibility with Python
 # TRUE evaluates to 1, FALSE to 0, and NA to 2
-SeuratDisk:::GuessDType(x = c(TRUE, FALSE, NA))
+srtdisk:::GuessDType(x = c(TRUE, FALSE, NA))
 }
 
 }

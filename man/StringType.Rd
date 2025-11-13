@@ -22,8 +22,8 @@ generate HDF5 datatype specifications with specific string encodings
 }
 \examples{
 \donttest{
-SeuratDisk:::StringType()
-SeuratDisk:::StringType('ascii7')
+srtdisk:::StringType()
+srtdisk:::StringType('ascii7')
 }
 
 }

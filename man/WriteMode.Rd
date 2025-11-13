@@ -17,8 +17,8 @@ Get the proper HDF5 connection mode for writing depending on overwrite status
 }
 \examples{
 \donttest{
-SeuratDisk:::WriteMode(TRUE)
-SeuratDisk:::WriteMode(FALSE)
+srtdisk:::WriteMode(TRUE)
+srtdisk:::WriteMode(FALSE)
 }
 
 }

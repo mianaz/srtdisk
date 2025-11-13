@@ -6,7 +6,6 @@
 \alias{LoadLoom.H5File}
 \alias{LoadLoom.loom}
 \alias{as.Seurat.loom}
-\alias{as.Seurat}
 \title{Loom-file Loading}
 \usage{
 LoadLoom(

@@ -22,9 +22,9 @@ characters will be generated, followed by \dQuote{_}, to be used as the key
 }
 \examples{
 \donttest{
-SeuratDisk:::UpdateKey("RNA_")
-SeuratDisk:::UpdateKey("potato")
-SeuratDisk:::UpdateKey("*@)")
+srtdisk:::UpdateKey("RNA_")
+srtdisk:::UpdateKey("potato")
+srtdisk:::UpdateKey("*@)")
 }
 
 }

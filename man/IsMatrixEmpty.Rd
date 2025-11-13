@@ -25,9 +25,9 @@ These two situations correspond to matrices generated with either
 }
 \examples{
 \donttest{
-SeuratDisk:::IsMatrixEmpty(new('matrix'))
-SeuratDisk:::IsMatrixEmpty(matrix())
-SeuratDisk:::IsMatrixEmpty(matrix(1:9, nrow = 3))
+srtdisk:::IsMatrixEmpty(new('matrix'))
+srtdisk:::IsMatrixEmpty(matrix())
+srtdisk:::IsMatrixEmpty(matrix(1:9, nrow = 3))
 }
 
 }

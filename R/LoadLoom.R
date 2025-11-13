@@ -236,6 +236,7 @@ as.Seurat.loom <- function(
 #' @rdname LoomLoading
 #'
 #' @importFrom Seurat CreateAssayObject Key<- CreateSeuratObject SetAssayData as.Graph DefaultAssay<- CreateDimReducObject Loadings Loadings<- Stdev
+#' @importFrom methods slot
 #'
 #' @details
 #' \code{LoadLoom} will try to automatically fill slots of a \code{Seurat}
@@ -487,7 +488,12 @@ LoadLoom3.0 <- function(
             reduc.obj <- Loadings(object = reduc.obj) <- loadings
           }
           if (Exists(x = reduc.group, name = 'stdev')) {
-            Stdev(object = reduc.obj) <- reduc.group[['stdev']][]
+            # Use slot assignment for stdev as Stdev<- may not be exported
+            tryCatch({
+              slot(object = reduc.obj, name = 'stdev') <- reduc.group[['stdev']][]
+            }, error = function(e) {
+              warning(paste("Could not set stdev for reduction", reduc.name), immediate. = TRUE)
+            })
           }
           object[[reduc.name]] <- reduc.obj
         }

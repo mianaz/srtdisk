@@ -89,14 +89,17 @@ Convert("pbmc_small.h5Seurat", dest = "h5ad")
 
 We can view the AnnData file in Scanpy by using the `read_h5ad` function
 
-```{python load_adata}
+```{python load_adata, eval = FALSE}
+# Note: This code requires scanpy to be installed
+# pip install scanpy
 import scanpy
 adata = scanpy.read_h5ad("pbmc_small.h5ad")
 adata
 ```
 
 And visualize the UMAP with cluster annotations:
-```{python plot_adata, fig.width=10, fig.height=8}
+```{python plot_adata, fig.width=10, fig.height=8, eval = FALSE}
+# Note: This code requires scanpy and matplotlib to be installed
 import scanpy as sc
 import matplotlib.pyplot as plt
 

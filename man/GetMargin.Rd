@@ -4,14 +4,14 @@
 \alias{GetMargin}
 \title{Determine the margin to use for a dataset}
 \usage{
-GetMargin(dims, MARGIN = getOption(x = "SeuratDisk.chunking.MARGIN"))
+GetMargin(dims, MARGIN = getOption(x = "srtdisk.chunking.MARGIN"))
 }
 \arguments{
 \item{dims}{Dimensions of a dataset}
 
 \item{MARGIN}{Either an integer value contained within
 \code{1:length(x = dims)} or one of the possible values of
-\code{\link[SeuratDisk]{SeuratDisk.chunking.MARGIN}}}
+\code{\link[srtdisk]{srtdisk.chunking.MARGIN}}}
 }
 \value{
 An integer value with the \code{MARGIN}
@@ -21,11 +21,11 @@ Determine the margin to use for a dataset
 }
 \examples{
 \donttest{
-SeuratDisk:::GetMargin(c(4, 10))
+srtdisk:::GetMargin(c(4, 10))
 }
 
 }
 \seealso{
-\code{\link[SeuratDisk]{SeuratDisk.chunking.MARGIN}}
+\code{\link[srtdisk]{srtdisk.chunking.MARGIN}}
 }
 \keyword{internal}

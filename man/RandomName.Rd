@@ -20,7 +20,7 @@ Generate a random string of characters
 }
 \examples{
 \donttest{
-SeuratDisk:::RandomName()
+srtdisk:::RandomName()
 }
 
 }

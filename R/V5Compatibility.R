@@ -3,6 +3,9 @@
 #' @description Functions for handling Seurat V5 object structures
 #' @keywords internal
 #'
+#' @importFrom Seurat Assays Reductions Images scalefactors
+#' @importFrom methods slot
+#'
 NULL
 
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -264,7 +267,7 @@ WriteH5SpatialV5 <- function(object, hgroup, verbose = TRUE) {
       }
 
       # Write scale factors
-      scale.factors <- ScaleFactors(object = object[[img]])
+      scale.factors <- scalefactors(object = object[[img]])
       if (!is.null(scale.factors)) {
         for (sf.name in names(scale.factors)) {
           img.group$create_attr(
@@ -417,7 +420,14 @@ ValidateSlotMapping <- function(object, verbose = TRUE) {
     } else if (slot == "reductions") {
       has.data <- length(Reductions(object = object)) > 0
     } else if (slot == "graphs") {
-      has.data <- length(Graphs(object = object)) > 0
+      # Check for graphs using alternative methods as Graphs may not be exported
+      has.data <- tryCatch({
+        if (exists("Graphs", where = asNamespace("Seurat"), mode = "function")) {
+          length(get("Graphs", asNamespace("Seurat"))(object = object)) > 0
+        } else {
+          length(slot(object, "graphs")) > 0
+        }
+      }, error = function(e) FALSE)
     } else if (slot == "images") {
       has.data <- length(Images(object = object)) > 0
     }

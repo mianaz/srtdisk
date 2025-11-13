@@ -217,6 +217,7 @@ as.loom.H5File <- function(x, ...) {
 
 #' @importFrom tools file_ext
 #' @importFrom Seurat Assays DefaultAssay GetAssayData Reductions Embeddings Loadings Stdev
+#' @importFrom methods slotNames slot
 #'
 #' @rdname SaveLoom
 #' @method as.loom Seurat
@@ -354,8 +355,28 @@ as.loom.Seurat <- function(
     })
   }
   # Add graphs
-  for (graph in SafeGraphs(object = x)) {
-    lfile$add_graph(x = x[[graph]], name = graph, type = 'col')
+  # Try to get graph names - Graphs may not be exported, so use alternative methods
+  graph_names <- tryCatch({
+    # Try using the Graphs function if available
+    if (exists("Graphs", where = asNamespace("Seurat"), mode = "function")) {
+      Graphs(object = x)
+    } else {
+      # Fall back to checking slot names
+      slot_names <- slotNames(x)
+      if ("graphs" %in% slot_names && length(slot(x, "graphs")) > 0) {
+        names(slot(x, "graphs"))
+      } else {
+        character()
+      }
+    }
+  }, error = function(e) character())
+
+  for (graph in graph_names) {
+    tryCatch({
+      lfile$add_graph(x = x[[graph]], name = graph, type = 'col')
+    }, error = function(e) {
+      warning(paste("Could not add graph", graph), immediate. = TRUE)
+    })
   }
   # Add metadata
   lfile$add_attribute(x = colnames(x = x), name = 'CellID', type = 'col')

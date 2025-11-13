@@ -24,8 +24,8 @@ certain exceptions (eg. S4 classes defined by
 }
 \examples{
 \donttest{
-SeuratDisk:::GetClass('Seurat')
-SeuratDisk:::GetClass('Matrix')
+srtdisk:::GetClass('Seurat')
+srtdisk:::GetClass('Matrix')
 }
 
 }

@@ -93,14 +93,14 @@ The following formats can be provided by \code{TSFormats}:
 \examples{
 \donttest{
 # Get a timestamp format
-SeuratDisk:::TSFormats()
+srtdisk:::TSFormats()
 
 # Create a timestamp
-SeuratDisk:::Timestamp()
+srtdisk:::Timestamp()
 
 # Format a timestamp for easy viewing
 time <- "20200804T214148Z"
-SeuratDisk:::FormatTime(time)
+srtdisk:::FormatTime(time)
 }
 
 }

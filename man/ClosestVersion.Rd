@@ -40,8 +40,8 @@ determine minimum version with new API addition) and \dQuote{rounding up}
 }
 \examples{
 \donttest{
-SeuratDisk:::ClosestVersion('3.1.0', targets = c('3.0.0', '1.4.9', '4.3.2'))
-SeuratDisk:::ClosestVersion('3.1.0', targets = c('3.0.0', '1.4.9', '4.3.2'), direction = 'max')
+srtdisk:::ClosestVersion('3.1.0', targets = c('3.0.0', '1.4.9', '4.3.2'))
+srtdisk:::ClosestVersion('3.1.0', targets = c('3.0.0', '1.4.9', '4.3.2'), direction = 'max')
 }
 
 }

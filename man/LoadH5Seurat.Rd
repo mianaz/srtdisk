@@ -6,7 +6,6 @@
 \alias{LoadH5Seurat.H5File}
 \alias{LoadH5Seurat.h5Seurat}
 \alias{as.Seurat.h5Seurat}
-\alias{as.Seurat}
 \title{Load a saved \code{Seurat} object from an h5Seurat file}
 \usage{
 LoadH5Seurat(file, ...)

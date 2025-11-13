@@ -63,7 +63,7 @@ added to the \dQuote{cell.names} dataset instead. If the
 \dQuote{__categories} dataset is present, each dataset within
 \dQuote{__categories} will be stored as a factor group. Cell-level metadata
 will be added as an HDF5 group unless factors are \strong{not} present and
-\code{\link[SeuratDisk]{SeuratDisk.dtype.dataframe_as_group}} is \code{FALSE}
+\code{\link[srtdisk]{srtdisk.dtype.dataframe_as_group}} is \code{FALSE}
 }
 \subsection{Dimensional reduction information:}{
  Cell embeddings are taken from \code{/obsm}; dimensional reductions are

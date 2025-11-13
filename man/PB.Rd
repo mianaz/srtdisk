@@ -22,7 +22,7 @@ creates progress bars with the following defaults
 }
 \examples{
 \donttest{
-pb <- SeuratDisk:::PB()
+pb <- srtdisk:::PB()
 for (i in 1:10) {
   utils::setTxtProgressBar(pb, i / 10)
 }

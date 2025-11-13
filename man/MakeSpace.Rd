@@ -18,8 +18,8 @@ be printed to console
 }
 \examples{
 \donttest{
-SeuratDisk:::MakeSpace(n = 10)
-cat('hello', SeuratDisk:::MakeSpace(n = 10), 'world\n', sep = '')
+srtdisk:::MakeSpace(n = 10)
+cat('hello', srtdisk:::MakeSpace(n = 10), 'world\n', sep = '')
 }
 
 }

@@ -5,7 +5,6 @@
 \alias{Cells.h5Seurat}
 \alias{Cells}
 \alias{DefaultAssay.h5Seurat}
-\alias{DefaultAssay}
 \alias{DefaultAssay<-.h5Seurat}
 \alias{Idents.h5Seurat}
 \alias{Idents}

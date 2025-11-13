@@ -19,9 +19,9 @@ Does an R6 class inherit from scdisk
 }
 \examples{
 \donttest{
-SeuratDisk:::IsSCDisk("H5File")
-SeuratDisk:::IsSCDisk("scdisk")
-SeuratDisk:::IsSCDisk("h5Seurat")
+srtdisk:::IsSCDisk("H5File")
+srtdisk:::IsSCDisk("scdisk")
+srtdisk:::IsSCDisk("h5Seurat")
 }
 
 }

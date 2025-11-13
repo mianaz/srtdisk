@@ -3,9 +3,7 @@
 \name{loom-bindings}
 \alias{loom-bindings}
 \alias{DefaultAssay.loom}
-\alias{DefaultAssay}
 \alias{dim.loom}
-\alias{dim}
 \title{Seurat binding for loom files}
 \usage{
 \method{DefaultAssay}{loom}(object, ...)

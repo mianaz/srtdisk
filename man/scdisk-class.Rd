@@ -156,7 +156,7 @@ Generate chunk points for a dataset
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{scdisk$chunk.points(
   dataset,
-  MARGIN = getOption(x = "SeuratDisk.chunking.MARGIN", default = "largest"),
+  MARGIN = getOption(x = "srtdisk.chunking.MARGIN", default = "largest"),
   csize = NULL
 )}\if{html}{\out{</div>}}
 }

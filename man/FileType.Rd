@@ -17,8 +17,8 @@ Determine a filetype based on its extension
 }
 \examples{
 \donttest{
-SeuratDisk:::FileType('pbmc3k.h5Seurat')
-SeuratDisk:::FileType('h5ad')
+srtdisk:::FileType('pbmc3k.h5Seurat')
+srtdisk:::FileType('h5ad')
 }
 
 }
