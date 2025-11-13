@@ -24,7 +24,7 @@ BugReports: https://github.com/mianaz/srtdisk/issues
 License: GPL-3 | file LICENSE
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.2.3
+RoxygenNote: 7.3.3
 Depends:
   R (>= 3.6.0)
 Imports:
@@ -43,12 +43,9 @@ Imports:
   utils,
   withr (>= 2.1.2)
 Collate:
-    'UtilsAssayCompat.R'
-    'UtilsH5Access.R'
-    'UtilsMatrix.R'
-    'UtilsSparseMatrix.R'
     'zzz.R'
     'GetObject.R'
+    'UtilsH5Access.R'
     'AssembleObject.R'
     'AppendData.R'
     'TestObject.R'
@@ -60,20 +57,23 @@ Collate:
     'PadMatrix.R'
     'sparse_matrix.R'
     'Transpose.R'
-    'H5DAccess.R'
-    'V5Compatibility.R'
-    'V5LayerSupport.R'
     'Convert.R'
+    'H5DAccess.R'
     'LoadH5Seurat.R'
     'loom.R'
     'loom_bindings.R'
     'LoadLoom.R'
     'ReadH5.R'
-    'SpatialConversion.R'
-    'SpatialFOV.R'
+    'UtilsAssayCompat.R'
     'WriteH5Group.R'
     'SaveH5Seurat.R'
     'SaveLoom.R'
+    'SpatialConversion.R'
+    'SpatialFOV.R'
+    'UtilsMatrix.R'
+    'UtilsSparseMatrix.R'
+    'V5Compatibility.R'
+    'V5LayerSupport.R'
     'h5Seurat_bindings.R'
 Suggests:
     formatR,

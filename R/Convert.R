@@ -266,7 +266,7 @@ Convert.h5Seurat <- function(
 #' \dQuote{__categories} dataset is present, each dataset within
 #' \dQuote{__categories} will be stored as a factor group. Cell-level metadata
 #' will be added as an HDF5 group unless factors are \strong{not} present and
-#' \code{\link[SeuratDisk]{SeuratDisk.dtype.dataframe_as_group}} is \code{FALSE}
+#' \code{\link[srtdisk]{SeuratDisk.dtype.dataframe_as_group}} is \code{FALSE}
 #' }
 #' \subsection{Dimensional reduction information:}{
 #'  Cell embeddings are taken from \code{/obsm}; dimensional reductions are

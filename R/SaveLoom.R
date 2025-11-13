@@ -164,7 +164,7 @@ SaveLoom.Seurat <- function(
 #' @method as.loom default
 #' @export
 #'
-as.loom.default <- function(x, filename, overwrite = FALSE, verbose = TRUE) {
+as.loom.default <- function(x, filename, overwrite = FALSE, verbose = TRUE, ...) {
   tryCatch(
     expr = x <- as.Seurat(object = x, verbose = verbose, ...),
     error = function(...) {

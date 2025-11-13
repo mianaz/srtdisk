@@ -312,7 +312,7 @@ as.matrix.H5Group <- function(x, ...) {
 #' @method as.sparse H5D
 #' @export
 #'
-as.sparse.H5D <- function(x) {
+as.sparse.H5D <- function(x, ...) {
   # Try to get dimensions
   dims <- NULL
 
@@ -344,7 +344,7 @@ as.sparse.H5D <- function(x) {
 #' @method as.sparse H5Group
 #' @export
 #'
-as.sparse.H5Group <- function(x) {
+as.sparse.H5Group <- function(x, ...) {
   if (!all(c('indices', 'indptr', 'data') %in% names(x = x))) {
     stop("Not a sparse matrix", call. = FALSE)
   }

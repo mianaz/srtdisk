@@ -19,7 +19,7 @@
 \alias{Stdev.h5Seurat}
 \title{Seurat bindings for h5Seurat files}
 \usage{
-\method{Cells}{h5Seurat}(x)
+\method{Cells}{h5Seurat}(x, ...)
 
 \method{DefaultAssay}{h5Seurat}(object, ...)
 
@@ -27,7 +27,7 @@
 
 \method{Idents}{h5Seurat}(object, ...)
 
-\method{IsGlobal}{H5Group}(object)
+\method{IsGlobal}{H5Group}(object, ...)
 
 \method{Key}{H5Group}(object, ...)
 
@@ -35,7 +35,7 @@
 
 \method{Project}{h5Seurat}(object, ...) <- value
 
-\method{Stdev}{h5Seurat}(object, reduction = "pca")
+\method{Stdev}{h5Seurat}(object, reduction = "pca", ...)
 }
 \description{
 Seurat bindings for h5Seurat files

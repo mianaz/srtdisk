@@ -115,7 +115,7 @@ hfile$close_all()
 
 Reading data from an h5Seurat file is as simple as calling `LoadH5Seurat()`; by default, it loads the entire object into memory.
 
-```{r load_data, eval=FALSE}
+```{r load_full_data, eval=FALSE}
 brain2 <- LoadH5Seurat("pbmc_small.h5Seurat")
 brain2
 ```

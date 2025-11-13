@@ -433,7 +433,7 @@ ValidateSlotMapping <- function(object, verbose = TRUE) {
     for (slot in names(slot.status)) {
       status <- slot.status[[slot]]
       if (status$has.data) {
-        symbol <- if (status$mapped) "✓" else "✗"
+        symbol <- if (status$mapped) "\u2713" else "\u2717"
         message("  ", symbol, " ", slot,
                 if (!status$mapped) " (unmapped)" else "")
       }

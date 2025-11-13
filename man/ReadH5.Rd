@@ -39,7 +39,7 @@
 
 \method{as.matrix}{H5Group}(x, ...)
 
-\method{as.sparse}{H5D}(x, verbose = TRUE, ...)
+\method{as.sparse}{H5D}(x, ...)
 
 \method{as.sparse}{H5Group}(x, ...)
 

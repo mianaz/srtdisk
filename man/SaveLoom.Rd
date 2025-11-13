@@ -24,7 +24,7 @@ as.loom(x, ...)
   ...
 )
 
-\method{as.loom}{default}(x, filename, overwrite = FALSE, verbose = TRUE)
+\method{as.loom}{default}(x, filename, overwrite = FALSE, verbose = TRUE, ...)
 
 \method{as.loom}{H5File}(x, ...)
 

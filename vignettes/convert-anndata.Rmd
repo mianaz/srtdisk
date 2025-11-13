@@ -13,7 +13,10 @@ vignette: >
 ---
 
 ```{r setup, include = FALSE}
-reticulate::use_condaenv("scverse", required = TRUE)
+# Try to use scverse conda environment if available, otherwise use default Python
+if (reticulate::conda_binary() != "" && "scverse" %in% reticulate::conda_list()$name) {
+  reticulate::use_condaenv("scverse", required = FALSE)
+}
 library(reticulate)
 knitr::opts_chunk$set(
   message = FALSE,

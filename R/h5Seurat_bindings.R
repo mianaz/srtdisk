@@ -16,7 +16,7 @@ NULL
 #' @method Cells h5Seurat
 #' @export
 #'
-Cells.h5Seurat <- function(x) {
+Cells.h5Seurat <- function(x, ...) {
   if (!x$exists(name = 'cell.names')) {
     stop("Cannot find cell names in this h5Seurat file", call. = FALSE)
   }
@@ -107,7 +107,7 @@ Idents.h5Seurat <- function(object, ...) {
 #' @method IsGlobal H5Group
 #' @export
 #'
-IsGlobal.H5Group <- function(object) {
+IsGlobal.H5Group <- function(object, ...) {
   return(
     object$attr_exists(attr_name = 'global') &&
       h5attr(x = object, which = 'global') == 1
@@ -163,7 +163,7 @@ Project.h5Seurat <- function(object, ...) {
 #' @method Stdev h5Seurat
 #' @export
 #'
-Stdev.h5Seurat <- function(object, reduction = 'pca') {
+Stdev.h5Seurat <- function(object, reduction = 'pca', ...) {
   if (object[['reductions']]$exists(name = reduction)) {
     reduc.group <- object[['reductions']][[reduction]]
     if (reduc.group$exists(name = 'stdev')) {

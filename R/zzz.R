@@ -1,6 +1,8 @@
 #' @importFrom rlang %||%
 #' @importFrom hdf5r H5T_COMPOUND
-#' @importFrom methods setOldClass
+#' @importFrom methods setOldClass is
+#' @importFrom stats na.omit
+#' @importFrom utils data read.csv
 #'
 NULL
 
@@ -144,7 +146,7 @@ ConvertBPCellsMatrix <- function(mat, verbose = FALSE) {
 #'
 #' @examples
 #' \donttest{
-#' SeuratDisk:::BoolToInt(x = c(TRUE, FALSE, NA))
+#' srtdisk:::BoolToInt(x = c(TRUE, FALSE, NA))
 #' }
 #'
 BoolToInt <- function(x) {
@@ -165,8 +167,8 @@ BoolToInt <- function(x) {
 #'
 #' @examples
 #' \donttest{
-#' SeuratDisk:::ChunkPoints(100, 3)
-#' SeuratDisk:::ChunkPoints(100, NA)
+#' srtdisk:::ChunkPoints(100, 3)
+#' srtdisk:::ChunkPoints(100, NA)
 #' }
 #'
 ChunkPoints <- function(dsize, csize) {
@@ -218,8 +220,8 @@ ChunkPoints <- function(dsize, csize) {
 #'
 #' @examples
 #' \donttest{
-#' SeuratDisk:::ClosestVersion('3.1.0', targets = c('3.0.0', '1.4.9', '4.3.2'))
-#' SeuratDisk:::ClosestVersion('3.1.0', targets = c('3.0.0', '1.4.9', '4.3.2'), direction = 'max')
+#' srtdisk:::ClosestVersion('3.1.0', targets = c('3.0.0', '1.4.9', '4.3.2'))
+#' srtdisk:::ClosestVersion('3.1.0', targets = c('3.0.0', '1.4.9', '4.3.2'), direction = 'max')
 #' }
 #'
 ClosestVersion <- function(
@@ -334,8 +336,8 @@ CompoundToGroup <- function(
 #'
 #' @examples
 #' \donttest{
-#' SeuratDisk:::FileType('pbmc3k.h5Seurat')
-#' SeuratDisk:::FileType('h5ad')
+#' srtdisk:::FileType('pbmc3k.h5Seurat')
+#' srtdisk:::FileType('h5ad')
 #' }
 #'
 FileType <- function(file) {
@@ -392,8 +394,8 @@ FixFeatures <- function(features) {
 #'
 #' @examples
 #' \donttest{
-#' SeuratDisk:::GetClass('Seurat')
-#' SeuratDisk:::GetClass('Matrix')
+#' srtdisk:::GetClass('Seurat')
+#' srtdisk:::GetClass('Matrix')
 #' }
 #'
 GetClass <- function(class, packages = 'Seurat') {
@@ -412,17 +414,17 @@ GetClass <- function(class, packages = 'Seurat') {
 #' @param dims Dimensions of a dataset
 #' @param MARGIN Either an integer value contained within
 #' \code{1:length(x = dims)} or one of the possible values of
-#' \code{\link[SeuratDisk]{SeuratDisk.chunking.MARGIN}}
+#' \code{\link[srtdisk]{SeuratDisk.chunking.MARGIN}}
 #'
 #' @return An integer value with the \code{MARGIN}
 #'
-#' @seealso \code{\link[SeuratDisk]{SeuratDisk.chunking.MARGIN}}
+#' @seealso \code{\link[srtdisk]{SeuratDisk.chunking.MARGIN}}
 #'
 #' @keywords internal
 #'
 #' @examples
 #' \donttest{
-#' SeuratDisk:::GetMargin(c(4, 10))
+#' srtdisk:::GetMargin(c(4, 10))
 #' }
 #'
 GetMargin <- function(dims, MARGIN = getOption(x = 'SeuratDisk.chunking.MARGIN')) {
@@ -476,7 +478,7 @@ GetParent <- function(x) {
 #' variable-length ASCII-encoded strings. Also encodes logicals as
 #' \code{\link[hdf5r]{H5T_INTEGER}} instead of \code{\link[hdf5r]{H5T_LOGICAL}}
 #' to ensure cross-language compatibility (controlled via
-#' \link[=SeuratDisk-package]{package options})
+#' \link[=srtdisk-package]{package options})
 #'
 #' @inheritParams StringType
 #' @inheritParams hdf5r::guess_dtype
@@ -495,18 +497,18 @@ GetParent <- function(x) {
 #' \donttest{
 #' # Characters can either be variable-width UTF8-encoded or
 #' # fixed-width ASCII-encoded
-#' SeuratDisk:::GuessDType(x = 'hello')
-#' SeuratDisk:::GuessDType(x = 'hello', stype = 'ascii7')
+#' srtdisk:::GuessDType(x = 'hello')
+#' srtdisk:::GuessDType(x = 'hello', stype = 'ascii7')
 #'
 #' # Data frames are a compound type; character columns follow the same rules
 #' # as character vectors
 #' df <- data.frame(x = c('g1', 'g2', 'g3'), y = 1, 2, 3, stringsAsFactors = FALSE)
-#' SeuratDisk:::GuessDType(x = df)
-#' SeuratDisk:::GuessDType(x = df, stype = 'ascii7')
+#' srtdisk:::GuessDType(x = df)
+#' srtdisk:::GuessDType(x = df, stype = 'ascii7')
 #'
 #' # Logicals are turned into integers to ensure compatibility with Python
 #' # TRUE evaluates to 1, FALSE to 0, and NA to 2
-#' SeuratDisk:::GuessDType(x = c(TRUE, FALSE, NA))
+#' srtdisk:::GuessDType(x = c(TRUE, FALSE, NA))
 #' }
 #'
 GuessDType <- function(x, stype = 'utf8', ...) {
@@ -600,9 +602,9 @@ IsDType <- function(x, dtype) {
 #'
 #' @examples
 #' \donttest{
-#' SeuratDisk:::IsMatrixEmpty(new('matrix'))
-#' SeuratDisk:::IsMatrixEmpty(matrix())
-#' SeuratDisk:::IsMatrixEmpty(matrix(1:9, nrow = 3))
+#' srtdisk:::IsMatrixEmpty(new('matrix'))
+#' srtdisk:::IsMatrixEmpty(matrix())
+#' srtdisk:::IsMatrixEmpty(matrix(1:9, nrow = 3))
 #' }
 #'
 IsMatrixEmpty <- function(x) {
@@ -624,8 +626,8 @@ IsMatrixEmpty <- function(x) {
 #'
 #' @examples
 #' \donttest{
-#' SeuratDisk:::MakeSpace(n = 10)
-#' cat('hello', SeuratDisk:::MakeSpace(n = 10), 'world\n', sep = '')
+#' srtdisk:::MakeSpace(n = 10)
+#' cat('hello', srtdisk:::MakeSpace(n = 10), 'world\n', sep = '')
 #' }
 #'
 MakeSpace <- function(n) {
@@ -644,7 +646,7 @@ MakeSpace <- function(n) {
 #' @examples
 #' \donttest{
 #' a <- list(1, b = 2, 3)
-#' SeuratDisk:::PadNames(a)
+#' srtdisk:::PadNames(a)
 #' }
 #'
 PadNames <- function(x, prefix = 'index') {
@@ -684,7 +686,7 @@ PadNames <- function(x, prefix = 'index') {
 #'
 #' @examples
 #' \donttest{
-#' pb <- SeuratDisk:::PB()
+#' pb <- srtdisk:::PB()
 #' for (i in 1:10) {
 #'   utils::setTxtProgressBar(pb, i / 10)
 #' }
@@ -706,7 +708,7 @@ PB <- function() {
 #'
 #' @examples
 #' \donttest{
-#' SeuratDisk:::RandomName()
+#' srtdisk:::RandomName()
 #' }
 #'
 RandomName <- function(length = 5L, ...) {
@@ -737,8 +739,8 @@ RandomName <- function(length = 5L, ...) {
 #'
 #' @examples
 #' \donttest{
-#' SeuratDisk:::StringType()
-#' SeuratDisk:::StringType('ascii7')
+#' srtdisk:::StringType()
+#' srtdisk:::StringType('ascii7')
 #' }
 #'
 StringType <- function(stype = c('utf8', 'ascii7')) {
@@ -799,9 +801,9 @@ AddAnndataEncoding <- function(h5obj, encoding_type = 'string-array', encoding_v
 #'
 #' @examples
 #' \donttest{
-#' SeuratDisk:::UpdateKey("RNA_")
-#' SeuratDisk:::UpdateKey("potato")
-#' SeuratDisk:::UpdateKey("*@)")
+#' srtdisk:::UpdateKey("RNA_")
+#' srtdisk:::UpdateKey("potato")
+#' srtdisk:::UpdateKey("*@)")
 #' }
 #'
 UpdateKey <- function(key) {
@@ -920,8 +922,8 @@ WriteAttribute <- function(
 #'
 #' @examples
 #' \donttest{
-#' SeuratDisk:::WriteMode(TRUE)
-#' SeuratDisk:::WriteMode(FALSE)
+#' srtdisk:::WriteMode(TRUE)
+#' srtdisk:::WriteMode(FALSE)
 #' }
 #'
 WriteMode <- function(overwrite = FALSE) {

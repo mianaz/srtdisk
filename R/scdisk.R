@@ -306,14 +306,14 @@ RegisterSCDisk <- function(r6class) {
 #' @examples
 #' \donttest{
 #' # Get a timestamp format
-#' SeuratDisk:::TSFormats()
+#' srtdisk:::TSFormats()
 #'
 #' # Create a timestamp
-#' SeuratDisk:::Timestamp()
+#' srtdisk:::Timestamp()
 #'
 #' # Format a timestamp for easy viewing
 #' time <- "20200804T214148Z"
-#' SeuratDisk:::FormatTime(time)
+#' srtdisk:::FormatTime(time)
 #' }
 #'
 FormatTime <- function(
@@ -348,9 +348,9 @@ FormatTime <- function(
 #'
 #' @examples
 #' \donttest{
-#' SeuratDisk:::IsSCDisk("H5File")
-#' SeuratDisk:::IsSCDisk("scdisk")
-#' SeuratDisk:::IsSCDisk("h5Seurat")
+#' srtdisk:::IsSCDisk("H5File")
+#' srtdisk:::IsSCDisk("scdisk")
+#' srtdisk:::IsSCDisk("h5Seurat")
 #' }
 #'
 IsSCDisk <- function(r6class) {

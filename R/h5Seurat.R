@@ -522,7 +522,7 @@ NULL
 #' @method DefaultAssay h5SI
 #' @export
 #'
-DefaultAssay.h5SI <- function(object) {
+DefaultAssay.h5SI <- function(object, ...) {
   return(attr(x = object, which = 'active.assay'))
 }
 

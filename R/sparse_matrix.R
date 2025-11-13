@@ -13,9 +13,9 @@
 #' \donttest{
 #' dat <- dat <- c(0, 0, 1, 4, 0, 2, 0, 9, 0)
 #' smat <- Matrix::Matrix(data = dat, nrow = 3, sparse = TRUE)
-#' j <- SeuratDisk:::PointerToIndex(p = smat@p)
+#' j <- srtdisk:::PointerToIndex(p = smat@p)
 #' Matrix::sparseMatrix(i = smat@i + 1, j = j, x = smat@x)
-#' p <- SeuratDisk:::IndexToPointer(j = j)
+#' p <- srtdisk:::IndexToPointer(j = j)
 #' Matrix::sparseMatrix(i = smat@i + 1, p = p, x= smat@x)
 #' }
 IndexToPointer <- function(j) {

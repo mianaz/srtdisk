@@ -30,7 +30,7 @@ manner while preserving all three logicals for R
 }
 \examples{
 \donttest{
-SeuratDisk:::BoolToInt(x = c(TRUE, FALSE, NA))
+srtdisk:::BoolToInt(x = c(TRUE, FALSE, NA))
 }
 
 }
