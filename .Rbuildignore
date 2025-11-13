@@ -9,10 +9,11 @@
 ^Meta$
 ^README\.Rmd$
 ^cran-comments\.md$
-^.*\.loom$
-^.*\.h5ad$
-^.*\.h5seurat$
-^.*\.h5Seurat$
-^.*\.rds$
-^.*\.Rds$
+^vignettes/.*\.loom$
+^vignettes/.*\.h5ad$
+^vignettes/.*\.h5seurat$
+^vignettes/.*\.h5Seurat$
+^vignettes/.*\.rds$
+^vignettes/.*\.Rds$
 ^vignettes/anndata-Rmd\.Rmd$
+^inst/testdata/pbmc3k_final\.h5ad$

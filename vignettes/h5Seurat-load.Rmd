@@ -30,60 +30,41 @@ This vignette serves as a guide to saving and loading `Seurat` objects to h5Seur
 
 ## Saving a dataset
 
-Saving a `Seurat` object to an h5Seurat file is a fairly painless process. All assays, dimensional reductions, spatial images, and nearest-neighbor graphs are automatically saved as well as extra metadata such as miscellaneous data, command logs, or cell identity classes from a `Seurat` object. To save a `Seurat` object, we need the [Seurat](https://satijalab.org/seurat) and srtdisk R packages. Example `Seurat` objects are distributed through [SeuratData](https://github.com/satijalab/seurat-data).
+Saving a `Seurat` object to an h5Seurat file is a fairly painless process. All assays, dimensional reductions, spatial images, and nearest-neighbor graphs are automatically saved as well as extra metadata such as miscellaneous data, command logs, or cell identity classes from a `Seurat` object. To save a `Seurat` object, we need the [Seurat](https://satijalab.org/seurat) and srtdisk R packages.
 
 ```{r packages}
 library(Seurat)
 library(srtdisk)
-library(SeuratData)
 ```
 
-For this vignette, we'll use one of the 10X Genomics Visium datasets from the stxBrain data package. We use this dataset to showcase saving and loading a dataset with multiple assays, dimensional reductions, nearest-neighbor graphs, and with spatial image data.
+For this vignette, we'll use the `pbmc_small` dataset that comes bundled with the package. This dataset showcases saving and loading a dataset with multiple assays, dimensional reductions, and nearest-neighbor graphs.
 
-```{r install_data}
-InstallData(ds = "stxBrain")
-brain <- LoadData(ds = "stxBrain", type = "anterior1")
+```{r load_data}
+# Load bundled pbmc_small dataset
+brain <- readRDS(system.file("testdata", "pbmc_small.rds", package = "srtdisk"))
+brain
 ```
 
-The data loaded is the raw, unprocessed version of the data. In order to generate the full dataset, we'll follow the spatial processing steps.
-
-<details>
-  <summary>Processing Steps</summary>
-
-```{r object_version, echo=FALSE}
-slot(object = brain, name = "version") <- packageVersion("Seurat")
-```
-
-```{r process_data}
-# Update to Seurat v5 format - important for Assay5 compatibility
-brain <- UpdateSeuratObject(brain)
-brain <- SCTransform(brain, assay = "Spatial", verbose = FALSE)
-brain <- RunPCA(brain)
-brain <- FindNeighbors(brain, dims = 1:30)
-brain <- FindClusters(brain, verbose = FALSE)
-brain <- RunUMAP(brain, dims = 1:30)
-```
-
-</details>
+The data loaded is already processed with basic analyses performed.
 
 ```{r brain}
 brain
 ```
 
-As seen, we have a dataset with multiple components to it. Despite being a complex dataset with multiple parts, saving the dataset is no problem with nearly all information from the object being written to disk. Saving an object is as simple as calling `SaveH5Seurat()`; minimally, this function takes a `Seurat` object and nothing else. Optional arguments are present for specifying a filename and whether or not you want to overwrite a preexisting file.
+As seen, we have a dataset with multiple components to it. Saving an object is as simple as calling `SaveH5Seurat()`; minimally, this function takes a `Seurat` object and nothing else. Optional arguments are present for specifying a filename and whether or not you want to overwrite a preexisting file.
 
 ```{r save_data}
-SaveH5Seurat(brain, overwrite = TRUE)
+SaveH5Seurat(brain, filename = "pbmc_small.h5Seurat", overwrite = TRUE)
 ```
 
-On a laptop running Ubuntu 16.04 LTS with an Intel Core i5-2520M clocked at 2.5 GHz, 16 GB of RAM, and a 512 Gb Samsung Evo SSD, this process takes ~20 seconds and results in an on-disk file size of roughly 213 Mb.
+This process is quick and results in a compact on-disk file.
 
 ```{r file_size}
-size <- file.size("anterior1.h5Seurat")
-print(structure(size, class = "object_size"), units = "Mb")
+size <- file.size("pbmc_small.h5Seurat")
+print(structure(size, class = "object_size"), units = "Kb")
 ```
 
-An [Rds](http://stat.ethz.ch/R-manual/R-devel/library/base/html/readRDS.html) file with the same object is roughly 200 Mb on disk, though saving the Rds file took ~42 seconds on the same laptop. Moreover, Rds files are not easily readable in other languages, such as Python.
+h5Seurat files are HDF5-based and can be read in other languages, such as Python, providing better interoperability than Rds files.
 
 ## Connecting to and querying h5Seurat files
 
@@ -103,7 +84,7 @@ Unlike most data formats, HDF5 files can be connected to and explored without lo
 Connecting to an h5Seurat file is as simple as instantiating an `h5Seurat` object.
 
 ```{r hfile}
-hfile <- Connect("anterior1.h5Seurat")
+hfile <- Connect("pbmc_small.h5Seurat")
 hfile
 ```
 
@@ -135,7 +116,7 @@ hfile$close_all()
 Reading data from an h5Seurat file is as simple as calling `LoadH5Seurat()`; by default, it loads the entire object into memory.
 
 ```{r load_data, eval=FALSE}
-brain2 <- LoadH5Seurat("anterior1.h5Seurat")
+brain2 <- LoadH5Seurat("pbmc_small.h5Seurat")
 brain2
 ```
 
@@ -144,21 +125,21 @@ However, there are situations in which loading an entire `Seurat` object is not 
 There are four main parameters for controlling data loading. The first is the `assays` parameter; this parameter controls which assays are loaded and which slots of each assay are loaded. The simplest level of control is specifying the assays to load. For our brain dataset, we can choose from either "SCT" or "Spatial"; passing one of these will load the entire assay object for the assay specified.
 
 ```{r assay_load}
-brain2 <- LoadH5Seurat("anterior1.h5Seurat", assays = "SCT")
+brain2 <- LoadH5Seurat("pbmc_small.h5Seurat", assays = "SCT")
 brain2
 ```
 
 We can also choose the slots to load; the slots available are "counts" for the raw expression data, "data" for the normalized expression data, or "scale.data" for the scaled expression data. Specifying slots instead of assays will load the desired slots from all assays that have the requested slots. When specifying slots, one of either "counts" or "data" **must** be specified as the `Seurat` object uses these slots to control dataset dimensionality information.
 
 ```{r slot_load}
-brain2 <- LoadH5Seurat("anterior1.h5Seurat", assays = "data")
+brain2 <- LoadH5Seurat("pbmc_small.h5Seurat", assays = "data")
 brain2
 ```
 
 For more fine-tuned control, the `assays` parameter can also take a named list or vector, where the names are the names of the assays to load and the values are the slots to load.
 
 ```{r assay_slot_load}
-brain2 <- LoadH5Seurat("anterior1.h5Seurat", assays = list("SCT" = c("data", "scale.data"), "Spatial" = "counts"))
+brain2 <- LoadH5Seurat("pbmc_small.h5Seurat", assays = list("SCT" = c("data", "scale.data"), "Spatial" = "counts"))
 brain2
 ```
 
@@ -167,7 +148,7 @@ Finally, passing `NULL` to `assays` (the default behavior) loads all assays and 
 The second of the main parameters is the `reductions` parameter; this parameter controls which dimensional reductions are loaded. As dimensional reductions are tied to assays, the data request needs to be either associated to a loaded assay or marked as global to be loaded (see details below). For example, trying to load the "pca" reduction with the "Spatial" assay won't work as the "pca" reduction is associated with the "SCT" assay and not marked as global.
 
 ```{r bad_reduc}
-brain2 <- LoadH5Seurat("anterior1.h5Seurat", assays = "Spatial", reductions = "pca")
+brain2 <- LoadH5Seurat("pbmc_small.h5Seurat", assays = "Spatial", reductions = "pca")
 brain2
 ```
 
@@ -180,7 +161,7 @@ The final main parameter is the `images` parameter; this parameter controls whic
 With these four parameters, there is a lot of customization for loading `Seurat` objects from h5Seurat files. For example, the following will load the "data" slot from the "Spatial" assay, the "data" and "scale.data" slots from the "SCT" assay, _global_ dimensional reductions, none of the nearest neighbor graphs, and all spatial images.
 
 ```{r custom_load}
-brain2 <- LoadH5Seurat("anterior1.h5Seurat", assays = list("SCT" = c("data", "scale.data"), "Spatial" = "counts"), reductions = NA, graphs = FALSE, images = NULL)
+brain2 <- LoadH5Seurat("pbmc_small.h5Seurat", assays = list("SCT" = c("data", "scale.data"), "Spatial" = "counts"), reductions = NA, graphs = FALSE, images = NULL)
 brain2
 ```
 
@@ -198,28 +179,28 @@ In addition, there are four secondary parameters to `LoadH5Seurat`: `meta.data`,
 Partial loading of datasets is an excellent way to limit memory usage and prevent the loading of massive datasets into memory. However, there can be instances in which a partial dataset was loaded, but then needs to be expanded with additional data from the h5Seurat file. Instead of redoing the partial load, we can make use of `AppendData()` to add additional objects from an h5Seurat file to an already-loaded `Seurat` object. To show how this works, we'll start off with by loading just the "data" slot from the "SCT" assay as well as all spatial image data, but not load any dimensional reduction information or nearest-neighbor graphs.
 
 ```{r load_partial}
-brain2 <- LoadH5Seurat("anterior1.h5Seurat", assays = c("SCT" = "data"), reductions = FALSE, graphs = FALSE, images = NULL)
+brain2 <- LoadH5Seurat("pbmc_small.h5Seurat", assays = c("SCT" = "data"), reductions = FALSE, graphs = FALSE, images = NULL)
 brain2
 ```
 
 `AppendData` takes the h5Seurat file, the `Seurat` object generated from `LoadH5Seurat` and uses the four main paramters from `LoadH5Seurat` (`assays`, `reductions`, `graphs`, and `images`). These parameters are used in the same way as `LoadH5Seurat` with one exception: `assays` can now take `FALSE` as a value. By passing `FALSE`, we prevent other assay information from being loaded; this is useful if we only want to add other bits of data to our `Seurat` object. For example, we can choose to add only _global_ dimensional reductions to the already existing `Seurat` object.
 
 ```{r append_partial}
-brain2 <- AppendData("anterior1.h5Seurat", brain2, assays = FALSE, reductions = NA, graphs = FALSE, images = NULL)
+brain2 <- AppendData("pbmc_small.h5Seurat", brain2, assays = FALSE, reductions = NA, graphs = FALSE, images = NULL)
 brain2
 ```
 
 The only limits to the number of times `AppendData` can be run is when the `h5Seurat` file has run out of data not present in the `Seurat` object. Otherwise, it can be run multiple times, adding new bits of data to our `Seurat` object. Here, we fill out the rest of the "SCT" assay, but load no other information
 
 ```{r append_parital2}
-brain2 <- AppendData("anterior1.h5Seurat", brain2, assays = "SCT", reductions = FALSE, graphs = FALSE, images = FALSE)
+brain2 <- AppendData("pbmc_small.h5Seurat", brain2, assays = "SCT", reductions = FALSE, graphs = FALSE, images = FALSE)
 brain2
 ```
 
 If we want to perform a "full append" (loading all bits of data of a `Seurat` object from an h5Seurat file), we can set the four parameters to `NULL`, which happens to be the default values for these parmaters. This loads the rest of the `Seurat` object from the h5Seurat file into memory.
 
 ```{r append_full}
-brain2 <- AppendData("anterior1.h5Seurat", brain2)
+brain2 <- AppendData("pbmc_small.h5Seurat", brain2)
 brain2
 ```
 

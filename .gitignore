@@ -25,7 +25,9 @@ Meta
 
 # ignore test data
 examples/
-inst/testdata/
+inst/testdata/*.h5ad
+inst/testdata/*.h5seurat
+inst/testdata/*.h5Seurat
 
 # ignore macos files
 .DS_Store
