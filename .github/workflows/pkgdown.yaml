@@ -38,7 +38,10 @@ jobs:
           needs: website
 
       - name: Build site
-        run: pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE)
+        run: |
+          # Build reference docs only, skip vignettes (built manually with large test data)
+          pkgdown::build_reference(new_process = FALSE, install = FALSE)
+          pkgdown::build_home(pkg = ".", override = list(destination = "docs"))
         shell: Rscript {0}
 
       - name: Deploy to GitHub pages 🚀
