@@ -42,7 +42,7 @@ determine minimum version with new API addition) and &amp;#8220;rounding up&amp;
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Find the closest version</h1>
-      <small class="dont-index">Source: <a href="https://github.com/mianaz/srtdisk/blob/HEAD/R/zzz.R" class="external-link"><code>R/zzz.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/mianaz/srtdisk/blob/main/R/zzz.R" class="external-link"><code>R/zzz.R</code></a></small>
       <div class="d-none name"><code>ClosestVersion.Rd</code></div>
     </div>
 
@@ -107,10 +107,10 @@ versus to <code>&gt;</code> or <code>&lt;</code>) for “rounding”</p></dd>
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># \donttest{</span></span></span>
-<span class="r-in"><span><span class="fu">SeuratDisk</span><span class="fu">:::</span><span class="fu"><a href="https://mojaveazure.github.io/seurat-disk/reference/ClosestVersion.html" class="external-link">ClosestVersion</a></span><span class="op">(</span><span class="st">'3.1.0'</span>, targets <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">'3.0.0'</span>, <span class="st">'1.4.9'</span>, <span class="st">'4.3.2'</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "3.0.0"</span>
-<span class="r-in"><span><span class="fu">SeuratDisk</span><span class="fu">:::</span><span class="fu"><a href="https://mojaveazure.github.io/seurat-disk/reference/ClosestVersion.html" class="external-link">ClosestVersion</a></span><span class="op">(</span><span class="st">'3.1.0'</span>, targets <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">'3.0.0'</span>, <span class="st">'1.4.9'</span>, <span class="st">'4.3.2'</span><span class="op">)</span>, direction <span class="op">=</span> <span class="st">'max'</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "4.3.2"</span>
+<span class="r-in"><span><span class="fu">SeuratDisk</span><span class="fu">:::</span><span class="fu">ClosestVersion</span><span class="op">(</span><span class="st">'3.1.0'</span>, targets <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">'3.0.0'</span>, <span class="st">'1.4.9'</span>, <span class="st">'4.3.2'</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error in loadNamespace(x):</span> there is no package called ‘SeuratDisk’</span>
+<span class="r-in"><span><span class="fu">SeuratDisk</span><span class="fu">:::</span><span class="fu">ClosestVersion</span><span class="op">(</span><span class="st">'3.1.0'</span>, targets <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">'3.0.0'</span>, <span class="st">'1.4.9'</span>, <span class="st">'4.3.2'</span><span class="op">)</span>, direction <span class="op">=</span> <span class="st">'max'</span><span class="op">)</span></span></span>
+<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error in loadNamespace(x):</span> there is no package called ‘SeuratDisk’</span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
@@ -124,7 +124,7 @@ versus to <code>&gt;</code> or <code>&lt;</code>) for “rounding”</p></dd>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
     </footer></div>
