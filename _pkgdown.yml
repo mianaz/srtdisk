@@ -89,7 +89,6 @@ reference:
     contents:
       - GuessDType
       - IsDType
-      - Scalar
       - StringType
       - BoolToInt
       - Dims
