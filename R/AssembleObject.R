@@ -270,7 +270,7 @@ AssembleAssay <- function(assay, file, slots = NULL, verbose = TRUE) {
   }
 
   read_matrix_data <- function(slot_name) {
-    if (exists("ReadV5Layer", envir = asNamespace("SeuratDisk"))) {
+    if (exists("ReadV5Layer", envir = asNamespace("srtdisk"))) {
       mat <- ReadV5Layer(
         h5_group = assay.group,
         layer_name = slot_name,
