@@ -11,16 +11,12 @@
 \alias{as.factor}
 \alias{as.list,H5Group-method}
 \alias{as.list}
-\alias{as.logical.H5D}
-\alias{as.logical}
 \alias{as.matrix.H5D}
 \alias{as.matrix}
 \alias{as.matrix.H5Group}
 \alias{as.sparse.H5D}
 \alias{as.sparse.H5Group}
 \alias{as.sparse}
-\alias{dimnames.H5D}
-\alias{dimnames}
 \title{Load data from an HDF5 File}
 \usage{
 \method{as.array}{H5D}(x, ...)
@@ -33,8 +29,6 @@
 
 \S4method{as.list}{H5Group}(x, which = NULL, ...)
 
-\method{as.logical}{H5D}(x, ...)
-
 \method{as.matrix}{H5D}(x, transpose = FALSE, ...)
 
 \method{as.matrix}{H5Group}(x, ...)
@@ -42,13 +36,13 @@
 \method{as.sparse}{H5D}(x, ...)
 
 \method{as.sparse}{H5Group}(x, ...)
-
-\method{dimnames}{H5D}(x)
 }
 \arguments{
 \item{x}{An HDF5 dataset or group}
 
 \item{...}{Arguments passed to other methods}
+
+\item{which}{Optional character vector specifying which elements to read from the H5Group}
 
 \item{row.names}{\code{NULL} or a character vector giving the row
     names for the data frame.  Missing values are not allowed.}

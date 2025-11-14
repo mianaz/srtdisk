@@ -18,6 +18,6 @@ sparse matrices, if no dimensions are found in either the \dQuote{dims} or
 Get the dimensions of an HDF5 dataset or sparse matrix
 }
 \seealso{
-\code{\href{../doc/h5Seurat-spec.html}{vignette("h5Seurat-spec")}}
+\href{../doc/h5Seurat-spec.html}{vignette("h5Seurat-spec")}
 }
 \keyword{internal}
