@@ -413,9 +413,9 @@ as.Seurat.h5Seurat <- function(
   names(x = assay.objects) <- names(x = assays)
   for (assay in names(x = assays)) {
     slots <- assays[[assay]]
-    # Fallback to "data" layer if unspecified or empty
-    if (is.null(slots) || length(slots) == 0) {
-      slots <- "data"
+    # Ensure slots is a non-empty character vector
+    if (is.null(slots) || length(slots) == 0 || !is.character(slots)) {
+      slots <- "data"  # Default fallback
     }
     assay.objects[[assay]] <- AssembleAssay(
       assay = assay,
