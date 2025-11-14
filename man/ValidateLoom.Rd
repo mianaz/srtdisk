@@ -12,10 +12,12 @@ LoomValidate0.1(lfile, verbose = TRUE)
 LoomValidate3.0.0(lfile, verbose = TRUE)
 }
 \arguments{
-\item{...}{...}
+\item{lfile}{A loom file object or path}
+
+\item{verbose}{Whether to print validation messages}
 }
 \value{
-...
+Invisibly returns TRUE if valid, throws an error if invalid
 }
 \description{
 Functions for validating loom files before connection

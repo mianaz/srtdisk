@@ -10,6 +10,13 @@
 
 \method{dim}{loom}(x)
 }
+\arguments{
+\item{object}{A loom object}
+
+\item{x}{A loom object}
+
+\item{...}{Additional arguments passed to methods}
+}
 \description{
 Seurat binding for loom files
 }

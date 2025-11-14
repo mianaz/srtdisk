@@ -33,6 +33,6 @@ jobs:
       - uses: r-lib/actions/check-r-package@v2
         with:
           upload-snapshots: true
-          error-on: '"warning"'
+          error-on: '"error"'
           build_args: 'c("--no-build-vignettes", "--no-manual")'
           args: 'c("--no-manual", "--as-cran", "--no-vignettes")'
