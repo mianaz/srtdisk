@@ -267,7 +267,7 @@ WriteH5SpatialV5 <- function(object, hgroup, verbose = TRUE) {
       }
 
       # Write scale factors
-      scale.factors <- scalefactors(object = object[[img]])
+      scale.factors <- scalefactors(object[[img]])
       if (!is.null(scale.factors)) {
         for (sf.name in names(scale.factors)) {
           img.group$create_attr(
