@@ -72,9 +72,6 @@ details regarding how data should be stored on disk, please see the
 <span><span class="fu">as.list</span><span class="op">(</span><span class="va">x</span>, which <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'H5D'</span></span>
-<span><span class="fu">as.logical</span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># S3 method for class 'H5D'</span></span>
 <span><span class="fu">as.matrix</span><span class="op">(</span><span class="va">x</span>, transpose <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">...</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'H5Group'</span></span>
@@ -84,10 +81,7 @@ details regarding how data should be stored on disk, please see the
 <span><span class="fu">as.sparse</span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'H5Group'</span></span>
-<span><span class="fu">as.sparse</span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># S3 method for class 'H5D'</span></span>
-<span><span class="fu">dimnames</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">as.sparse</span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -100,6 +94,10 @@ details regarding how data should be stored on disk, please see the
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>Arguments passed to other methods</p></dd>
+
+
+<dt id="arg-which">which<a class="anchor" aria-label="anchor" href="#arg-which"></a></dt>
+<dd><p>Optional character vector specifying which elements to read from the H5Group</p></dd>
 
 
 <dt id="arg-row-names">row.names<a class="anchor" aria-label="anchor" href="#arg-row-names"></a></dt>
