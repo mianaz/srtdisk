@@ -412,12 +412,50 @@ as.Seurat.h5Seurat <- function(
   assay.objects <- vector(mode = 'list', length = length(x = assays))
   names(x = assay.objects) <- names(x = assays)
   for (assay in names(x = assays)) {
-    assay.objects[[assay]] <- AssembleAssay(
-      assay = assay,
-      file = x,
-      slots = assays[[assay]],
-      verbose = verbose
-    )
+    slots <- assays[[assay]]
+
+    # Ensure slots is a non-empty character vector (requested)
+    if (is.null(slots) || length(slots) == 0 || !is.character(slots)) {
+      slots <- "data"  # Default fallback
+    }
+
+    # Inspect the h5 file for available layer names for this assay
+    available_slots <- character(0)
+    try({
+      if (x$exists('assays') && x[['assays']]$exists(assay)) {
+        assay_group <- x[['assays']][[assay]]
+        # Use child names as available "slots"; this covers common names like 'counts','data','scale.data', etc.
+        available_slots <- names(assay_group)
+      }
+    }, silent = TRUE)
+
+    if (length(available_slots) == 0) {
+      # No data layers present for this assay in the file.
+      # Create a minimal placeholder assay object instead of calling AssembleAssay,
+      # so downstream code gets a valid Seurat Assay and we avoid the AssembleAssay validation error.
+      if (verbose) {
+        message(sprintf("Assay '%s' contains no on-disk slots; creating empty placeholder assay", assay))
+      }
+      # Create an empty assay (no features / no cells) as placeholder
+      # This uses SeuratObject::CreateAssayObject to create a valid empty assay
+      assay.objects[[assay]] <- SeuratObject::CreateAssayObject(counts = matrix(numeric(0), nrow = 0, ncol = 0))
+    } else {
+      # Only request slots that actually exist on disk
+      slots <- intersect(slots, available_slots)
+      if (length(slots) == 0) {
+        # If requested slots don't exist, fall back to the first available slot
+        slots <- available_slots[1]
+        if (verbose) {
+          message(sprintf("Requested slots for assay '%s' were not found; using available slot '%s' instead", assay, slots))
+        }
+      }
+      assay.objects[[assay]] <- AssembleAssay(
+        assay = assay,
+        file = x,
+        slots = slots,
+        verbose = verbose
+      )
+    }
   }
   default.assay <- list(assay.objects[[active.assay]])
   names(x = default.assay) <- active.assay

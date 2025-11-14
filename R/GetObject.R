@@ -21,92 +21,89 @@ NULL
 #'
 #' @rdname GetObject
 #'
-GetAssays <- function(assays, index) {
-  index.assays <- setdiff(x = names(x = index), y = c('global', 'no.assay'))
-  assay.slots <- c('counts', 'data', 'scale.data')
-  assay.msg <- paste(
-    'Assay specification must include either the name of an assay',
-    'or one or more assay slots'
-  )
-  assays <- assays %||% index.assays
-  if (!is.null(x = names(x = assays))) {
-    assays <- as.list(x = assays)
+# Robust GetAssays implementation
+GetAssays <- function(assays = NULL, index) {
+  # index is expected to contain element `assays` which is a named list of assay metadata
+  all_assays <- setdiff(names(index), c('global', 'no.assay'))
+  if (is.null(all_assays) || length(all_assays) == 0) {
+    stop("No assays found in the h5Seurat index.")
   }
-  if (!is.list(x = assays)) {
-    if (any(assays %in% index.assays) && any(assays %in% assay.slots)) {
-      stop("Ambiguous assays", call. = FALSE)
-    } else if (any(assays %in% index.assays)) {
-      assays <- assays[assays %in% index.assays]
-      assays <- sapply(
-        X = assays,
-        FUN = function(...) {
-          return(assay.slots)
-        },
-        simplify = FALSE,
-        USE.NAMES = TRUE
+
+  # helper: return named list of length n with value val
+  fill_named <- function(names_vec, val = NULL) {
+    setNames(rep(list(val), length(names_vec)), names_vec)
+  }
+
+  # NULL -> load all assays with default slots (NULL)
+  if (is.null(assays)) {
+    return(fill_named(all_assays, NULL))
+  }
+
+  # If assays is already a named list, validate names and normalize values
+  if (is.list(assays) && !is.null(names(assays)) && any(names(assays) != "")) {
+    requested <- intersect(names(assays), all_assays)
+    if (length(requested) == 0) {
+      stop(
+        "No assays found matching the requested assay names: ",
+        paste(names(assays), collapse = ", "),
+        ". Available assays: ", paste(all_assays, collapse = ", ")
       )
-    } else {
-      assays <- assays[assays %in% assay.slots]
-      if (length(x = assays) < 1) {
-        stop(assay.msg, call. = FALSE)
-      }
-      assays <- list(assays)
-      assays <- rep_len(x = assays, length.out = length(x = index.assays))
-      names(x = assays) <- index.assays
     }
-  } else {
-    for (i in 1:length(x = assays)) {
-      assay.name <- names(x = assays)[i] %||% index.assays[i] %||% ''
-      if (!assay.name %in% index.assays) {
-        if (assays[[i]][1] %in% index.assays) {
-          assay.name <- assays[[i]][1]
-        } else if (any(assays[[i]] %in% assay.slots)) {
-          assay.name <- hdf5r::h5attr(x = file, which = 'active.assay')
-        }
-      }
-      if (nchar(x = assay.name) < 0 || !assay.name %in% index.assays) {
-        stop(assay.msg, call. = FALSE)
-      }
-      assay.content <- assays[[i]]
-      if (assay.content[1] %in% index.assays) {
-        assay.content <- assay.slots
-      } else {
-        assay.content <- assay.content[assay.content %in% assay.slots]
-        if (length(x = assay.content) < 1) {
-          stop(assay.msg, call. = FALSE)
-        }
-      }
-      assays[i] <- list(assay.content)
-      names(x = assays)[i] <- assay.name
-    }
-  }
-  assays.checked <- assays
-  unique.assays <- unique(x = names(x = assays.checked))
-  assays <- vector(mode = 'list', length = length(x = unique.assays))
-  names(x = assays) <- unique.assays
-  for (i in unique.assays) {
-    assays.use <- which(x = names(x = assays.checked) == i)
-    slots.use <- unique(x = unlist(
-      x = assays.checked[assays.use],
-      use.names = FALSE
-    ))
-    slots.use <- slots.use[match(x = names(x = index[[i]]$slots), table = slots.use)]
-    slots.use <- as.character(x = na.omit(object = slots.use[index[[i]]$slots]))
-    assays[[i]] <- slots.use
-  }
-  # Remove assays that have no matching slots (instead of throwing error)
-  # This allows loading specific slots from only the assays that have them
-  assays <- Filter(function(x) length(x) > 0, assays)
-
-  # Only error if NO assays remain
-  if (length(assays) == 0) {
-    stop(
-      "No assays found with the requested slots/layers",
-      call. = FALSE
-    )
+    out <- assays[requested]
+    out <- lapply(out, function(x) {
+      if (is.logical(x) && isTRUE(x)) return(NULL)
+      if (identical(x, "")) return(NULL)
+      x
+    })
+    return(out)
   }
 
-  return(assays)
+  # If character vector:
+  if (is.character(assays)) {
+    # Special sentinel: "layers-only" => select assays that have any layers
+    if (length(assays) == 1 && identical(assays, "layers-only")) {
+      has_layers <- vapply(all_assays, function(a) {
+        meta <- index[[a]]
+        layers_meta <- meta[['layers']]
+        !is.null(layers_meta) && length(layers_meta) > 0
+      }, logical(1))
+      selected <- all_assays[has_layers]
+      if (length(selected) == 0) {
+        stop(
+          "Requested 'layers-only' but no assays in the file contain layers. Available assays: ",
+          paste(all_assays, collapse = ", ")
+        )
+      }
+      # Return named list where each assay requests its available layers (caller may expect "layers" or explicit names)
+      # Prefer to return the literal layer names if available
+      return(setNames(lapply(selected, function(a) {
+        layers_meta <- index[[a]][['layers']]
+        if (!is.null(layers_meta) && length(layers_meta) > 0) {
+          return(as.character(layers_meta))
+        }
+        # fallback to sentinel if meta doesn't list them explicitly
+        "layers"
+      }), selected))
+    }
+
+    # If any of the provided strings match assay names -> treat as assay names to load (NULL slots)
+    if (any(assays %in% all_assays)) {
+      selected <- intersect(as.character(assays), all_assays)
+      if (length(selected) == 0) {
+        stop("No assay names found matching: ", paste(as.character(assays), collapse = ", "))
+      }
+      return(fill_named(selected, NULL))
+    }
+
+    # Otherwise treat the character vector as slot names to load for every assay
+    requested_slots <- as.character(assays)
+    return(setNames(rep(list(requested_slots), length(all_assays)), all_assays))
+  }
+
+  stop(
+    "Unsupported 'assays' argument type. Expect NULL, character vector, or named list. ",
+    "Available assays: ", paste(all_assays, collapse = ", ")
+  )
 }
 
 #' @return \code{GetCommands}: A vector of command log names that are derived
