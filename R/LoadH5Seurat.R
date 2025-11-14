@@ -412,10 +412,15 @@ as.Seurat.h5Seurat <- function(
   assay.objects <- vector(mode = 'list', length = length(x = assays))
   names(x = assay.objects) <- names(x = assays)
   for (assay in names(x = assays)) {
+    slots <- assays[[assay]]
+    # Fallback to "data" layer if unspecified or empty
+    if (is.null(slots) || length(slots) == 0) {
+      slots <- "data"
+    }
     assay.objects[[assay]] <- AssembleAssay(
       assay = assay,
       file = x,
-      slots = assays[[assay]],
+      slots = slots,
       verbose = verbose
     )
   }
