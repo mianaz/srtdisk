@@ -7,20 +7,18 @@
 WriteAttribute(x, name, lfile, stype, transpose = TRUE, verbose = TRUE)
 }
 \arguments{
+\item{x}{An object to write out}
+
 \item{name}{Name to store attribute as}
 
-\item{h5}{An HDF5 \link[hdf5r:H5File]{file}, \link[hdf5r:H5Group]{group}, or
+\item{lfile}{An HDF5 \link[hdf5r:H5File]{file}, \link[hdf5r:H5Group]{group}, or
 \link[hdf5r:H5D]{dataset}}
 
-\item{robj}{An object to write out}
+\item{stype}{Data type of attribute}
 
-\item{dtype}{Data type of attribute}
+\item{transpose}{Whether to transpose the data}
 
-\item{scalar}{Is this a scalar or simple (vectorized) attribute?}
-
-\item{overwrite}{Overwrite the attribute if it already exists}
-
-\item{...}{Extra paramters passed to \code{\link[hdf5r:H5S]{H5S$new}}}
+\item{verbose}{Whether to print messages}
 }
 \value{
 Invisibly returns \code{NULL}

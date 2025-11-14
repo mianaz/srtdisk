@@ -36,6 +36,17 @@
 
 \method{Stdev}{h5Seurat}(object, reduction = "pca", ...)
 }
+\arguments{
+\item{x}{An h5Seurat object}
+
+\item{object}{An h5Seurat or H5Group object}
+
+\item{reduction}{Name of the dimensional reduction (default: "pca")}
+
+\item{value}{Value to set}
+
+\item{...}{Additional arguments passed to methods}
+}
 \description{
 Seurat bindings for h5Seurat files
 }
