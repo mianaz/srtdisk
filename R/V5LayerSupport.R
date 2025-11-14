@@ -112,7 +112,7 @@ ReadV5Layer <- function(h5_group, layer_name, features = NULL, cells = NULL, ver
   if (inherits(layer_obj, "H5Group")) {
     if (verbose) message(paste0("Reading sparse V5 layer '", layer_name, "'"))
 
-    if (exists("ReadSparseMatrix", envir = asNamespace("SeuratDisk"))) {
+    if (exists("ReadSparseMatrix", envir = asNamespace("srtdisk"))) {
       mat <- ReadSparseMatrix(layer_obj, verbose = verbose)
     } else {
       if (layer_obj$exists("data") && layer_obj$exists("indices") && layer_obj$exists("indptr")) {

@@ -1,4 +1,5 @@
 #' @include zzz.R
+#' @importFrom stats setNames
 #'
 NULL
 

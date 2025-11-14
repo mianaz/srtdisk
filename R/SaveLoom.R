@@ -359,7 +359,7 @@ as.loom.Seurat <- function(
   graph_names <- tryCatch({
     # Try using the Graphs function if available
     if (exists("Graphs", where = asNamespace("Seurat"), mode = "function")) {
-      Graphs(object = x)
+      Seurat:::Graphs(object = x)
     } else {
       # Fall back to checking slot names
       slot_names <- slotNames(x)
