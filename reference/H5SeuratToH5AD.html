@@ -49,7 +49,8 @@
 <span>  <span class="va">dest</span>,</span>
 <span>  assay <span class="op">=</span> <span class="fu">DefaultAssay</span><span class="op">(</span>object <span class="op">=</span> <span class="va">source</span><span class="op">)</span>,</span>
 <span>  overwrite <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  verbose <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  standardize <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -76,6 +77,12 @@ out; converting to <code><a href="h5Seurat-class.html">h5Seurat</a></code>: name
 
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
 <dd><p>Show progress updates</p></dd>
+
+
+<dt id="arg-standardize">standardize<a class="anchor" aria-label="anchor" href="#arg-standardize"></a></dt>
+<dd><p>Logical; if <code>TRUE</code>, convert Seurat-style metadata column names
+to scanpy/AnnData conventions. For example, <code>nCount_RNA</code> becomes <code>n_counts</code>,
+<code>nFeature_RNA</code> becomes <code>n_genes</code>. Default is <code>FALSE</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

@@ -50,10 +50,10 @@ provided below</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">Convert</span><span class="op">(</span><span class="va">source</span>, <span class="va">dest</span>, <span class="va">assay</span>, overwrite <span class="op">=</span> <span class="cn">FALSE</span>, verbose <span class="op">=</span> <span class="cn">TRUE</span>, <span class="va">...</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">Convert</span><span class="op">(</span><span class="va">source</span>, <span class="va">dest</span>, <span class="va">assay</span>, overwrite <span class="op">=</span> <span class="cn">FALSE</span>, verbose <span class="op">=</span> <span class="cn">TRUE</span>, standardize <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">...</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'character'</span></span>
-<span><span class="fu">Convert</span><span class="op">(</span><span class="va">source</span>, <span class="va">dest</span>, <span class="va">assay</span>, overwrite <span class="op">=</span> <span class="cn">FALSE</span>, verbose <span class="op">=</span> <span class="cn">TRUE</span>, <span class="va">...</span><span class="op">)</span></span>
+<span><span class="fu">Convert</span><span class="op">(</span><span class="va">source</span>, <span class="va">dest</span>, <span class="va">assay</span>, overwrite <span class="op">=</span> <span class="cn">FALSE</span>, verbose <span class="op">=</span> <span class="cn">TRUE</span>, standardize <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">...</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'H5File'</span></span>
 <span><span class="fu">Convert</span><span class="op">(</span></span>
@@ -72,6 +72,7 @@ provided below</p>
 <span>  assay <span class="op">=</span> <span class="fu">DefaultAssay</span><span class="op">(</span>object <span class="op">=</span> <span class="va">source</span><span class="op">)</span>,</span>
 <span>  overwrite <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  standardize <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -99,6 +100,13 @@ out; converting to <code><a href="h5Seurat-class.html">h5Seurat</a></code>: name
 
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
 <dd><p>Show progress updates</p></dd>
+
+
+<dt id="arg-standardize">standardize<a class="anchor" aria-label="anchor" href="#arg-standardize"></a></dt>
+<dd><p>Logical; if <code>TRUE</code>, convert Seurat-style metadata column names
+to scanpy/AnnData conventions when converting to h5ad format. For example,
+<code>nCount_RNA</code> becomes <code>n_counts</code>, <code>nFeature_RNA</code> becomes <code>n_genes</code>.
+Only applicable for h5Seurat to h5ad conversions. Default is <code>FALSE</code>.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
