@@ -42,3 +42,6 @@ tests/*.h5seurat
 tests/*.pdf
 tests/strategy_comparison_output.txt
 srtdisk.Rcheck/
+
+# ignore R package build artifacts
+*.tar.gz
