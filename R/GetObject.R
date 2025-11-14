@@ -91,19 +91,35 @@ GetAssays <- function(assays, index) {
       use.names = FALSE
     ))
     slots.use <- slots.use[match(x = names(x = index[[i]]$slots), table = slots.use)]
-    slots.use <- as.character(x = na.omit(object = slots.use[index[[i]]$slots]))
+
+    # Filter to only slots that are TRUE in the index
+    # Use which() to get indices where index[[i]]$slots is TRUE
+    slots.use <- as.character(x = na.omit(object = slots.use[which(index[[i]]$slots)]))
+
+    # Fallback: if index incorrectly marks all slots as FALSE, use all requested slots
+    # This handles cases where SaveH5Seurat creates an invalid index
+    if (length(slots.use) == 0 && any(names(index[[i]]$slots) %in% assay.slots)) {
+      # Use the originally requested slots that exist in the index
+      slots.use <- names(index[[i]]$slots)[names(index[[i]]$slots) %in% assay.slots]
+    }
+
     assays[[i]] <- slots.use
   }
   # Remove assays that have no matching slots (instead of throwing error)
   # This allows loading specific slots from only the assays that have them
+  assays_before_filter <- assays
   assays <- Filter(function(x) length(x) > 0, assays)
 
   # Only error if NO assays remain
   if (length(assays) == 0) {
-    stop(
-      "No assays found with the requested slots/layers",
-      call. = FALSE
-    )
+    # Add detailed error message for debugging
+    msg <- "No assays found with the requested slots/layers\n"
+    msg <- paste0(msg, "  Available assays in index: ", paste(index.assays, collapse = ", "), "\n")
+    msg <- paste0(msg, "  Assays before filtering: ", paste(names(assays_before_filter), collapse = ", "), "\n")
+    for (a in names(assays_before_filter)) {
+      msg <- paste0(msg, "    ", a, ": ", paste(assays_before_filter[[a]], collapse = ", "), "\n")
+    }
+    stop(msg, call. = FALSE)
   }
 
   return(assays)

@@ -9,7 +9,8 @@ H5SeuratToH5AD(
   dest,
   assay = DefaultAssay(object = source),
   overwrite = FALSE,
-  verbose = TRUE
+  verbose = TRUE,
+  standardize = FALSE
 )
 }
 \arguments{
@@ -23,6 +24,10 @@ out; converting to \code{\link{h5Seurat}}: name to store assay data as}
 \item{overwrite}{Overwrite existing \code{dest}}
 
 \item{verbose}{Show progress updates}
+
+\item{standardize}{Logical; if \code{TRUE}, convert Seurat-style metadata column names
+to scanpy/AnnData conventions. For example, \code{nCount_RNA} becomes \code{n_counts},
+\code{nFeature_RNA} becomes \code{n_genes}. Default is \code{FALSE}.}
 }
 \value{
 Returns a handle to \code{dest} as an \code{\link[hdf5r]{H5File}}

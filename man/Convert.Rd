@@ -7,9 +7,9 @@
 \alias{Convert.h5Seurat}
 \title{Convert an on-disk single-cell dataset to another format}
 \usage{
-Convert(source, dest, assay, overwrite = FALSE, verbose = TRUE, ...)
+Convert(source, dest, assay, overwrite = FALSE, verbose = TRUE, standardize = FALSE, ...)
 
-\method{Convert}{character}(source, dest, assay, overwrite = FALSE, verbose = TRUE, ...)
+\method{Convert}{character}(source, dest, assay, overwrite = FALSE, verbose = TRUE, standardize = FALSE, ...)
 
 \method{Convert}{H5File}(
   source,
@@ -26,6 +26,7 @@ Convert(source, dest, assay, overwrite = FALSE, verbose = TRUE, ...)
   assay = DefaultAssay(object = source),
   overwrite = FALSE,
   verbose = TRUE,
+  standardize = FALSE,
   ...
 )
 }
@@ -40,6 +41,11 @@ out; converting to \code{\link{h5Seurat}}: name to store assay data as}
 \item{overwrite}{Overwrite existing \code{dest}}
 
 \item{verbose}{Show progress updates}
+
+\item{standardize}{Logical; if \code{TRUE}, convert Seurat-style metadata column names
+to scanpy/AnnData conventions when converting to h5ad format. For example,
+\code{nCount_RNA} becomes \code{n_counts}, \code{nFeature_RNA} becomes \code{n_genes}.
+Only applicable for h5Seurat to h5ad conversions. Default is \code{FALSE}.}
 
 \item{...}{Arguments passed to other methods}
 }

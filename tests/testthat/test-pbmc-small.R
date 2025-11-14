@@ -4,6 +4,10 @@ test_that("pbmc_small roundtrip through h5Seurat succeeds", {
   skip_if_not_installed("Seurat")
   skip_if_not_installed("SeuratObject")
 
+  # Ensure SeuratObject is loaded to avoid SaveH5Seurat index creation bugs
+  library(Seurat)
+  library(SeuratObject)
+
   # Create a minimal test Seurat object instead of loading pbmc_small
   # which may not be available in all Seurat versions
   set.seed(123)
@@ -27,6 +31,12 @@ test_that("pbmc_small roundtrip through h5Seurat succeeds", {
       min.cells = 0,
       min.features = 0
     )
+  })
+
+  # Normalize data to ensure 'data' layer exists
+  # This is important for proper roundtrip testing
+  suppressWarnings({
+    test_obj <- Seurat::NormalizeData(test_obj, verbose = FALSE)
   })
 
   # Verify the test object was created

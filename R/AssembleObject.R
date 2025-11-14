@@ -231,7 +231,55 @@ AssembleAssay <- function(assay, file, slots = NULL, verbose = TRUE) {
     stop("Cannot find assay ", assay, " in this h5Seurat file", call. = FALSE)
   }
   slots.assay <- names(x = Filter(f = isTRUE, x = index[[assay]]$slots))
+
+  # Fallback: if index incorrectly marks all slots as FALSE, use all slot names
+  # This handles cases where SaveH5Seurat creates an invalid index
+  if (length(slots.assay) == 0 && length(names(index[[assay]]$slots)) > 0) {
+    slots.assay <- names(index[[assay]]$slots)
+  }
+
   slots <- slots %||% slots.assay
+
+  # Validate slots parameter - ensure it's a non-empty character vector
+  if (is.null(slots) || length(slots) == 0 || !is.character(slots)) {
+    # Fallback to available slots, preferring 'data' then 'counts'
+    if ('data' %in% slots.assay) {
+      slots <- 'data'
+      if (verbose) {
+        message("No valid slots specified, defaulting to 'data' for assay '", assay, "'")
+      }
+    } else if ('counts' %in% slots.assay) {
+      slots <- 'counts'
+      if (verbose) {
+        message("No valid slots specified, defaulting to 'counts' for assay '", assay, "'")
+      }
+    } else if (length(slots.assay) > 0) {
+      slots <- slots.assay[1]
+      if (verbose) {
+        message("No valid slots specified, defaulting to '", slots, "' for assay '", assay, "'")
+      }
+    } else {
+      stop("No slots available for assay '", assay, "'. Available slots: ",
+           paste(slots.assay, collapse = ", "), call. = FALSE)
+    }
+  }
+
+  # Filter slots to only include those available in the assay
+  slots <- intersect(slots, slots.assay)
+
+  # After intersection, ensure we still have at least one valid slot
+  if (length(slots) == 0) {
+    # Fallback to first available slot
+    if (length(slots.assay) > 0) {
+      slots <- slots.assay[1]
+      if (verbose) {
+        message("Requested slots not found, falling back to '", slots, "' for assay '", assay, "'")
+      }
+    } else {
+      stop("No slots available for assay '", assay, "'", call. = FALSE)
+    }
+  }
+
   slots <- match.arg(arg = slots, choices = slots.assay, several.ok = TRUE)
   if (!any(c('counts', 'data') %in% slots)) {
     stop("At least one of 'counts' or 'data' must be loaded", call. = FALSE)
