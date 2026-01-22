@@ -114,12 +114,7 @@ GetAssays <- function(assays = NULL, index) {
 #'
 GetCommands <- function(index, assays = NULL) {
   assays <- GetAssays(assays = assays, index = index)
-  return(unique(x = unlist(x = lapply(
-    X = names(x = assays),
-    FUN = function(x) {
-      return(index[[x]]$commands)
-    }
-  ))))
+  unique(unlist(lapply(names(assays), function(x) index[[x]]$commands)))
 }
 
 #' @return \code{GetDimReducs}: A vector of reduction names that are derived
@@ -128,34 +123,29 @@ GetCommands <- function(index, assays = NULL) {
 #' @rdname GetObject
 #'
 GetDimReducs <- function(reductions, index, assays = NULL) {
-  if (isFALSE(x = reductions)) {
+  if (isFALSE(reductions)) {
     return(NULL)
-  } else if (!is.null(x = reductions) && all(is.na(x = reductions))) {
+  }
+  if (!is.null(reductions) && all(is.na(reductions))) {
     return(index$global$reductions)
   }
-  if (is.null(x = reductions)) {
-    reductions <- unique(x = unlist(x = lapply(
-      X = setdiff(x = names(x = index), y = 'no.assay'),
-      FUN = function(x) {
-        if (x == 'global') {
-          return(index[[x]]$reductions)
-        }
-        return(names(x = index[[x]]$reductions))
+  if (is.null(reductions)) {
+    reductions <- unique(unlist(lapply(
+      setdiff(names(index), 'no.assay'),
+      function(x) {
+        if (x == 'global') index[[x]]$reductions else names(index[[x]]$reductions)
       }
     )))
   }
-  if (isTRUE(x = getOption(x = 'SeuratDisk.dimreducs.allglobal', default = FALSE))) {
+  if (isTRUE(getOption('SeuratDisk.dimreducs.allglobal', default = FALSE))) {
     return(reductions)
   }
   assays <- GetAssays(assays = assays, index = index)
-  assays.reducs <- lapply(
-    X = names(x = assays),
-    FUN = function(x) {
-      return(names(x = index[[x]]$reductions))
-    }
-  )
-  assays.reducs <- unique(x = c(unlist(x = assays.reducs), index$global$reductions))
-  return(intersect(x = reductions, y = assays.reducs))
+  assays.reducs <- unique(c(
+    unlist(lapply(names(assays), function(x) names(index[[x]]$reductions))),
+    index$global$reductions
+  ))
+  intersect(reductions, assays.reducs)
 }
 
 #' @return \code{GetGraphs}: A vector of graph names that are derived from an
@@ -164,24 +154,18 @@ GetDimReducs <- function(reductions, index, assays = NULL) {
 #' @rdname GetObject
 #'
 GetGraphs <- function(graphs, index, assays = NULL) {
-  if (isFALSE(x = graphs)) {
+  if (isFALSE(graphs)) {
     return(NULL)
-  } else if (is.null(x = graphs)) {
-    graphs <- unique(x = unlist(x = lapply(
-      X = setdiff(x = names(x = index), y = c('global', 'no.assay')),
-      FUN = function(x) {
-        return(index[[x]]$graphs)
-      }
+  }
+  if (is.null(graphs)) {
+    graphs <- unique(unlist(lapply(
+      setdiff(names(index), c('global', 'no.assay')),
+      function(x) index[[x]]$graphs
     )))
   }
   assays <- GetAssays(assays = assays, index = index)
-  assays.graphs <- unique(x = unlist(x = lapply(
-    X = names(x = assays),
-    FUN = function(x) {
-      return(index[[x]]$graphs)
-    }
-  )))
-  return(intersect(x = graphs, y = assays.graphs))
+  assays.graphs <- unique(unlist(lapply(names(assays), function(x) index[[x]]$graphs)))
+  intersect(graphs, assays.graphs)
 }
 
 #' @return \code{GetImages}: A vector of image names
@@ -189,27 +173,21 @@ GetGraphs <- function(graphs, index, assays = NULL) {
 #' @rdname GetObject
 #'
 GetImages <- function(images, index, assays = NULL) {
-  if (isFALSE(x = images)) {
+  if (isFALSE(images)) {
     return(NULL)
-  } else if (!is.null(x = images) && all(is.na(x = images))) {
+  }
+  if (!is.null(images) && all(is.na(images))) {
     return(index$global$images)
-  } else if (is.null(x = images)) {
-    images <- unique(x = unlist(x = lapply(
-      X = names(x = index),
-      FUN = function(x) {
-        return(index[[x]]$images)
-      }
-    )))
+  }
+  if (is.null(images)) {
+    images <- unique(unlist(lapply(names(index), function(x) index[[x]]$images)))
   }
   assays <- GetAssays(assays = assays, index = index)
-  assays.images <- lapply(
-    X = names(x = assays),
-    FUN = function(x) {
-      return(index[[x]]$images)
-    }
-  )
-  assays.images <- unique(x = c(unlist(x = assays.images), index$global$images))
-  return(intersect(x = images, y = assays.images))
+  assays.images <- unique(c(
+    unlist(lapply(names(assays), function(x) index[[x]]$images)),
+    index$global$images
+  ))
+  intersect(images, assays.images)
 }
 
 #' @return \code{GetNeighbors}: A vector of neighbor names
@@ -217,11 +195,11 @@ GetImages <- function(images, index, assays = NULL) {
 #' @rdname GetObject
 #'
 GetNeighbors <- function(neighbors, index) {
-  if (isFALSE(x = neighbors)) {
+  if (isFALSE(neighbors)) {
     return(NULL)
-  } else if (is.null(x = neighbors)) {
-    return(index[["global"]]$neighbors)
-  } else {
-    return(intersect(x = neighbors, y = index[["global"]]$neighbors))
   }
+  if (is.null(neighbors)) {
+    return(index$global$neighbors)
+  }
+  intersect(neighbors, index$global$neighbors)
 }

@@ -8,6 +8,8 @@ Authors@R: c(
   person(given = 'Paul', family = 'Hoffman', email = 'phoffman@nygenome.org', role = 'aut', comment = c(ORCID = '0000-0002-7693-8957')),
   person(given = 'Rahul', family = 'Satija', email = 'rsatija@nygenome.org', role = 'aut', comment = c(ORCID = '0000-0001-9448-8833'))
   )
+Author: Miana Z [aut, cre], Paul Hoffman [aut], Rahul Satija [aut]
+Maintainer: Miana Z <zzeng4@nd.edu>
 Description: Extended implementation of SeuratDisk for Seurat v5 with enhanced
   support for HDF5-based single cell file formats. The h5Seurat file format is
   specifically designed for the storage and analysis of multi-modal single-cell
@@ -70,7 +72,6 @@ Collate:
     'SpatialConversion.R'
     'SpatialFOV.R'
     'UtilsMatrix.R'
-    'UtilsSparseMatrix.R'
     'V5Compatibility.R'
     'V5LayerSupport.R'
     'h5Seurat_bindings.R'
@@ -82,3 +83,4 @@ Suggests:
     rmarkdown,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
+VignetteBuilder: knitr

@@ -187,41 +187,72 @@ SetFeaturesV5 <- function(h5_group, features, verbose = FALSE) {
   return(invisible(NULL))
 }
 
-#' Check if HDF5 path exists with caching (deprecated - use CreateCachedExistsChecker)
+#' Resolve a nested HDF5 path to its object
 #'
-#' This function is deprecated. Use \code{CreateCachedExistsChecker()} to create
-#' a cached existence checker instead.
-#'
-#' @param group H5Group object
-#' @param path Path to check
-#' @param cache_env Environment to use for caching
-#'
-#' @return Logical indicating if path exists
+#' @param base_group The starting H5Group
+#' @param path A path string, possibly containing "/" for nested paths
+#' @return The H5 object at the resolved path, or NULL if not found
 #' @keywords internal
-#'
-#' @note Deprecated: Use CreateCachedExistsChecker instead
-#'
-SafeExistsDeprecated <- function(group, path, cache_env = NULL) {
-  .Deprecated("CreateCachedExistsChecker")
-
-  if (is.null(cache_env)) {
-    return(tryCatch(
-      expr = group$exists(name = path),
-      error = function(e) path %in% names(group)
-    ))
+ResolveNestedH5Path <- function(base_group, path) {
+  if (!inherits(x = base_group, what = c('H5Group', 'H5File'))) {
+    stop("base_group must be an H5Group or H5File", call. = FALSE)
   }
-
-  cache_key <- paste0(group$get_obj_name(), "::", path)
-
-  if (exists(cache_key, envir = cache_env, inherits = FALSE)) {
-    return(get(cache_key, envir = cache_env))
+  if (!grepl("/", path)) {
+    if (base_group$exists(name = path)) {
+      return(base_group[[path]])
+    }
+    return(NULL)
   }
-
-  result <- tryCatch(
-    expr = group$exists(name = path),
-    error = function(e) path %in% names(group)
-  )
-
-  assign(cache_key, result, envir = cache_env)
-  return(result)
+  parts <- strsplit(path, "/")[[1]]
+  current_obj <- base_group
+  for (part in parts) {
+    if (!inherits(x = current_obj, what = c('H5Group', 'H5File'))) return(NULL)
+    if (!current_obj$exists(name = part)) return(NULL)
+    current_obj <- current_obj[[part]]
+  }
+  return(current_obj)
 }
+
+#' Copy HDF5 matrix data handling nested paths
+#'
+#' @param src_group The source H5Group containing the data
+#' @param src_path Path to the source data (can be nested)
+#' @param dst_loc Destination H5File or H5Group
+#' @param dst_name Name for the copied data at destination
+#' @param verbose Show progress messages
+#' @return Invisible NULL
+#' @keywords internal
+CopyH5MatrixData <- function(src_group, src_path, dst_loc, dst_name, verbose = FALSE) {
+  src_obj <- ResolveNestedH5Path(base_group = src_group, path = src_path)
+  if (is.null(src_obj)) {
+    stop("Source path '", src_path, "' not found", call. = FALSE)
+  }
+  if (dst_loc$exists(name = dst_name)) {
+    dst_loc$link_delete(name = dst_name)
+  }
+
+  if (inherits(x = src_obj, what = 'H5Group')) {
+    # Sparse matrix: copy group structure
+    dst_group <- dst_loc$create_group(name = dst_name)
+    for (comp in c('data', 'indices', 'indptr')) {
+      if (src_obj$exists(name = comp)) {
+        src_obj$obj_copy_to(dst_loc = dst_group, dst_name = comp, src_name = comp)
+      }
+    }
+    for (attr_name in c('dims', 'shape', 'encoding-type', 'encoding-version',
+                        'h5sparse_format', 'h5sparse_shape')) {
+      if (src_obj$attr_exists(attr_name = attr_name)) {
+        attr_val <- h5attr(x = src_obj, which = attr_name)
+        dst_group$create_attr(attr_name = attr_name, robj = attr_val,
+                              dtype = GuessDType(x = attr_val))
+      }
+    }
+  } else if (inherits(x = src_obj, what = 'H5D')) {
+    # Dense matrix: copy from parent
+    parent_obj <- GetParent(x = src_obj)
+    dataset_name <- basename(path = src_obj$get_obj_name())
+    parent_obj$obj_copy_to(dst_loc = dst_loc, dst_name = dst_name, src_name = dataset_name)
+  }
+  invisible(NULL)
+}
+

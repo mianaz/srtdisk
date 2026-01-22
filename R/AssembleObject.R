@@ -251,18 +251,13 @@ AssembleAssay <- function(assay, file, slots = NULL, verbose = TRUE) {
 
   safe_exists <- CreateCachedExistsChecker()
 
-  safe_read_dataset <- function(dataset, dataset_name = "") {
-    if (length(dataset$dims) > 1) {
-      result <- SafeH5DRead(dataset)
-      return(as.character(result))
-    } else {
-      return(as.character(dataset[]))
-    }
+  safe_read_dataset <- function(dataset) {
+    as.character(SafeH5DRead(dataset))
   }
 
   features <- GetFeaturesV5Safe(h5_group = assay.group, verbose = verbose)
   if (is.null(features)) {
-    features <- safe_read_dataset(assay.group[['features']], "features")
+    features <- safe_read_dataset(assay.group[['features']])
   }
   features <- FixFeatures(features = features)
   if (verbose) {
@@ -361,86 +356,43 @@ AssembleAssay <- function(assay, file, slots = NULL, verbose = TRUE) {
   }
   # Load the appropriate slots - prioritize counts for initialization
   # We need to load counts first if available, then add other layers
-  if ('counts' %in% slots) {
-    if (verbose) {
-      message("Initializing ", assay, " with counts")
-    }
-    counts <- read_matrix_data('counts')
+  # Initialize assay with counts or data
+  init_with_counts <- 'counts' %in% slots
+  init_slot_name <- if (init_with_counts) 'counts' else 'data'
 
-    # Check if matrix was successfully read
-    if (is.null(counts)) {
-      stop("Failed to read counts matrix for assay '", assay, "'", call. = FALSE)
-    }
-
-    if (verbose) { message("Matrix loaded, setting row/col names") }
-    rownames(x = counts) <- features
-    if (verbose) { message("Rownames set") }
-    colnames(x = counts) <- Cells(x = file)
-    if (verbose) { message("Colnames set, creating assay object") }
-
-    # Create V5-compatible assay by using CreateSeuratObject and extracting the assay
-    if (verbose) { message("Creating V5-compatible assay object") }
-    temp_seurat <- CreateSeuratObject(counts = counts, min.cells = -1, min.features = -1)
-    obj <- temp_seurat[['RNA']]
-    if (verbose) { message("V5 assay object extracted, class:", class(obj)) }
-
-  } else if ('data' %in% slots) {
-    # Only if counts is not available, initialize with data
-    if (verbose) {
-      message("Initializing ", assay, " with data (no counts available)")
-    }
-    data <- read_matrix_data('data')
-
-    # Check if matrix was successfully read
-    if (is.null(data)) {
-      stop("Failed to read data matrix for assay '", assay, "'", call. = FALSE)
-    }
-
-    if (verbose) { message("Data matrix loaded, setting row/col names") }
-    rownames(x = data) <- features
-    if (verbose) { message("Rownames set") }
-    colnames(x = data) <- Cells(x = file)
-    if (verbose) { message("Colnames set, creating assay object") }
-
-    # Create V5-compatible assay by using CreateSeuratObject and extracting the assay
-    if (verbose) { message("Creating V5-compatible assay object") }
-    temp_seurat <- CreateSeuratObject(counts = data, min.cells = -1, min.features = -1)
-    obj <- temp_seurat[['RNA']]
-    if (verbose) { message("V5 assay object extracted, class:", class(obj)) }
+  if (verbose) {
+    message("Initializing ", assay, " with ", init_slot_name)
   }
-  if (verbose) { message("Setting assay key") }
-  tryCatch({
-    Key(object = obj) <- Key(object = assay.group)
-    if (verbose) { message("Key set successfully") }
-  }, error = function(e) {
-    if (verbose) { message("Key setting failed: ", conditionMessage(e)) }
-    # Continue without setting key if it fails
-  })
+
+  init_data <- read_matrix_data(init_slot_name)
+  if (is.null(init_data)) {
+    stop("Failed to read ", init_slot_name, " matrix for assay '", assay, "'", call. = FALSE)
+  }
+
+  rownames(x = init_data) <- features
+  colnames(x = init_data) <- Cells(x = file)
+
+  # Create V5-compatible assay
+  temp_seurat <- CreateSeuratObject(counts = init_data, min.cells = -1, min.features = -1)
+  obj <- temp_seurat[['RNA']]
+
+  tryCatch(
+    expr = Key(object = obj) <- Key(object = assay.group),
+    error = function(e) NULL
+  )
   # Add remaining slots/layers (V5 compatibility)
-  # Check assay type once before loop - optimization to avoid repeated type checking
-  is_assay5 <- inherits(obj, "Assay5")
+  # Determine which slot was used for initialization
+  init_slot <- if ('counts' %in% slots) 'counts' else 'data'
 
   for (slot in slots) {
-    # Skip slots already used for initialization
-    if (slot == 'counts' && 'counts' %in% slots) {
-      if (verbose) {
-        message("Skipping slot '", slot, "' - already used for object initialization")
-      }
-      next
-    }
-    if (slot == 'data' && !('counts' %in% slots) && 'data' %in% slots) {
-      if (verbose) {
-        message("Skipping slot '", slot, "' - already used for object initialization")
-      }
+    # Skip the slot used for initialization
+    if (slot == init_slot) {
       next
     }
 
     slot_empty <- tryCatch({
-      if (is_assay5) {
-        IsMatrixEmpty(x = GetAssayData(object = obj, layer = slot))
-      } else {
-        IsMatrixEmpty(x = GetAssayData(object = obj, slot = slot))
-      }
+      GetAssayDataCompat(object = obj, layer_or_slot = slot) |>
+        IsMatrixEmpty()
     }, error = function(e) {
       TRUE
     })
@@ -461,16 +413,12 @@ AssembleAssay <- function(assay, file, slots = NULL, verbose = TRUE) {
 
         colnames(x = dat) <- Cells(x = file)
         rownames(x = dat) <- if (slot == 'scale.data') {
-          FixFeatures(features = safe_read_dataset(assay.group[['scaled.features']], "scaled.features"))
+          FixFeatures(features = safe_read_dataset(assay.group[['scaled.features']]))
         } else {
           features
         }
 
-        if (is_assay5) {
-          obj <- SetAssayData(object = obj, layer = slot, new.data = dat)
-        } else {
-          obj <- SetAssayData(object = obj, slot = slot, new.data = dat)
-        }
+        obj <- SetAssayDataCompat(object = obj, layer_or_slot = slot, new.data = dat)
 
       }, error = function(e) {
         if (verbose) {
@@ -504,7 +452,7 @@ AssembleAssay <- function(assay, file, slots = NULL, verbose = TRUE) {
     if (verbose) {
       message("Adding variable feature information for ", assay)
     }
-    VariableFeatures(object = obj) <- safe_read_dataset(assay.group[['variable.features']], "variable.features")
+    VariableFeatures(object = obj) <- safe_read_dataset(assay.group[['variable.features']])
   }
   # Add miscellaneous information
   if (safe_exists(assay.group, 'misc')) {
@@ -526,20 +474,7 @@ AssembleAssay <- function(assay, file, slots = NULL, verbose = TRUE) {
     })
   }
   # Handle S4 class reconstruction - skip for Assay5 objects
-  if (verbose) {
-    message("Object class check: ", class(obj))
-    message("Is Assay5: ", inherits(obj, "Assay5"))
-    message("Has s4class attr: ", assay.group$attr_exists(attr_name = 's4class'))
-  }
-
-  if (inherits(obj, "Assay5")) {
-    if (verbose) {
-      message("Detected Assay5 object - skipping all S4 reconstruction to preserve object integrity")
-    }
-  } else if (assay.group$attr_exists(attr_name = 's4class')) {
-    if (verbose) {
-      message("Processing legacy Assay object with S4 reconstruction")
-    }
+  if (!inherits(obj, "Assay5") && assay.group$attr_exists(attr_name = 's4class')) {
     tryCatch({
       classdef <- unlist(x = strsplit(
         x = h5attr(x = assay.group, which = 's4class'),
@@ -547,7 +482,7 @@ AssembleAssay <- function(assay, file, slots = NULL, verbose = TRUE) {
       ))
       pkg <- classdef[1]
       cls <- classdef[2]
-      
+
       formal <- methods::getClassDef(Class = cls, package = pkg, inherits = FALSE)
       missing <- setdiff(
         x = slotNames(x = formal),
@@ -556,9 +491,7 @@ AssembleAssay <- function(assay, file, slots = NULL, verbose = TRUE) {
       missing <- intersect(x = missing, y = names(x = assay.group))
       missing <- sapply(
         X = missing,
-        FUN = function(x) {
-          return(as.list(x = assay.group[[x]], recursive = TRUE))
-        },
+        FUN = function(x) as.list(x = assay.group[[x]], recursive = TRUE),
         simplify = FALSE
       )
       obj <- c(SeuratObject::S4ToList(object = obj), missing)
@@ -566,7 +499,7 @@ AssembleAssay <- function(assay, file, slots = NULL, verbose = TRUE) {
       obj <- SeuratObject::ListToS4(x = obj)
     }, error = function(e) {
       if (verbose) {
-        message("S4 class reconstruction failed for legacy assay: ", conditionMessage(e))
+        message("S4 class reconstruction failed: ", conditionMessage(e))
       }
     })
   }
@@ -579,18 +512,10 @@ AssembleAssay <- function(assay, file, slots = NULL, verbose = TRUE) {
 #' @rdname AssembleObject
 #'
 AssembleDimReduc <- function(reduction, file, verbose = TRUE) {
-  # Helper function to read datasets that might be 2D (V5 compatibility)
   safe_read_dataset <- function(dataset) {
-    if (length(dataset$dims) > 1) {
-      # 2D dataset - read first column and ensure it's character
-      result <- dataset[, 1]
-      return(as.character(result))
-    } else {
-      # 1D dataset - standard read
-      return(as.character(dataset[]))
-    }
+    as.character(SafeH5DRead(dataset))
   }
-  
+
   index <- file$index()
   index.check <- vapply(
     X = setdiff(x = names(x = index), y = c('global', 'no.assay')),
@@ -961,6 +886,7 @@ AssembleImage <- function(image, file, verbose = TRUE) {
             scale.factors = scale_factors,
             molecules = list(),
             boundaries = boundaries_list,
+            coords_x_orientation = "horizontal",
             assay = assay,
             key = image_key
           )

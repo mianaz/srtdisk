@@ -23,11 +23,10 @@ Meta
 /*.rds
 /*.Rds
 
-# ignore test data
+# ignore test data (keep crc_sample.h5ad for testing)
 examples/
-inst/testdata/*.h5ad
-inst/testdata/*.h5seurat
-inst/testdata/*.h5Seurat
+inst/testdata/*
+!inst/testdata/crc_sample.h5ad
 
 # ignore macos files
 .DS_Store
@@ -45,3 +44,19 @@ srtdisk.Rcheck/
 
 # ignore R package build artifacts
 *.tar.gz
+..Rcheck/
+
+# ignore knitted vignettes output folder
+knitted_vignettes/
+
+# ignore vignette build artifacts
+vignettes/*.png
+vignettes/*.h5ad
+vignettes/*.h5Seurat
+vignettes/*.h5seurat
+
+# ignore check output
+check_output.log
+
+# ignore session summary (development notes)
+SESSION_SUMMARY.md

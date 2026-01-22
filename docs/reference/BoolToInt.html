@@ -44,6 +44,7 @@ manner while preserving all three logicals for R"></head><body>
     <li><a class="dropdown-item" href="../articles/h5Seurat-load.html">Saving and Loading Data from an h5Seurat File</a></li>
     <li><a class="dropdown-item" href="../articles/h5Seurat-spec.html">h5Seurat File Format Specification</a></li>
   </ul></li>
+<li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/mianaz/srtdisk/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
@@ -100,35 +101,7 @@ manner while preserving all three logicals for R</p>
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># \donttest{</span></span></span>
-<span class="r-in"><span><span class="fu">SeuratDisk</span><span class="fu">:::</span><span class="fu"><a href="https://mojaveazure.github.io/seurat-disk/reference/BoolToInt.html" class="external-link">BoolToInt</a></span><span class="op">(</span>x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">TRUE</span>, <span class="cn">FALSE</span>, <span class="cn">NA</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> Registered S3 methods overwritten by 'SeuratDisk':</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>   method                  from   </span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>   DefaultAssay&lt;-.h5Seurat srtdisk</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>   Project&lt;-.h5Seurat      srtdisk</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>   Cells.h5Seurat          srtdisk</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>   DefaultAssay.h5SI       srtdisk</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>   DefaultAssay.h5Seurat   srtdisk</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>   DefaultAssay.loom       srtdisk</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>   Idents.h5Seurat         srtdisk</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>   IsGlobal.H5Group        srtdisk</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>   Key.H5Group             srtdisk</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>   Project.h5Seurat        srtdisk</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>   Stdev.h5Seurat          srtdisk</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>   as.Seurat.h5Seurat      srtdisk</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>   as.Seurat.loom          srtdisk</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>   as.array.H5D            srtdisk</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>   as.data.frame.H5D       srtdisk</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>   as.data.frame.H5Group   srtdisk</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>   as.list.H5D             srtdisk</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>   as.list.H5Group         srtdisk</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>   as.matrix.H5D           srtdisk</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>   as.matrix.H5Group       srtdisk</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>   as.sparse.H5D           srtdisk</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>   as.sparse.H5Group       srtdisk</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>   dim.loom                srtdisk</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>   print.h5SI              srtdisk</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> Attempting to patch hdf5r H5D methods for V5 compatibility...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> Successfully patched H5D[,] method</span>
+<span class="r-in"><span><span class="fu">srtdisk</span><span class="fu">:::</span><span class="fu">BoolToInt</span><span class="op">(</span>x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">TRUE</span>, <span class="cn">FALSE</span>, <span class="cn">NA</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1 0 2</span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>
@@ -143,7 +116,7 @@ manner while preserving all three logicals for R</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
     </footer></div>

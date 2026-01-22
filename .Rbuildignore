@@ -17,3 +17,10 @@
 ^vignettes/.*\.Rds$
 ^vignettes/anndata-Rmd\.Rmd$
 ^inst/testdata/pbmc3k_final\.h5ad$
+^\.claude$
+^SESSION_SUMMARY\.md$
+^check_output\.log$
+^knitted_vignettes$
+^test_.*\.h5Seurat$
+^test_.*\.h5ad$
+^NEWS\.md$
