@@ -173,10 +173,15 @@ crc
 ```
 
 ```{r plot_crc}
-# Plot UMAP if available
-if ("umap" %in% Reductions(crc)) {
-  DimPlot(crc, reduction = "umap", pt.size = 0.5)
+# Run UMAP if not present in converted object
+if (!"umap" %in% Reductions(crc)) {
+  crc <- NormalizeData(crc, verbose = FALSE)
+  crc <- FindVariableFeatures(crc, verbose = FALSE)
+  crc <- ScaleData(crc, verbose = FALSE)
+  crc <- RunPCA(crc, verbose = FALSE)
+  crc <- RunUMAP(crc, dims = 1:30, verbose = FALSE)
 }
+DimPlot(crc, reduction = "umap", pt.size = 0.5)
 ```
 
 ## Visium Spatial Data Conversion
@@ -232,6 +237,39 @@ if (file.exists("stxBrain_plot.png")) {
   knitr::include_graphics("stxBrain_plot.png")
 }
 ```
+
+## Multi-assay Conversion (CITE-seq)
+
+For multi-modal data like CITE-seq, convert each assay separately. This example uses the `cbmc` dataset from SeuratData:
+
+```{r cite_seq_conversion, eval = FALSE}
+library(SeuratData)
+InstallData("cbmc")
+data("cbmc", package = "cbmc.SeuratData")
+
+# RNA assay
+SeuratToH5AD(cbmc, filename = "cbmc_rna.h5ad", assay = "RNA", overwrite = TRUE)
+
+# ADT (protein) assay
+SeuratToH5AD(cbmc, filename = "cbmc_adt.h5ad", assay = "ADT", overwrite = TRUE)
+```
+
+Each h5ad file can then be loaded separately in Python for analysis with scanpy.
+
+## Spatial h5ad to Seurat (Beta)
+
+Converting spatial h5ad files back to Seurat is supported but currently in beta:
+
+```{r spatial_h5ad_to_seurat, eval = FALSE}
+# Convert spatial h5ad back to Seurat
+Convert("stxBrain.h5ad", dest = "h5seurat", overwrite = TRUE)
+brain_back <- LoadH5Seurat("stxBrain.h5seurat")
+
+# Verify spatial data was preserved
+SpatialDimPlot(brain_back)
+```
+
+Note: Spatial coordinate systems may require manual verification after round-trip conversion.
 
 ## Python Environment Setup
 
