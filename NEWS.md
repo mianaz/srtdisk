@@ -1,4 +1,45 @@
-# srtdisk 0.2.0
+# srtdisk 0.2.0 (Beta)
+
+> **Release Date:** 2026-01-22
+
+## Highlights
+
+### Full scRNA-seq Conversion Support with Seurat v5
+
+srtdisk now provides complete bidirectional conversion between Seurat objects and h5ad format, with full compatibility for Seurat v5's new Assay5 architecture:
+
+- **Seurat → h5ad**: Use `SeuratToH5AD()` for direct one-step conversion or the traditional two-step `SaveH5Seurat()` + `Convert()` workflow
+- **h5ad → Seurat**: Use `Convert()` + `LoadH5Seurat()` to import scanpy/AnnData objects
+- Properly handles V5 layered data structure (counts, data, scale.data layers)
+- Supports multi-assay objects (e.g., CITE-seq with RNA + ADT)
+
+### Metadata Preservation Fixes
+
+- **Fixed categorical metadata loss**: Factor/categorical variables in `obs` are now correctly preserved during h5ad conversion instead of being dropped or converted to strings
+- Improved handling of cell-level and feature-level metadata during round-trip conversions
+
+### Beta Spatial Data Support (Visium)
+
+- **Seurat → h5ad**: Visium spatial data conversion is functional and tested
+  - Preserves spatial coordinates, scale factors, and tissue images
+  - Compatible with scanpy/squidpy spatial analysis workflows
+- **h5ad → Seurat**: Spatial conversion is implemented but **not fully tested** - use with caution
+- Fixed spatial coordinate X/Y orientation for scanpy compatibility
+
+## New Features
+
+- `SeuratToH5AD()` wrapper function for convenient direct conversion
+- Enhanced Visium spatial data conversion with proper coordinate handling
+- Support for SlideSeq and FOV-based spatial technologies (experimental)
+- Improved scanpy-compatible naming conventions with `standardize = TRUE`
+
+## Bug Fixes
+
+- Fixed categorical metadata loss during h5ad conversion
+- Fixed "attribute already exists" error when converting h5ad graphs to h5seurat
+- Fixed `GetAssayDataCompat()` and `SetAssayDataCompat()` to use `layer` parameter (SeuratObject 5.0+ requirement)
+- Fixed spatial coordinate X/Y flip in h5Seurat to h5ad conversion
+- Improved UMAP display in h5ad to Seurat tutorial
 
 ## Documentation
 
@@ -7,14 +48,11 @@
 - Multi-assay (CITE-seq) conversion documentation
 - Spatial data conversion examples (beta)
 
-## Bug Fixes
+## Known Limitations
 
-- Fixed categorical metadata loss during h5ad conversion
-- Improved UMAP display in h5ad to Seurat tutorial
-
-## Changes
-
-- Version bump for spatial support milestone
+- **Spatial h5ad → Seurat**: Not fully tested; may have issues with certain spatial datasets
+- Multi-assay conversion requires separate h5ad files per assay (AnnData limitation)
+- Large datasets may require sufficient memory for in-memory conversion
 
 # srtdisk 0.1.0
 
