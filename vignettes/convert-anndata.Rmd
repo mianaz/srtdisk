@@ -13,11 +13,30 @@ vignette: >
 ---
 
 ```{r setup, include = FALSE}
-# Try to use scverse conda environment if available, otherwise use default Python
-if (reticulate::conda_binary() != "" && "scverse" %in% reticulate::conda_list()$name) {
-  reticulate::use_condaenv("scverse", required = FALSE)
-}
 library(reticulate)
+
+# Configure Python - try conda base first, then system python
+python_configured <- FALSE
+tryCatch({
+  if (file.exists("/opt/homebrew/Caskroom/miniconda/base/bin/python3")) {
+    use_python("/opt/homebrew/Caskroom/miniconda/base/bin/python3", required = TRUE)
+    python_configured <- TRUE
+  }
+}, error = function(e) NULL)
+
+if (!python_configured) {
+  tryCatch({
+    use_python(Sys.which("python3"), required = FALSE)
+  }, error = function(e) NULL)
+}
+
+# Check if scanpy is available for conditional evaluation
+has_scanpy <- py_module_available("scanpy")
+has_squidpy <- py_module_available("squidpy")
+
+# Check if SeuratData is available
+has_SeuratData <- requireNamespace("SeuratData", quietly = TRUE)
+
 knitr::opts_chunk$set(
   message = FALSE,
   warning = FALSE,
@@ -27,12 +46,6 @@ knitr::opts_chunk$set(
   out.width = "100%",
   dev = "png"
 )
-# Set matplotlib to use standard PNG format for Python chunks
-knitr::knit_engines$set(python = function(options) {
-  options$dev <- "png"
-  reticulate::eng_python(options)
-})
-#options(SeuratData.repo.use = "https://seurat.nygenome.org")
 ```
 
 ```{r cleanup, echo=FALSE, results='hide'}
@@ -41,12 +54,12 @@ outs <- c(
   "pbmc3k.h5ad",
   "pbmc3k_final.h5ad",
   "pbmc3k_final.h5seurat",
+  "stxBrain.h5Seurat",
   "stxBrain.h5ad",
   "stxBrain.h5seurat",
-  "vis.heart.single.h5ad",
-  "vis.heart.single.h5seurat",
-  "vis.heart.h5ad",
-  "vis.heart.h5seurat"
+  "stxBrain_plot.png",
+  "umap_plot.png",
+  "crc_converted.h5seurat"
 )
 # Only remove files that exist to avoid warnings
 existing_files <- outs[file.exists(outs)]
@@ -55,7 +68,7 @@ if (length(existing_files) > 0) {
 }
 ```
 
-This vignette showcases how to convert from `Seurat` object to AnnData files via an intermediate step thorugh h5Seurat files. This allows interoperability between Seurat and [Scanpy](https://scanpy.readthedocs.io/)
+This vignette showcases how to convert between `Seurat` objects and AnnData files via h5Seurat files. This allows interoperability between Seurat and [Scanpy](https://scanpy.readthedocs.io/).
 
 ```{r packages}
 library(Seurat)
@@ -64,177 +77,201 @@ library(srtdisk)
 
 ## Converting from Seurat to AnnData via h5Seurat
 
-To showcase going from a `Seurat` object to an AnnData file, we'll use the `pbmc_small` dataset that comes bundled with the package. This is a small subset of a PBMC dataset that's useful for demonstration purposes.
+To demonstrate conversion from a `Seurat` object to an AnnData file, we'll use the `pbmc3k.final` dataset from SeuratData - a processed PBMC dataset with clustering and UMAP.
 
-```{r get_data, message=FALSE, warning=FALSE}
-# Load bundled pbmc_small dataset
-pbmc_small <- readRDS(system.file("testdata", "pbmc_small.rds", package = "srtdisk"))
-pbmc_small
+```{r get_data, message=FALSE, warning=FALSE, eval = has_SeuratData}
+library(SeuratData)
+
+# Install pbmc3k if not already installed
+if (!"pbmc3k.final" %in% rownames(InstalledData())) {
+  InstallData("pbmc3k")
+}
+
+# Load the processed pbmc3k dataset
+data("pbmc3k.final", package = "pbmc3k.SeuratData")
+pbmc <- UpdateSeuratObject(pbmc3k.final)
+pbmc
 ```
 
-This is a small preprocessed Seurat object with basic analyses already performed.
+This is a fully processed Seurat object with clustering and dimensional reductions:
 
-The dataset is annotated as below:
-```{r}
-DimPlot(pbmc_small, reduction = "tsne", label = TRUE, pt.size = 0.5) + NoLegend()
+```{r plot_pbmc, eval = has_SeuratData}
+DimPlot(pbmc, reduction = "umap", label = TRUE, pt.size = 0.5) + NoLegend()
 ```
 
+Converting the `Seurat` object to an AnnData file is a two-step process:
 
-Converting the `Seurat` object to an AnnData file is a two-step process. First, we save the `Seurat` object as an h5Seurat file using the `SaveH5Seurat()` function. For more details about saving `Seurat` objects to h5Seurat files, please see the h5Seurat-load vignette; after the file is saved, we can convert it to an AnnData file for use in Scanpy using the `Convert()` function. The conversion process handles both expression matrices and metadata, including support for Seurat v5 objects with multiple layers.
+1. Save the `Seurat` object as an h5Seurat file using `SaveH5Seurat()`
+2. Convert to AnnData using `Convert()`
 
-```{r convert_seurat}
-SaveH5Seurat(pbmc_small, filename = "pbmc_small.h5Seurat")
-Convert("pbmc_small.h5Seurat", dest = "h5ad")
+```{r convert_seurat, eval = has_SeuratData}
+SaveH5Seurat(pbmc, filename = "pbmc3k.h5Seurat", overwrite = TRUE)
+Convert("pbmc3k.h5Seurat", dest = "h5ad", overwrite = TRUE)
 ```
 
-We can view the AnnData file in Scanpy by using the `read_h5ad` function
+We can view the AnnData file in Scanpy:
 
-```{python load_adata, eval = FALSE}
-# Note: This code requires scanpy to be installed
-# pip install scanpy
-import scanpy
-adata = scanpy.read_h5ad("pbmc_small.h5ad")
-adata
-```
-
-And visualize the UMAP with cluster annotations:
-```{python plot_adata, fig.width=10, fig.height=8, eval = FALSE}
-# Note: This code requires scanpy and matplotlib to be installed
+```{python load_adata, eval = has_scanpy && has_SeuratData}
 import scanpy as sc
+adata = sc.read_h5ad("pbmc3k.h5ad")
+print(adata)
+```
+
+And visualize with cluster annotations:
+
+```{python plot_adata, fig.width=8, fig.height=6, eval = has_scanpy && has_SeuratData}
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-# Plot with proper categorical coloring
-sc.pl.umap(adata, color='seurat_annotations', legend_loc='on data', legend_fontsize=8)
+sc.pl.umap(adata, color='seurat_annotations', legend_loc='on data', legend_fontsize=8, show=False)
+plt.tight_layout()
+plt.savefig('umap_plot.png', dpi=100, bbox_inches='tight')
+plt.close()
+```
+
+```{r show_plot, echo=FALSE, eval = has_scanpy && has_SeuratData, out.width="80%"}
+if (file.exists("umap_plot.png")) {
+  knitr::include_graphics("umap_plot.png")
+}
 ```
 
 ## Converting from AnnData to Seurat via h5Seurat
 
-To showcase going from an AnnData file to a `Seurat` object, we'll use a processed version of the PBMC 3k dataset that comes bundled with the package. This dataset was processed using Scanpy following [Scanpy's PBMC 3k tutorial](https://scanpy-tutorials.readthedocs.io/en/latest/pbmc3k.html).
+To demonstrate conversion from AnnData to Seurat, we'll use a colorectal cancer sample from [CellxGene](https://cellxgene.cziscience.com) that's bundled with the package.
 
-```{r get_adata}
-# Copy bundled pbmc3k_final.h5ad to working directory
-file.copy(
-  system.file("testdata", "pbmc3k_final.h5ad", package = "srtdisk"),
-  "pbmc3k_final.h5ad",
-  overwrite = TRUE
-)
+```{r get_h5ad}
+# Copy bundled CRC h5ad file to working directory
+h5ad_path <- system.file("testdata", "crc_sample.h5ad", package = "srtdisk")
+if (file.exists(h5ad_path)) {
+  file.copy(h5ad_path, "crc_sample.h5ad", overwrite = TRUE)
+} else {
+  # Download if not bundled (for development)
+  download.file(
+    "https://datasets.cellxgene.cziscience.com/91cf9a95-0b9a-4ece-b8eb-7b9e3409a0d3.h5ad",
+    "crc_sample.h5ad",
+    mode = "wb"
+  )
+}
 ```
 
-To see how this dataset was created, please see [this script](https://gist.github.com/mojaveazure/922aa904b9ac212e627f522c2b816a52)
+View the h5ad file in Scanpy:
 
-```{python}
+```{python view_crc, eval = has_scanpy}
 import scanpy as sc
-import matplotlib.pyplot as plt
-adata = sc.read_h5ad("pbmc3k_final.h5ad")
-adata
-sc.pl.umap(adata, color='leiden', legend_loc='on data', legend_fontsize=8)
+adata_crc = sc.read_h5ad("crc_sample.h5ad")
+print(adata_crc)
+print("\nobs columns:", list(adata_crc.obs.columns)[:10])
 ```
 
+Convert to Seurat:
 
-Converting the AnnData file to a `Seurat` object is also a two-step process. First, convert the AnnData file to an h5Seurat file using the `Convert()` function; this conversion supports both standard AnnData files and those with spatial data or multiple assay layers. Then, we load the h5Seurat file into a `Seurat` object using the `LoadH5Seurat()` function; for more details about loading `Seurat` objects from h5Seurat files, please see the h5Seurat-load vignette.
+```{r convert_crc}
+Convert("crc_sample.h5ad", dest = "h5seurat", overwrite = TRUE)
+crc <- LoadH5Seurat("crc_sample.h5seurat")
+crc
+```
 
-```{r convert_adata}
-Convert("pbmc3k_final.h5ad", dest = "h5seurat", overwrite = TRUE)
-pbmc3k <- LoadH5Seurat("pbmc3k_final.h5seurat")
-pbmc3k
-DimPlot(pbmc3k, reduction = "umap", label = TRUE, pt.size = 0.5, group.by="leiden") + NoLegend()
+```{r plot_crc}
+# Plot UMAP if available
+if ("umap" %in% Reductions(crc)) {
+  DimPlot(crc, reduction = "umap", pt.size = 0.5)
+}
 ```
 
 ## Visium Spatial Data Conversion
 
-### Converting Spatial AnnData to Seurat
+For spatial transcriptomics data, we use the stxBrain dataset from SeuratData (Visium v2 format):
 
-We'll use mouse brain spatial transcriptomics data (stxBrain) from SeuratData to demonstrate Visium data conversion:
+```{r get_stxBrain, eval = has_SeuratData}
+library(SeuratData)
 
-```{r get_stxBrain}
-# Load stxBrain data from SeuratData
-InstallData("stxBrain")
-stxBrain <- LoadData('stxBrain', type = 'anterior1')
-stxBrain <- NormalizeData(stxBrain)
-SpatialFeaturePlot(stxBrain, features = "Ptprc")
-# Save as h5Seurat, then convert to h5ad
-SaveH5Seurat(stxBrain, filename = "stxBrain.h5Seurat", overwrite = TRUE)
+# Install stxBrain if not already installed
+if (!"stxBrain" %in% rownames(InstalledData())) {
+  InstallData("stxBrain")
+}
+
+# Load anterior1 section
+brain <- UpdateSeuratObject(LoadData("stxBrain", type = "anterior1"))
+brain <- NormalizeData(brain)
+SpatialFeaturePlot(brain, features = "Hpca")
+```
+
+Convert to h5ad:
+
+```{r convert_stxBrain, eval = has_SeuratData}
+SaveH5Seurat(brain, filename = "stxBrain.h5Seurat", overwrite = TRUE)
 Convert("stxBrain.h5Seurat", dest = "h5ad", overwrite = TRUE)
 ```
 
-We can now load the AnnData file in Python and visualize it using Squidpy:
-```{python load_stxBrain, fig.width=10, fig.height=8}
+View in Python with Squidpy:
+
+```{python load_stxBrain, fig.width=10, fig.height=8, eval = has_SeuratData && has_squidpy}
 import squidpy as sq
 import scanpy as sc
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-adata = sc.read_h5ad("stxBrain.h5ad")
-# Note: The Seurat image name 'anterior1' becomes the library_id
-# Image resolution keys are standardized as 'hires' and 'lowres'
-# By default, seurat only stores lowres images. it is copied to hires to avoid errors. 
+
+adata_spatial = sc.read_h5ad("stxBrain.h5ad")
+fig, ax = plt.subplots(figsize=(10, 8))
 sq.pl.spatial_scatter(
-    adata,
-    color="Ptprc",
+    adata_spatial,
+    color="Hpca",
     library_id="anterior1",
     img_res_key="lowres",
-    size=1.5
+    size=1.5,
+    ax=ax
 )
-plt.show()
+plt.savefig('stxBrain_plot.png', dpi=100, bbox_inches='tight')
+plt.close()
 ```
 
-## Converting Spatial (Visium) Anndata to Seurat
-
-Data source: [Spatially resolved multiomics of human cardiac niches](https://cellxgene.cziscience.com/collections/3116d060-0a8e-4767-99bb-e866badea1ed)
-
-### Single Library Example
-
-First, let's work with a single library, HCAHeartST11702008:
-
-```{r load_heart_single}
-# Copy single-library heart data from testdata
-file.copy(
-  system.file("testdata", "vis.heart.single.h5ad", package = "srtdisk"),
-  "vis.heart.single.h5ad",
-  overwrite = TRUE
-)
-
-# Convert to h5seurat
-Convert("vis.heart.single.h5ad", dest = "h5seurat", overwrite = TRUE)
-
-# Load as Seurat object
-heart_single <- LoadH5Seurat("vis.heart.single.h5seurat")
-heart_single
-SpatialFeaturePlot(heart_single, features = "PTPRC")
+```{r show_stxBrain_plot, echo=FALSE, eval = has_SeuratData && has_squidpy, out.width="80%"}
+if (file.exists("stxBrain_plot.png")) {
+  knitr::include_graphics("stxBrain_plot.png")
+}
 ```
 
+## Python Environment Setup
 
-### Multi-Library Example
+For optimal interoperability, we recommend using a conda environment with scanpy:
 
-When an h5ad file contains multiple Visium libraries, `LoadH5Seurat` returns a list of Seurat objects (one per library):
+```{r python_setup, eval = FALSE}
+library(reticulate)
 
-```{r load_heart_multi}
-# Copy multi-library heart data from testdata
-file.copy(
-  system.file("testdata", "vis.heart.h5ad", package = "srtdisk"),
-  "vis.heart.h5ad",
-  overwrite = TRUE
-)
+# Use existing scverse environment
+use_condaenv("scverse", required = FALSE)
 
-# Convert to h5seurat
-Convert("vis.heart.h5ad", dest = "h5seurat", overwrite = TRUE)
+# Or create a new environment
+# reticulate::conda_create("scverse")
+# reticulate::conda_install("scverse", c("scanpy", "squidpy", "anndata"))
 
-# Load - returns a list of Seurat objects
-heart_list <- LoadH5Seurat("vis.heart.h5seurat")
-
-# Check the structure
-cat("Number of libraries:", length(heart_list), "\n")
-cat("Library names:", names(heart_list), "\n")
-
-# Each library is a separate Seurat object
-heart_list[[1]]
+# Verify configuration
+py_config()
 ```
 
-We can plot each library separately:
-
-```{r plot_heart_multi, fig.width=10, fig.height=8}
-# Plot PTPRC for the first library
-SpatialFeaturePlot(heart_list[[2]], features = "PTPRC")
+```{r check_scanpy, eval = has_scanpy}
+sc <- reticulate::import("scanpy")
+cat("Scanpy version:", sc$`__version__`, "\n")
 ```
 
+## Metadata Preservation
+
+srtdisk preserves cell metadata during conversion:
+
+- **Categorical data**: Cell types, clusters, batch labels
+- **Numerical data**: QC metrics like nCount_RNA, percent.mt
+- **Factor ordering**: Level order for visualization
+
+### Cluster Column Mapping
+
+| Seurat | AnnData/scanpy |
+|--------|----------------|
+| `seurat_clusters` | `leiden` or `louvain` |
+| `orig.ident` | `batch` |
+| `nCount_RNA` | `n_counts` |
+| `nFeature_RNA` | `n_genes` |
 
 ## Session Info
 

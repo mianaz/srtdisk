@@ -115,9 +115,6 @@ ConvertBPCellsMatrix <- function(mat, verbose = FALSE) {
   )
 }
 
-# Removed: vmessage() was just a wrapper for if(verbose) message()
-# Replace all vmessage(msg, verbose) with if(verbose) message(msg)
-
 #' Convert a logical to an integer
 #'
 #' Unlike most programming languages, R has three possible \link[base]{logical}
@@ -712,11 +709,8 @@ PB <- function() {
 #' }
 #'
 RandomName <- function(length = 5L, ...) {
-  return(paste(sample(x = letters, size = length, ...), collapse = ""))
+  paste(sample(letters, size = length, ...), collapse = "")
 }
-
-# Removed: Scalar() was just a wrapper for H5S$new(type = 'scalar')
-# Replace all Scalar() calls with H5S$new(type = 'scalar')
 
 #' Generate an HDF5 string dtype
 #'

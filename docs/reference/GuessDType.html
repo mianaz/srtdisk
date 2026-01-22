@@ -32,6 +32,7 @@ package options)"></head><body>
     <li><a class="dropdown-item" href="../articles/h5Seurat-load.html">Saving and Loading Data from an h5Seurat File</a></li>
     <li><a class="dropdown-item" href="../articles/h5Seurat-spec.html">h5Seurat File Format Specification</a></li>
   </ul></li>
+<li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/mianaz/srtdisk/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
@@ -115,7 +116,7 @@ it is set to the length of the longest string in the <code>x</code>.</p></dd>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># \donttest{</span></span></span>
 <span class="r-in"><span><span class="co"># Characters can either be variable-width UTF8-encoded or</span></span></span>
 <span class="r-in"><span><span class="co"># fixed-width ASCII-encoded</span></span></span>
-<span class="r-in"><span><span class="fu">SeuratDisk</span><span class="fu">:::</span><span class="fu"><a href="https://mojaveazure.github.io/seurat-disk/reference/GuessDType.html" class="external-link">GuessDType</a></span><span class="op">(</span>x <span class="op">=</span> <span class="st">'hello'</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">srtdisk</span><span class="fu">:::</span><span class="fu">GuessDType</span><span class="op">(</span>x <span class="op">=</span> <span class="st">'hello'</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Class: H5T_STRING</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Datatype: H5T_STRING {</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       STRSIZE H5T_VARIABLE;</span>
@@ -123,7 +124,7 @@ it is set to the length of the longest string in the <code>x</code>.</p></dd>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       CSET H5T_CSET_UTF8;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       CTYPE H5T_C_S1;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    }</span>
-<span class="r-in"><span><span class="fu">SeuratDisk</span><span class="fu">:::</span><span class="fu"><a href="https://mojaveazure.github.io/seurat-disk/reference/GuessDType.html" class="external-link">GuessDType</a></span><span class="op">(</span>x <span class="op">=</span> <span class="st">'hello'</span>, stype <span class="op">=</span> <span class="st">'ascii7'</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">srtdisk</span><span class="fu">:::</span><span class="fu">GuessDType</span><span class="op">(</span>x <span class="op">=</span> <span class="st">'hello'</span>, stype <span class="op">=</span> <span class="st">'ascii7'</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Class: H5T_STRING</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Datatype: H5T_STRING {</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       STRSIZE 7;</span>
@@ -135,7 +136,7 @@ it is set to the length of the longest string in the <code>x</code>.</p></dd>
 <span class="r-in"><span><span class="co"># Data frames are a compound type; character columns follow the same rules</span></span></span>
 <span class="r-in"><span><span class="co"># as character vectors</span></span></span>
 <span class="r-in"><span><span class="va">df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">'g1'</span>, <span class="st">'g2'</span>, <span class="st">'g3'</span><span class="op">)</span>, y <span class="op">=</span> <span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span>, stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">SeuratDisk</span><span class="fu">:::</span><span class="fu"><a href="https://mojaveazure.github.io/seurat-disk/reference/GuessDType.html" class="external-link">GuessDType</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">df</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">srtdisk</span><span class="fu">:::</span><span class="fu">GuessDType</span><span class="op">(</span>x <span class="op">=</span> <span class="va">df</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Class: H5T_COMPOUND</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Datatype: H5T_COMPOUND {</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       H5T_STRING {</span>
@@ -148,23 +149,23 @@ it is set to the length of the longest string in the <code>x</code>.</p></dd>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       H5T_IEEE_F64LE "X2" : 16;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       H5T_IEEE_F64LE "X3" : 24;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    }</span>
-<span class="r-in"><span><span class="fu">SeuratDisk</span><span class="fu">:::</span><span class="fu"><a href="https://mojaveazure.github.io/seurat-disk/reference/GuessDType.html" class="external-link">GuessDType</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">df</span>, stype <span class="op">=</span> <span class="st">'ascii7'</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">srtdisk</span><span class="fu">:::</span><span class="fu">GuessDType</span><span class="op">(</span>x <span class="op">=</span> <span class="va">df</span>, stype <span class="op">=</span> <span class="st">'ascii7'</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Class: H5T_COMPOUND</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Datatype: H5T_COMPOUND {</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       H5T_STRING {</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>          STRSIZE H5T_VARIABLE;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>          STRSIZE 7;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>          STRPAD H5T_STR_NULLTERM;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>          CSET H5T_CSET_ASCII;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>          CTYPE H5T_C_S1;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       } "x" : 0;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       H5T_IEEE_F64LE "y" : 8;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       H5T_IEEE_F64LE "X2" : 16;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       H5T_IEEE_F64LE "X3" : 24;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       H5T_IEEE_F64LE "y" : 7;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       H5T_IEEE_F64LE "X2" : 15;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       H5T_IEEE_F64LE "X3" : 23;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    }</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Logicals are turned into integers to ensure compatibility with Python</span></span></span>
 <span class="r-in"><span><span class="co"># TRUE evaluates to 1, FALSE to 0, and NA to 2</span></span></span>
-<span class="r-in"><span><span class="fu">SeuratDisk</span><span class="fu">:::</span><span class="fu"><a href="https://mojaveazure.github.io/seurat-disk/reference/GuessDType.html" class="external-link">GuessDType</a></span><span class="op">(</span>x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">TRUE</span>, <span class="cn">FALSE</span>, <span class="cn">NA</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">srtdisk</span><span class="fu">:::</span><span class="fu">GuessDType</span><span class="op">(</span>x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">TRUE</span>, <span class="cn">FALSE</span>, <span class="cn">NA</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Class: H5T_INTEGER</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Datatype: H5T_STD_I32LE</span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
@@ -180,7 +181,7 @@ it is set to the length of the longest string in the <code>x</code>.</p></dd>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
     </footer></div>

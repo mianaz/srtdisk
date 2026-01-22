@@ -657,22 +657,24 @@ except Exception as e:
           }
         }
         dfgroup$link_delete(name = tname)
-        # col.order <- h5attr(x = dfile[['var']], which = 'column-order')
-        # col.order <- c(col.order, var.name)
-        # dfile[['var']]$attr_rename(
-        #   old_attr_name = 'column-order',
-        #   new_attr_name = 'old-column-order'
-        # )
-        # dfile[['var']]$create_attr(
-        #   attr_name = 'column-order',
-        #   robj = col.order,
-        #   dtype = GuessDType(x = col.order)
-        # )
-        # dfile[['var']]$attr_delete(attr_name = 'old-column-order')
       }
       dfgroup$link_delete(name = '__categories')
     }
     return(invisible(x = NULL))
+  }
+  # Helper to create fake cell names when metadata is unavailable
+  CreateFakeCellNames <- function() {
+    ncells <- if (inherits(x = assay.group[['data']], what = 'H5Group')) {
+      assay.group[['data/indptr']]$dims - 1
+    } else {
+      assay.group[['data']]$dims[2]
+    }
+    dfile$create_group(name = 'meta.data')
+    dfile$create_dataset(
+      name = 'cell.names',
+      robj = paste0('Cell', seq.default(from = 1, to = ncells)),
+      dtype = GuessDType(x = 'Cell1')
+    )
   }
   ds.map <- c(
     scale.data = if (inherits(x = source[['X']], what = 'H5D')) {
@@ -1176,6 +1178,7 @@ except Exception as e:
       dst_name = 'meta.data'
     )
     # Normalize h5ad categorical format (categories/codes) to SeuratDisk format (levels/values)
+    # h5ad uses 0-based indexing for codes, while R factors use 1-based indexing
     NormalizeH5ADCategorical <- function(dfgroup) {
       for (col_name in names(dfgroup)) {
         col_obj <- dfgroup[[col_name]]
@@ -1191,12 +1194,15 @@ except Exception as e:
             )
             col_obj$link_delete(name = 'categories')
           }
-          # Rename 'codes' to 'values'
+          # Convert 'codes' to 'values' with 0-based to 1-based indexing conversion
           if (!col_obj$exists('values')) {
-            col_obj$obj_copy_from(
-              src_loc = col_obj,
-              src_name = 'codes',
-              dst_name = 'values'
+            # Read 0-based codes from h5ad and convert to 1-based for R
+            codes_0based <- col_obj[['codes']]$read()
+            codes_dtype <- col_obj[['codes']]$get_type()
+            col_obj$create_dataset(
+              name = 'values',
+              robj = codes_0based + 1L,
+              dtype = codes_dtype
             )
             col_obj$link_delete(name = 'codes')
           }
@@ -1292,17 +1298,7 @@ except Exception as e:
         call. = FALSE,
         immediate. = TRUE
       )
-      ncells <- if (inherits(x = assay.group[['data']], what = 'H5Group')) {
-        assay.group[['data/indptr']]$dims - 1
-      } else {
-        assay.group[['data']]$dims[2]
-      }
-      dfile$create_group(name = 'meta.data')
-      dfile$create_dataset(
-        name = 'cell.names',
-        robj = paste0('Cell', seq.default(from = 1, to = ncells)),
-        dtype = GuessDType(x = 'Cell1')
-      )
+      CreateFakeCellNames()
     }
   } else {
     warning(
@@ -1310,17 +1306,7 @@ except Exception as e:
       call. = FALSE,
       immediate. = TRUE
     )
-    ncells <- if (inherits(x = assay.group[['data']], what = 'H5Group')) {
-      assay.group[['data/indptr']]$dims - 1
-    } else {
-      assay.group[['data']]$dims[2]
-    }
-    dfile$create_group(name = 'meta.data')
-    dfile$create_dataset(
-      name = 'cell.names',
-      robj = paste0('Cell', seq.default(from = 1, to = ncells)),
-      dtype = GuessDType(x = 'Cell1')
-    )
+    CreateFakeCellNames()
   }
 
   # Restore Seurat-specific metadata from uns['seurat'] if available
@@ -1534,16 +1520,19 @@ except Exception as e:
         src_name = 'uns/neighbors/distances',
         dst_name = nn.graph.name
       )
-      # if (dfile[['graphs']][[nn.graph.name]]$attr_exists(attr_name = 'shape')) {
+      # Convert 'shape' attribute to 'dims' for compatibility
       if (isTRUE(x = AttrExists(x = dfile[['graphs']][[nn.graph.name]], name = 'shape'))) {
-        dfile[['graphs']][[nn.graph.name]]$create_attr(
-          attr_name = 'dims',
-          robj = h5attr(x = dfile[['graphs']][[nn.graph.name]], which = 'shape'),
-          dtype = GuessDType(x = h5attr(
-            x = dfile[['graphs']][[nn.graph.name]],
-            which = 'shape'
-          ))
-        )
+        # Only create 'dims' if it doesn't already exist
+        if (!isTRUE(x = AttrExists(x = dfile[['graphs']][[nn.graph.name]], name = 'dims'))) {
+          dfile[['graphs']][[nn.graph.name]]$create_attr(
+            attr_name = 'dims',
+            robj = h5attr(x = dfile[['graphs']][[nn.graph.name]], which = 'shape'),
+            dtype = GuessDType(x = h5attr(
+              x = dfile[['graphs']][[nn.graph.name]],
+              which = 'shape'
+            ))
+          )
+        }
         dfile[['graphs']][[nn.graph.name]]$attr_delete(attr_name = 'shape')
       }
       # Only create assay.used attribute if it doesn't already exist
@@ -1567,16 +1556,19 @@ except Exception as e:
         src_name = 'uns/neighbors/connectivities',
         dst_name = snn.graph.name
       )
-      # if (dfile[['graphs']][[snn.graph.name]]$attr_exists(attr_name = 'shape')) {
+      # Convert 'shape' attribute to 'dims' for compatibility
       if (isTRUE(x = AttrExists(x = dfile[['graphs']][[snn.graph.name]], name = 'shape'))) {
-        dfile[['graphs']][[snn.graph.name]]$create_attr(
-          attr_name = 'dims',
-          robj = h5attr(x = dfile[['graphs']][[snn.graph.name]], which = 'shape'),
-          dtype = GuessDType(x = h5attr(
-            x = dfile[['graphs']][[snn.graph.name]],
-            which = 'shape'
-          ))
-        )
+        # Only create 'dims' if it doesn't already exist
+        if (!isTRUE(x = AttrExists(x = dfile[['graphs']][[snn.graph.name]], name = 'dims'))) {
+          dfile[['graphs']][[snn.graph.name]]$create_attr(
+            attr_name = 'dims',
+            robj = h5attr(x = dfile[['graphs']][[snn.graph.name]], which = 'shape'),
+            dtype = GuessDType(x = h5attr(
+              x = dfile[['graphs']][[snn.graph.name]],
+              which = 'shape'
+            ))
+          )
+        }
         dfile[['graphs']][[snn.graph.name]]$attr_delete(attr_name = 'shape')
       }
       # Only create assay.used attribute if it doesn't already exist
@@ -1622,6 +1614,11 @@ except Exception as e:
 
     for (lib_id in library_ids) {
       lib_group <- spatial_uns[[lib_id]]
+
+      # Skip non-group items (e.g., 'is_single' dataset)
+      if (!inherits(lib_group, 'H5Group')) {
+        next
+      }
 
       # Check if images exist for this library
       if (lib_group$exists(name = 'images')) {
@@ -1755,7 +1752,7 @@ except Exception as e:
               sf_h5seurat_name <- sf_h5ad_name
             }
 
-            sf_value <- sf_src[[sf_h5ad_name]]$read()
+            sf_value <- sf_src[[sf_h5ad_name]][]
 
             # Convert diameter to radius for spot and fiducial
             if (sf_h5ad_name %in% c('spot_diameter_fullres', 'fiducial_diameter_fullres')) {
@@ -1771,17 +1768,26 @@ except Exception as e:
         }
 
         # Create boundaries/centroids structure for VisiumV2
-        # This requires spatial coordinates from obsm/X_spatial
-        if (source$exists(name = 'obsm/X_spatial')) {
+        # This requires spatial coordinates from obsm/X_spatial or obsm/spatial
+        spatial_key <- if (source$exists(name = 'obsm/X_spatial')) {
+          'obsm/X_spatial'
+        } else if (source$exists(name = 'obsm/spatial')) {
+          'obsm/spatial'
+        } else {
+          NULL
+        }
+
+        if (!is.null(spatial_key)) {
           if (verbose) {
-            message("    Creating boundaries/centroids for VisiumV2")
+            message("    Creating boundaries/centroids for VisiumV2 (using ", spatial_key, ")")
           }
 
           # Read spatial coordinates (shape: 2 x n_cells in h5ad)
-          coords_h5ad <- source[['obsm/X_spatial']]$read()
+          # Use $read() instead of [] to avoid HDF5 indexing issues
+          coords_h5ad <- source[[spatial_key]]$read()
 
           # Get cell names from the h5Seurat file (already loaded earlier)
-          cell_names <- as.character(dfile[['cell.names']]$read())
+          cell_names <- as.character(dfile[['cell.names']][])
 
           # Get library IDs to filter cells for this library
           # Try common library ID column names
@@ -1794,14 +1800,14 @@ except Exception as e:
               # Handle categorical/factor structure
               if (inherits(lib_id_obj, 'H5Group')) {
                 if (lib_id_obj$exists('codes') && lib_id_obj$exists('categories')) {
-                  codes <- lib_id_obj[['codes']]$read()
-                  categories <- lib_id_obj[['categories']]$read()
+                  codes <- lib_id_obj[['codes']][]
+                  categories <- lib_id_obj[['categories']][]
                   lib_ids_vec <- categories[codes + 1]  # Convert to 1-indexed
                   lib_id_col <- col_name
                   break
                 }
               } else {
-                lib_ids_vec <- as.character(lib_id_obj$read())
+                lib_ids_vec <- as.character(lib_id_obj[])
                 lib_id_col <- col_name
                 break
               }
@@ -1824,12 +1830,10 @@ except Exception as e:
               }
 
               # Transpose from (2, n) to (n, 2) format for centroids
-              # In h5ad, coordinates are stored as [Y, X] in row/column format
-              coords_matrix <- t(filtered_coords)  # Now (n, 2) with [Y, X]
-
-              # Swap columns from [Y, X] to [X, Y] for Seurat
-              # Strategy 1: Simple XY Flip (see tests/RECOMMENDATION.md)
-              coords_matrix <- coords_matrix[, c(2, 1)]
+              # In h5ad (from Seurat), coordinates are stored as [X, Y] in row format
+              # Row 1 = X coordinates, Row 2 = Y coordinates
+              coords_matrix <- t(filtered_coords)  # Now (n, 2) with [X, Y]
+              # No swap needed - h5ad already has correct [X, Y] order
 
               # Note: Coordinates are kept in full resolution
               # Seurat's GetTissueCoordinates() will handle scaling via scale.factors
@@ -1837,7 +1841,7 @@ except Exception as e:
 
               # Calculate radius from scale factors (in full resolution)
               radius <- if (img_h5$exists('scale.factors/spot')) {
-                img_h5[['scale.factors/spot']]$read()
+                img_h5[['scale.factors/spot']][]
               } else {
                 # Default Visium spot diameter is ~143 pixels in full res
                 # (based on spot_diameter_fullres from the data)
@@ -1902,13 +1906,12 @@ except Exception as e:
             }
 
             # Use all cells if no library ID found
-            coords_matrix <- t(coords_h5ad)  # Now (n, 2) with [Y, X]
-
-            # Swap columns from [Y, X] to [X, Y] for Seurat
-            coords_matrix <- coords_matrix[, c(2, 1)]
+            # In h5ad (from Seurat), coordinates are stored as [X, Y] in row format
+            coords_matrix <- t(coords_h5ad)  # Now (n, 2) with [X, Y]
+            # No swap needed - h5ad already has correct [X, Y] order
 
             radius <- if (img_h5$exists('scale.factors/spot')) {
-              img_h5[['scale.factors/spot']]$read()
+              img_h5[['scale.factors/spot']][]
             } else {
               71.5  # Default radius in full resolution
             }
@@ -2507,14 +2510,28 @@ H5SeuratToH5AD <- function(
     # Legacy structure
     if (source$index()[[assay]]$slots[['scale.data']]) {
       x.data <- 'scale.data'
-      raw.data <- 'data'
-    } else {
+      # Check if data actually exists before using it as raw
+      raw.data <- if (source$index()[[assay]]$slots[['data']]) {
+        'data'
+      } else if (source$index()[[assay]]$slots[['counts']]) {
+        'counts'
+      } else {
+        NULL
+      }
+    } else if (source$index()[[assay]]$slots[['data']]) {
+      # data exists, use it
       x.data <- 'data'
       raw.data <- if (source$index()[[assay]]$slots[['counts']]) {
         'counts'
       } else {
         NULL
       }
+    } else if (source$index()[[assay]]$slots[['counts']]) {
+      # Only counts exists (common for spatial data), use it for X
+      x.data <- 'counts'
+      raw.data <- NULL
+    } else {
+      stop("Cannot find data or counts in h5Seurat file", call. = FALSE)
     }
   }
 
@@ -2542,7 +2559,13 @@ H5SeuratToH5AD <- function(
   }
 
   # Copy the data
-  assay.group$obj_copy_to(dst_loc = dfile, dst_name = 'X', src_name = x.data)
+  CopyH5MatrixData(
+    src_group = assay.group,
+    src_path = x.data,
+    dst_loc = dfile,
+    dst_name = 'X',
+    verbose = verbose
+  )
 
   # Ensure shape attribute exists (required by anndata)
   if (!dfile[['X']]$attr_exists(attr_name = 'shape')) {
@@ -2738,10 +2761,12 @@ H5SeuratToH5AD <- function(
     }
 
     dfile$create_group(name = 'raw')
-    assay.group$obj_copy_to(
+    CopyH5MatrixData(
+      src_group = assay.group,
+      src_path = raw.data,
       dst_loc = dfile[['raw']],
       dst_name = 'X',
-      src_name = raw.data
+      verbose = verbose
     )
 
     # Ensure shape attribute exists for raw/X (required by anndata)
@@ -3186,15 +3211,15 @@ H5SeuratToH5AD <- function(
           x_coords <- coord_group[['x']][]
           y_coords <- coord_group[['y']][]
 
-          # Create spatial matrix (cells x 2)
-          spatial_matrix <- cbind(y_coords, x_coords)
+          # Create spatial matrix (cells x 2) as [X, Y] for scanpy/squidpy
+          spatial_matrix <- cbind(x_coords, y_coords)
         } else if (coord_group$exists('imagerow') && coord_group$exists('imagecol')) {
-          # Visium-style coordinates
+          # Visium-style coordinates: imagerow=Y, imagecol=X
           row_coords <- coord_group[['imagerow']][]
           col_coords <- coord_group[['imagecol']][]
 
-          # Create spatial matrix (cells x 2)
-          spatial_matrix <- cbind(row_coords, col_coords)
+          # Create spatial matrix (cells x 2) as [X, Y] = [col, row]
+          spatial_matrix <- cbind(col_coords, row_coords)
         }
       } else if (img_group$exists(name = 'boundaries') &&
                  img_group[['boundaries']]$exists(name = 'centroids')) {
@@ -3214,7 +3239,8 @@ H5SeuratToH5AD <- function(
             }
           }
           coords_mat <- coords_mat[row_index, , drop = FALSE]
-          spatial_matrix <- cbind(coords_mat[, 2], coords_mat[, 1])
+          # coords_mat is stored as [X, Y] in Seurat h5Seurat, keep as-is for scanpy
+          spatial_matrix <- coords_mat
         }
       }
       if (!is.null(spatial_matrix)) {
@@ -3732,4 +3758,128 @@ readH5AD_obsm <-  function(file) {
   names(obsm.list) <- gsub('X_', '',obsm_set)
   hfile$close_all()
   return(obsm.list)
+}
+
+#' Direct Seurat to H5AD Conversion
+#'
+#' Converts a Seurat object directly to an H5AD file, handling the intermediate
+#' h5Seurat file automatically. The intermediate file is created in a temporary
+#' location and removed after conversion.
+#'
+#' @param object A Seurat object to convert
+#' @param filename Output H5AD filename. If not specified, uses the project name
+#'   with .h5ad extension.
+#' @param assay Name of assay to convert. Default is the default assay.
+#' @param overwrite Logical; overwrite existing file. Default FALSE.
+#' @param verbose Logical; show progress messages. Default TRUE.
+#' @param standardize Logical; convert Seurat metadata names to scanpy conventions.
+#'   Default FALSE.
+#' @param ... Additional arguments passed to SaveH5Seurat and Convert.
+#'
+#' @return Invisibly returns the path to the created H5AD file.
+#'
+#' @details
+#' This function provides a convenient one-step conversion from Seurat objects
+#' to H5AD format (used by Python's scanpy/anndata). Internally, it:
+#' \enumerate{
+#'   \item Saves the Seurat object to a temporary h5Seurat file
+#'   \item Converts the h5Seurat file to H5AD format
+#'   \item Removes the intermediate h5Seurat file
+#' }
+#'
+#' This is useful when you want to export data for Python analysis without
+#' keeping the intermediate h5Seurat file.
+#'
+#' @examples
+#' \dontrun{
+#' library(Seurat)
+#' library(srtdisk)
+#'
+#' # Load or create a Seurat object
+#' pbmc <- pbmc_small
+#'
+#' # Convert directly to H5AD
+#' SeuratToH5AD(pbmc, filename = "pbmc.h5ad")
+#'
+#' # The file can now be loaded in Python:
+#' # import scanpy as sc
+#' # adata = sc.read_h5ad("pbmc.h5ad")
+#' }
+#'
+#' @seealso \code{\link{SaveH5Seurat}}, \code{\link{Convert}}, \code{\link{LoadH5AD}}
+#'
+#' @keywords internal
+#'
+SeuratToH5AD <- function(
+  object,
+  filename = NULL,
+  assay = DefaultAssay(object = object),
+  overwrite = FALSE,
+  verbose = TRUE,
+  standardize = FALSE,
+  ...
+) {
+  # Validate input
+  if (!inherits(x = object, what = 'Seurat')) {
+    stop("'object' must be a Seurat object", call. = FALSE)
+  }
+
+  # Determine output filename
+  if (is.null(x = filename)) {
+    filename <- paste0(Project(object = object), '.h5ad')
+  }
+
+  # Ensure .h5ad extension
+  if (!grepl(pattern = '\\.h5ad$', x = filename, ignore.case = TRUE)) {
+    filename <- paste0(filename, '.h5ad')
+  }
+
+  # Check if output file exists
+  if (file.exists(filename) && !overwrite) {
+    stop("Destination file '", filename, "' already exists. Use overwrite = TRUE to replace.", call. = FALSE)
+  }
+
+  # Create temporary h5Seurat file
+  temp_h5seurat <- tempfile(fileext = '.h5Seurat')
+
+  # Use on.exit to ensure cleanup even if an error occurs
+  on.exit(expr = {
+    if (file.exists(temp_h5seurat)) {
+      if (verbose) {
+        message("Cleaning up intermediate h5Seurat file")
+      }
+      file.remove(temp_h5seurat)
+    }
+  }, add = TRUE)
+
+  # Step 1: Save Seurat object to temporary h5Seurat
+  if (verbose) {
+    message("Step 1/2: Saving Seurat object to temporary h5Seurat...")
+  }
+  SaveH5Seurat(
+    object = object,
+    filename = temp_h5seurat,
+    overwrite = TRUE,
+    verbose = verbose,
+    ...
+  )
+
+  # Step 2: Convert h5Seurat to H5AD
+  if (verbose) {
+    message("Step 2/2: Converting to H5AD format...")
+  }
+  Convert(
+    source = temp_h5seurat,
+    dest = filename,
+    assay = assay,
+    overwrite = overwrite,
+    verbose = verbose,
+    standardize = standardize
+  )
+
+  if (verbose) {
+    message("Successfully created: ", filename)
+  }
+
+  return(invisible(x = filename))
 }
