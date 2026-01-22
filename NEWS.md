@@ -1,3 +1,21 @@
+# srtdisk 0.2.0
+
+## Documentation
+
+- Comprehensive README with quick start conversion examples
+- Comparison table: srtdisk vs SeuratDisk feature improvements
+- Multi-assay (CITE-seq) conversion documentation
+- Spatial data conversion examples (beta)
+
+## Bug Fixes
+
+- Fixed categorical metadata loss during h5ad conversion
+- Improved UMAP display in h5ad to Seurat tutorial
+
+## Changes
+
+- Version bump for spatial support milestone
+
 # srtdisk 0.1.0
 
 ## New Features

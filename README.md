@@ -1,7 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# srtdisk v0.1.0
+# srtdisk v0.2.0
 
 <!-- badges: start -->
 
@@ -23,6 +23,71 @@ and on-disk conversion between h5Seurat and AnnData objects, with the
 goal of enhancing interoperability between Seurat and Scanpy. This
 version includes Seurat v5 Assay5 compatibility and improved spatial
 data handling.
+
+## What’s New in srtdisk (vs SeuratDisk)
+
+| Feature              | SeuratDisk             | srtdisk                     |
+|----------------------|------------------------|-----------------------------|
+| Seurat v5 Assay5     | Not supported          | Full support                |
+| Spatial Technologies | Visium only            | Visium, SlideSeq, FOV       |
+| Categorical Metadata | Lost during conversion | Preserved                   |
+| Direct Conversion    | Two-step only          | `SeuratToH5AD()` wrapper    |
+| h5ad Compatibility   | Basic                  | Improved scanpy conventions |
+
+## Quick Start
+
+### Seurat to h5ad (Two-step)
+
+``` r
+library(Seurat)
+library(srtdisk)
+library(SeuratData)
+
+data("pbmc3k.final", package = "pbmc3k.SeuratData")
+pbmc <- UpdateSeuratObject(pbmc3k.final)
+
+# Step 1: Save as h5Seurat
+SaveH5Seurat(pbmc, filename = "pbmc3k.h5Seurat", overwrite = TRUE)
+
+# Step 2: Convert to h5ad
+Convert("pbmc3k.h5Seurat", dest = "h5ad", overwrite = TRUE)
+```
+
+### Seurat to h5ad (One-step)
+
+``` r
+# Direct conversion using wrapper function
+SeuratToH5AD(pbmc, filename = "pbmc3k_direct.h5ad", overwrite = TRUE)
+```
+
+### h5ad to Seurat
+
+``` r
+# Using bundled CRC sample
+h5ad_path <- system.file("testdata", "crc_sample.h5ad", package = "srtdisk")
+Convert(h5ad_path, dest = "h5seurat", overwrite = TRUE)
+crc <- LoadH5Seurat("crc_sample.h5seurat")
+```
+
+### Multi-assay (CITE-seq)
+
+``` r
+# Note: Converts one assay at a time
+library(SeuratData)
+InstallData("cbmc")
+data("cbmc", package = "cbmc.SeuratData")
+SeuratToH5AD(cbmc, filename = "cbmc_rna.h5ad", assay = "RNA", overwrite = TRUE)
+SeuratToH5AD(cbmc, filename = "cbmc_adt.h5ad", assay = "ADT", overwrite = TRUE)
+```
+
+### Spatial Data Conversion (Beta)
+
+``` r
+library(SeuratData)
+InstallData("stxBrain")
+brain <- UpdateSeuratObject(LoadData("stxBrain", type = "anterior1"))
+SeuratToH5AD(brain, filename = "brain_spatial.h5ad", overwrite = TRUE)
+```
 
 ## Installation
 
@@ -51,4 +116,3 @@ srtdisk depends on the following non-standard packages:
 | Seurat | [CRAN](https://cran.r-project.org/package=Seurat) | [GitHub](https://github.com/satijalab/seurat) | [Website](https://satijalab.org/seurat) |
 | SeuratObject | [CRAN](https://cran.r-project.org/package=SeuratObject) | [GitHub](https://github.com/satijalab/seurat-object) | [Website](https://satijalab.github.io/seurat-object/) |
 | stringi | [CRAN](https://cran.r-project.org/package=stringi) | [GitHub](https://github.com/gagolews/stringi) | [Website](https://stringi.gagolewski.com/) |
-| withr | [CRAN](https://cran.r-project.org/package=withr) | [GitHub](https://github.com/r-lib/withr#readme) | [Website](https://withr.r-lib.org) |
