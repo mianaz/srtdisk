@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">srtdisk</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -35,74 +35,9 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/mianaz/srtdisk/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/mianaz/srtdisk/blob/HEAD/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.2.0" id="srtdisk-020">srtdisk 0.2.0<a class="anchor" aria-label="anchor" href="#srtdisk-020"></a></h2>
-<blockquote>
-<p><strong>Release Date:</strong> 2026-01-22</p>
-</blockquote>
-<div class="section level3">
-<h3 id="highlights-0-2-0">Highlights<a class="anchor" aria-label="anchor" href="#highlights-0-2-0"></a></h3>
-<div class="section level4">
-<h4 id="full-scrna-seq-conversion-support-with-seurat-v5-0-2-0">Full scRNA-seq Conversion Support with Seurat v5<a class="anchor" aria-label="anchor" href="#full-scrna-seq-conversion-support-with-seurat-v5-0-2-0"></a></h4>
-<p>srtdisk now provides complete bidirectional conversion between Seurat objects and h5ad format, with full compatibility for Seurat v5’s new Assay5 architecture:</p>
-<ul><li>
-<strong>Seurat to h5ad</strong>: Use <code>SeuratToH5AD()</code> for direct one-step conversion or the traditional two-step <code><a href="../reference/SaveH5Seurat.html">SaveH5Seurat()</a></code> + <code><a href="../reference/Convert.html">Convert()</a></code> workflow</li>
-<li>
-<strong>h5ad to Seurat</strong>: Use <code><a href="../reference/Convert.html">Convert()</a></code> + <code><a href="../reference/LoadH5Seurat.html">LoadH5Seurat()</a></code> to import scanpy/AnnData objects</li>
-<li>Properly handles V5 layered data structure (counts, data, scale.data layers)</li>
-<li>Supports multi-assay objects (e.g., CITE-seq with RNA + ADT)</li>
-</ul></div>
-<div class="section level4">
-<h4 id="metadata-preservation-fixes-0-2-0">Metadata Preservation Fixes<a class="anchor" aria-label="anchor" href="#metadata-preservation-fixes-0-2-0"></a></h4>
-<ul><li>
-<strong>Fixed categorical metadata loss</strong>: Factor/categorical variables in <code>obs</code> are now correctly preserved during h5ad conversion instead of being dropped or converted to strings</li>
-<li>Improved handling of cell-level and feature-level metadata during round-trip conversions</li>
-</ul></div>
-<div class="section level4">
-<h4 id="spatial-data-support-visium-0-2-0">Spatial Data Support (Visium)<a class="anchor" aria-label="anchor" href="#spatial-data-support-visium-0-2-0"></a></h4>
-<ul><li>
-<strong>Seurat to h5ad</strong>: Visium spatial data conversion is fully functional
-<ul><li>Preserves spatial coordinates, scale factors, and tissue images</li>
-<li>Compatible with scanpy/squidpy spatial analysis workflows</li>
-</ul></li>
-<li>
-<strong>h5ad to Seurat</strong>: Spatial conversion fully supported</li>
-<li>Fixed spatial coordinate X/Y orientation for scanpy compatibility</li>
-</ul></div>
-</div>
-<div class="section level3">
-<h3 id="new-features-0-2-0">New Features<a class="anchor" aria-label="anchor" href="#new-features-0-2-0"></a></h3>
-<ul><li>
-<code>SeuratToH5AD()</code> wrapper function for convenient direct conversion</li>
-<li>Enhanced Visium spatial data conversion with proper coordinate handling</li>
-<li>Support for SlideSeq and FOV-based spatial technologies (experimental)</li>
-<li>Improved scanpy-compatible naming conventions with <code>standardize = TRUE</code>
-</li>
-</ul></div>
-<div class="section level3">
-<h3 id="bug-fixes-0-2-0">Bug Fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-2-0"></a></h3>
-<ul><li>Fixed categorical metadata loss during h5ad conversion</li>
-<li>Fixed “attribute already exists” error when converting h5ad graphs to h5seurat</li>
-<li>Fixed <code>GetAssayDataCompat()</code> and <code>SetAssayDataCompat()</code> to use <code>layer</code> parameter (SeuratObject 5.0+ requirement)</li>
-<li>Fixed spatial coordinate X/Y flip in h5Seurat to h5ad conversion</li>
-<li>Improved UMAP display in h5ad to Seurat tutorial</li>
-</ul></div>
-<div class="section level3">
-<h3 id="documentation-0-2-0">Documentation<a class="anchor" aria-label="anchor" href="#documentation-0-2-0"></a></h3>
-<ul><li>Comprehensive README with quick start conversion examples</li>
-<li>Comparison table: srtdisk vs SeuratDisk feature improvements</li>
-<li>Multi-assay (CITE-seq) conversion documentation</li>
-<li>Spatial data conversion examples (beta)</li>
-</ul></div>
-<div class="section level3">
-<h3 id="known-limitations-0-2-0">Known Limitations<a class="anchor" aria-label="anchor" href="#known-limitations-0-2-0"></a></h3>
-<ul><li>Multi-assay conversion requires separate h5ad files per assay (AnnData limitation)</li>
-<li>Large datasets may require sufficient memory for in-memory conversion</li>
-</ul></div>
-</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.0" id="srtdisk-010">srtdisk 0.1.0<a class="anchor" aria-label="anchor" href="#srtdisk-010"></a></h2>
 <div class="section level3">
@@ -151,23 +86,8 @@
 <li>Added cellxgene spatial dataset download examples</li>
 </ul></div>
 <div class="section level3">
-<h3 id="test-infrastructure-0-1-0">Test Infrastructure<a class="anchor" aria-label="anchor" href="#test-infrastructure-0-1-0"></a></h3>
-<ul><li>Simplified test suite: consolidated 4 test files into single focused <code>test-conversion.R</code>
-</li>
-<li>Tests now use real datasets:
-<ul><li>CellxGene colorectal cancer sample (935 cells) for h5ad testing</li>
-<li>
-<code>pbmc3k.final</code> from SeuratData for Seurat testing</li>
-<li>
-<code>stxBrain</code> anterior1 from SeuratData for Visium spatial testing</li>
-</ul></li>
-<li>Removed synthetic test data in favor of real-world datasets</li>
-<li>Added <code><a href="https://satijalab.github.io/seurat-object/reference/UpdateSeuratObject.html" class="external-link">UpdateSeuratObject()</a></code> calls for compatibility with older SeuratData objects</li>
-</ul></div>
-<div class="section level3">
 <h3 id="test-data-0-1-0">Test Data<a class="anchor" aria-label="anchor" href="#test-data-0-1-0"></a></h3>
-<ul><li>Replaced <code>pbmc_small.rds</code> with <code>crc_sample.h5ad</code> (CellxGene colorectal cancer, 935 cells x 25,344 genes)</li>
-<li>Vignettes now use SeuratData (<code>pbmc3k.final</code>, <code>stxBrain</code>) instead of bundled files</li>
+<ul><li>Added <code>pbmc3k_final.h5ad</code> test file for round-trip conversion testing</li>
 </ul></div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
