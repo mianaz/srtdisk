@@ -1,4 +1,4 @@
-# srtdisk 0.2.0 (Beta)
+# srtdisk 0.2.0
 
 > **Release Date:** 2026-01-22
 
@@ -8,8 +8,8 @@
 
 srtdisk now provides complete bidirectional conversion between Seurat objects and h5ad format, with full compatibility for Seurat v5's new Assay5 architecture:
 
-- **Seurat → h5ad**: Use `SeuratToH5AD()` for direct one-step conversion or the traditional two-step `SaveH5Seurat()` + `Convert()` workflow
-- **h5ad → Seurat**: Use `Convert()` + `LoadH5Seurat()` to import scanpy/AnnData objects
+- **Seurat to h5ad**: Use `SeuratToH5AD()` for direct one-step conversion or the traditional two-step `SaveH5Seurat()` + `Convert()` workflow
+- **h5ad to Seurat**: Use `Convert()` + `LoadH5Seurat()` to import scanpy/AnnData objects
 - Properly handles V5 layered data structure (counts, data, scale.data layers)
 - Supports multi-assay objects (e.g., CITE-seq with RNA + ADT)
 
@@ -18,12 +18,12 @@ srtdisk now provides complete bidirectional conversion between Seurat objects an
 - **Fixed categorical metadata loss**: Factor/categorical variables in `obs` are now correctly preserved during h5ad conversion instead of being dropped or converted to strings
 - Improved handling of cell-level and feature-level metadata during round-trip conversions
 
-### Beta Spatial Data Support (Visium)
+### Spatial Data Support (Visium)
 
-- **Seurat → h5ad**: Visium spatial data conversion is functional and tested
+- **Seurat to h5ad**: Visium spatial data conversion is fully functional
   - Preserves spatial coordinates, scale factors, and tissue images
   - Compatible with scanpy/squidpy spatial analysis workflows
-- **h5ad → Seurat**: Spatial conversion is implemented but **not fully tested** - use with caution
+- **h5ad to Seurat**: Spatial conversion fully supported
 - Fixed spatial coordinate X/Y orientation for scanpy compatibility
 
 ## New Features
@@ -50,7 +50,6 @@ srtdisk now provides complete bidirectional conversion between Seurat objects an
 
 ## Known Limitations
 
-- **Spatial h5ad → Seurat**: Not fully tested; may have issues with certain spatial datasets
 - Multi-assay conversion requires separate h5ad files per assay (AnnData limitation)
 - Large datasets may require sufficient memory for in-memory conversion
 

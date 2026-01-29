@@ -36,7 +36,7 @@ NULL
 #' @details
 #' The Loom format stores data in a specific HDF5 structure:
 #' \itemize{
-#'   \item \code{/matrix}: Main expression matrix (features × cells)
+#'   \item \code{/matrix}: Main expression matrix (features x cells)
 #'   \item \code{/row_attrs}: Feature-level metadata (gene names, coordinates, etc.)
 #'   \item \code{/col_attrs}: Cell/sample-level metadata
 #'   \item \code{/layers}: Additional expression layers (normalized, scaled, etc.)

@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">srtdisk</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -81,13 +81,10 @@ AnnData file, we’ll use the <code>pbmc3k.final</code> dataset from
 SeuratData - a processed PBMC dataset with clustering and UMAP.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="http://www.satijalab.org/seurat" class="external-link">SeuratData</a></span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Install pbmc3k if not already installed</span></span>
 <span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="st">"pbmc3k.final"</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="fu"><a href="https://satijalab.org/seurat/reference/InstalledData.html" class="external-link">InstalledData</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://satijalab.org/seurat/reference/InstallData.html" class="external-link">InstallData</a></span><span class="op">(</span><span class="st">"pbmc3k"</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="co"># Load the processed pbmc3k dataset</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">"pbmc3k.final"</span>, package <span class="op">=</span> <span class="st">"pbmc3k.SeuratData"</span><span class="op">)</span></span>
 <span><span class="va">pbmc</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://satijalab.github.io/seurat-object/reference/UpdateSeuratObject.html" class="external-link">UpdateSeuratObject</a></span><span class="op">(</span><span class="va">pbmc3k.final</span><span class="op">)</span></span>
 <span><span class="va">pbmc</span></span>
@@ -101,6 +98,9 @@ dimensional reductions:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://satijalab.org/seurat/reference/DimPlot.html" class="external-link">DimPlot</a></span><span class="op">(</span><span class="va">pbmc</span>, reduction <span class="op">=</span> <span class="st">"umap"</span>, label <span class="op">=</span> <span class="cn">TRUE</span>, pt.size <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://satijalab.org/seurat/reference/SeuratTheme.html" class="external-link">NoLegend</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p><img src="convert-anndata_files/figure-html/plot_pbmc-1.png" class="r-plt" alt="" width="100%"></p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://satijalab.org/seurat/reference/FeaturePlot.html" class="external-link">FeaturePlot</a></span><span class="op">(</span><span class="va">pbmc</span>, features <span class="op">=</span> <span class="st">"CD14"</span>, pt.size <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span></code></pre></div>
+<p><img src="convert-anndata_files/figure-html/plot_pbmc_cd14-1.png" class="r-plt" alt="" width="100%"></p>
 <p>Converting the <code>Seurat</code> object to an AnnData file is a
 two-step process:</p>
 <ol style="list-style-type: decimal">
@@ -110,30 +110,29 @@ two-step process:</p>
 <li>Convert to AnnData using <code><a href="../reference/Convert.html">Convert()</a></code>
 </li>
 </ol>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/SaveH5Seurat.html">SaveH5Seurat</a></span><span class="op">(</span><span class="va">pbmc</span>, filename <span class="op">=</span> <span class="st">"pbmc3k.h5Seurat"</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Seurat layers:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="fu"><a href="https://satijalab.github.io/seurat-object/reference/Layers.html" class="external-link">Layers</a></span><span class="op">(</span><span class="va">pbmc</span><span class="op">)</span>, collapse <span class="op">=</span> <span class="st">", "</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Seurat layers: counts, data, scale.data</span></span>
+<span><span class="fu"><a href="../reference/SaveH5Seurat.html">SaveH5Seurat</a></span><span class="op">(</span><span class="va">pbmc</span>, filename <span class="op">=</span> <span class="st">"pbmc3k.h5Seurat"</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/Convert.html">Convert</a></span><span class="op">(</span><span class="st">"pbmc3k.h5Seurat"</span>, dest <span class="op">=</span> <span class="st">"h5ad"</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p>We can view the AnnData file in Scanpy:</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="im">import</span> scanpy <span class="im">as</span> sc</span>
-<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>adata <span class="op">=</span> sc.read_h5ad(<span class="st">"pbmc3k.h5ad"</span>)</span>
-<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="bu">print</span>(adata)</span>
-<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="co">#&gt; AnnData object with n_obs × n_vars = 2638 × 13714</span></span>
-<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="co">#&gt;     obs: 'orig.ident', 'nCount_RNA', 'nFeature_RNA', 'seurat_annotations', 'percent.mt', 'RNA_snn_res.0.5', 'seurat_clusters'</span></span>
-<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="co">#&gt;     var: 'vst.mean', 'vst.variance', 'vst.variance.expected', 'vst.variance.standardized', 'vst.variable'</span></span>
-<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a><span class="co">#&gt;     uns: 'n_variable_features', 'neighbors', 'seurat'</span></span>
-<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="co">#&gt;     obsm: 'X_pca', 'X_umap'</span></span>
-<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a><span class="co">#&gt;     varm: 'PCs'</span></span>
-<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a><span class="co">#&gt;     obsp: 'connectivities', 'distances'</span></span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="im">import</span> scanpy <span class="im">as</span> sc</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>adata <span class="op">=</span> sc.read_h5ad(<span class="st">"pbmc3k.h5ad"</span>)</span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="bu">print</span>(adata)</span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="co">#&gt; AnnData object with n_obs × n_vars = 2638 × 13714</span></span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a><span class="co">#&gt;     obs: 'orig.ident', 'nCount_RNA', 'nFeature_RNA', 'seurat_annotations', 'percent.mt', 'RNA_snn_res.0.5', 'seurat_clusters'</span></span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="co">#&gt;     var: 'vst.mean', 'vst.variance', 'vst.variance.expected', 'vst.variance.standardized', 'vst.variable'</span></span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a><span class="co">#&gt;     uns: 'n_variable_features', 'neighbors', 'seurat'</span></span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a><span class="co">#&gt;     obsm: 'X_pca', 'X_umap'</span></span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a><span class="co">#&gt;     varm: 'PCs'</span></span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a><span class="co">#&gt;     obsp: 'connectivities', 'distances'</span></span></code></pre></div>
 <p>And visualize with cluster annotations:</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="im">import</span> matplotlib</span>
-<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>matplotlib.use(<span class="st">'Agg'</span>)</span>
-<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
-<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a></span>
-<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>sc.pl.umap(adata, color<span class="op">=</span><span class="st">'seurat_annotations'</span>, legend_loc<span class="op">=</span><span class="st">'on data'</span>, legend_fontsize<span class="op">=</span><span class="dv">8</span>, show<span class="op">=</span><span class="va">False</span>)</span>
-<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>plt.tight_layout()</span>
-<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>plt.savefig(<span class="st">'umap_plot.png'</span>, dpi<span class="op">=</span><span class="dv">100</span>, bbox_inches<span class="op">=</span><span class="st">'tight'</span>)</span>
-<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>plt.close()</span></code></pre></div>
-<p><img src="umap_plot.png" class="r-plt" alt="" width="80%"></p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>sc.pl.umap(adata, color<span class="op">=</span><span class="st">'seurat_annotations'</span>, legend_loc<span class="op">=</span><span class="st">'on data'</span>, legend_fontsize<span class="op">=</span><span class="dv">8</span>)</span></code></pre></div>
+<p><img src="convert-anndata_files/figure-html/plot_adata-1.png" class="r-plt" alt="" width="100%"></p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>sc.pl.umap(adata, color<span class="op">=</span><span class="st">'CD14'</span>)</span></code></pre></div>
+<p><img src="convert-anndata_files/figure-html/plot_adata_cd14-3.png" class="r-plt" alt="" width="100%"></p>
+<p>The conversion preserves expression patterns - CD14 shows consistent
+distribution in both tools.</p>
 </div>
 <div class="section level2">
 <h2 id="converting-from-anndata-to-seurat-via-h5seurat">Converting from AnnData to Seurat via h5Seurat<a class="anchor" aria-label="anchor" href="#converting-from-anndata-to-seurat-via-h5seurat"></a>
@@ -141,163 +140,596 @@ two-step process:</p>
 <p>To demonstrate conversion from AnnData to Seurat, we’ll use a
 colorectal cancer sample from <a href="https://cellxgene.cziscience.com" class="external-link">CellxGene</a> that’s bundled
 with the package.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Copy bundled CRC h5ad file to working directory</span></span>
-<span><span class="va">h5ad_path</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"testdata"</span>, <span class="st">"crc_sample.h5ad"</span>, package <span class="op">=</span> <span class="st">"srtdisk"</span><span class="op">)</span></span>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">h5ad_path</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"testdata"</span>, <span class="st">"crc_sample.h5ad"</span>, package <span class="op">=</span> <span class="st">"srtdisk"</span><span class="op">)</span></span>
 <span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/files.html" class="external-link">file.exists</a></span><span class="op">(</span><span class="va">h5ad_path</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/files.html" class="external-link">file.copy</a></span><span class="op">(</span><span class="va">h5ad_path</span>, <span class="st">"crc_sample.h5ad"</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
-<span>  <span class="co"># Download if not bundled (for development)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/utils/download.file.html" class="external-link">download.file</a></span><span class="op">(</span></span>
 <span>    <span class="st">"https://datasets.cellxgene.cziscience.com/91cf9a95-0b9a-4ece-b8eb-7b9e3409a0d3.h5ad"</span>,</span>
-<span>    <span class="st">"crc_sample.h5ad"</span>,</span>
-<span>    mode <span class="op">=</span> <span class="st">"wb"</span></span>
+<span>    <span class="st">"crc_sample.h5ad"</span>, mode <span class="op">=</span> <span class="st">"wb"</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span><span class="co">#&gt; [1] TRUE</span></span></code></pre></div>
 <p>View the h5ad file in Scanpy:</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="im">import</span> scanpy <span class="im">as</span> sc</span>
-<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>adata_crc <span class="op">=</span> sc.read_h5ad(<span class="st">"crc_sample.h5ad"</span>)</span>
-<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a><span class="bu">print</span>(adata_crc)</span>
-<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a><span class="co">#&gt; AnnData object with n_obs × n_vars = 935 × 25344</span></span>
-<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a><span class="co">#&gt;     obs: 'total_counts', 'log1p_total_counts', 'Sample ID', 'PhenoGraph_clusters', 'Patient', 'Primary Site', 'Sample Type', 'Site', 'DC 1', 'DC 2', 'DC 3', 'DC 4', 'Module Absorptive Intestine Score', 'Module EMT Score', 'Module Injury Repair Score', 'Module Squamous Score', 'Module Neuroendocrine Score', 'Module Endoderm Development Score', 'Module Tumor ISC-like Score', 'Module Secretory Intestine Score', 'Module Intestine Score', 'palantir_pseudotime', 'palantir_neuroendocrine_branch_probability', 'palantir_squamous_branch_probability', 'Fetal, Conserved', 'Module Osteoblast Score', 'Treatment', 'donor_id', 'development_stage_ontology_term_id', 'sex_ontology_term_id', 'self_reported_ethnicity_ontology_term_id', 'disease_ontology_term_id', 'tissue_type', 'tissue_ontology_term_id', 'cell_type_ontology_term_id', 'assay_ontology_term_id', 'suspension_type', 'Tumor Status', 'is_primary_data', 'cell_type', 'assay', 'disease', 'sex', 'tissue', 'self_reported_ethnicity', 'development_stage', 'observation_joinid'</span></span>
-<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a><span class="co">#&gt;     var: 'total_counts', 'highly_variable', 'gene', 'feature_is_filtered', 'feature_name', 'feature_reference', 'feature_biotype', 'feature_length', 'feature_type'</span></span>
-<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="co">#&gt;     uns: 'citation', 'default_embedding', 'neighbors', 'organism', 'organism_ontology_term_id', 'schema_reference', 'schema_version', 'title'</span></span>
-<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="co">#&gt;     obsm: 'X_umap'</span></span>
-<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"</span><span class="ch">\n</span><span class="st">obs columns:"</span>, <span class="bu">list</span>(adata_crc.obs.columns)[:<span class="dv">10</span>])</span>
-<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a><span class="co">#&gt; </span></span>
-<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a><span class="co">#&gt; obs columns: ['total_counts', 'log1p_total_counts', 'Sample ID', 'PhenoGraph_clusters', 'Patient', 'Primary Site', 'Sample Type', 'Site', 'DC 1', 'DC 2']</span></span></code></pre></div>
+<div class="sourceCode" id="cb10"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="im">import</span> scanpy <span class="im">as</span> sc</span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>adata_crc <span class="op">=</span> sc.read_h5ad(<span class="st">"crc_sample.h5ad"</span>)</span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a><span class="bu">print</span>(adata_crc)</span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a><span class="co">#&gt; AnnData object with n_obs × n_vars = 935 × 25344</span></span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a><span class="co">#&gt;     obs: 'total_counts', 'log1p_total_counts', 'Sample ID', 'PhenoGraph_clusters', 'Patient', 'Primary Site', 'Sample Type', 'Site', 'DC 1', 'DC 2', 'DC 3', 'DC 4', 'Module Absorptive Intestine Score', 'Module EMT Score', 'Module Injury Repair Score', 'Module Squamous Score', 'Module Neuroendocrine Score', 'Module Endoderm Development Score', 'Module Tumor ISC-like Score', 'Module Secretory Intestine Score', 'Module Intestine Score', 'palantir_pseudotime', 'palantir_neuroendocrine_branch_probability', 'palantir_squamous_branch_probability', 'Fetal, Conserved', 'Module Osteoblast Score', 'Treatment', 'donor_id', 'development_stage_ontology_term_id', 'sex_ontology_term_id', 'self_reported_ethnicity_ontology_term_id', 'disease_ontology_term_id', 'tissue_type', 'tissue_ontology_term_id', 'cell_type_ontology_term_id', 'assay_ontology_term_id', 'suspension_type', 'Tumor Status', 'is_primary_data', 'cell_type', 'assay', 'disease', 'sex', 'tissue', 'self_reported_ethnicity', 'development_stage', 'observation_joinid'</span></span>
+<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a><span class="co">#&gt;     var: 'total_counts', 'highly_variable', 'gene', 'feature_is_filtered', 'feature_name', 'feature_reference', 'feature_biotype', 'feature_length', 'feature_type'</span></span>
+<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a><span class="co">#&gt;     uns: 'citation', 'default_embedding', 'neighbors', 'organism', 'organism_ontology_term_id', 'schema_reference', 'schema_version', 'title'</span></span>
+<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a><span class="co">#&gt;     obsm: 'X_umap'</span></span></code></pre></div>
+<p>CellxGene datasets use Ensembl IDs as <code>var_names</code> by
+default. The <code>feature_name</code> column contains gene symbols.
+During conversion, srtdisk automatically uses gene symbols when
+<code>feature_name</code> is available.</p>
+<blockquote>
+<p><strong>Note on data layers</strong>: During conversion, AnnData’s
+<code>X</code> matrix (typically log-normalized data indicated by
+<code>log1p_total_counts</code> in obs) is stored in Seurat’s
+<code>data</code> layer. If <code>raw/X</code> exists, it becomes the
+<code>counts</code> layer.</p>
+</blockquote>
+<p>Visualize with scanpy before conversion:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>sc.pl.umap(adata_crc, color<span class="op">=</span><span class="st">'tissue'</span>)</span></code></pre></div>
+<p><img src="convert-anndata_files/figure-html/scanpy_umap-1.png" class="r-plt" alt="" width="100%"></p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a></span>
+<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a>sc.pp.normalize_total(adata_crc, target_sum<span class="op">=</span><span class="fl">1e4</span>)</span>
+<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a>sc.pp.log1p(adata_crc)</span>
+<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a></span>
+<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a><span class="co"># Set gene symbols as var_names (force string conversion from Categorical)</span></span>
+<span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a>adata_crc.var_names <span class="op">=</span> pd.Index(adata_crc.var[<span class="st">'feature_name'</span>].astype(<span class="bu">str</span>).values)</span>
+<span id="cb12-8"><a href="#cb12-8" tabindex="-1"></a>adata_crc.var_names_make_unique()</span>
+<span id="cb12-9"><a href="#cb12-9" tabindex="-1"></a></span>
+<span id="cb12-10"><a href="#cb12-10" tabindex="-1"></a>adata_crc.write_h5ad(<span class="st">"crc_normalized.h5ad"</span>)</span>
+<span id="cb12-11"><a href="#cb12-11" tabindex="-1"></a></span>
+<span id="cb12-12"><a href="#cb12-12" tabindex="-1"></a>sc.pl.umap(adata_crc, color<span class="op">=</span><span class="st">'EPCAM'</span>, use_raw<span class="op">=</span><span class="va">False</span>, title<span class="op">=</span><span class="st">'EPCAM'</span>)</span></code></pre></div>
+<p><img src="convert-anndata_files/figure-html/scanpy_epcam-3.png" class="r-plt" alt="" width="100%"></p>
 <p>Convert to Seurat:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/Convert.html">Convert</a></span><span class="op">(</span><span class="st">"crc_sample.h5ad"</span>, dest <span class="op">=</span> <span class="st">"h5seurat"</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="va">crc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/LoadH5Seurat.html">LoadH5Seurat</a></span><span class="op">(</span><span class="st">"crc_sample.h5seurat"</span><span class="op">)</span></span>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/Convert.html">Convert</a></span><span class="op">(</span><span class="st">"crc_normalized.h5ad"</span>, dest <span class="op">=</span> <span class="st">"h5seurat"</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">crc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/LoadH5Seurat.html">LoadH5Seurat</a></span><span class="op">(</span><span class="st">"crc_normalized.h5seurat"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Verify layer mapping: X -&gt; data (log-normalized), raw/X -&gt; counts (if exists)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Layers:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="fu"><a href="https://satijalab.github.io/seurat-object/reference/Layers.html" class="external-link">Layers</a></span><span class="op">(</span><span class="va">crc</span><span class="op">)</span>, collapse <span class="op">=</span> <span class="st">", "</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Layers: counts, data</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Data layer range:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="fu"><a href="https://satijalab.github.io/seurat-object/reference/AssayData.html" class="external-link">GetAssayData</a></span><span class="op">(</span><span class="va">crc</span>, layer <span class="op">=</span> <span class="st">"data"</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">100</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">]</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Data layer range: 0 2.77</span></span>
 <span><span class="va">crc</span></span>
 <span><span class="co">#&gt; An object of class Seurat </span></span>
 <span><span class="co">#&gt; 25344 features across 935 samples within 1 assay </span></span>
-<span><span class="co">#&gt; Active assay: RNA (25344 features, 0 variable features)</span></span>
-<span><span class="co">#&gt;  1 layer present: counts</span></span>
+<span><span class="co">#&gt; Active assay: RNA (25344 features, 3466 variable features)</span></span>
+<span><span class="co">#&gt;  2 layers present: counts, data</span></span>
 <span><span class="co">#&gt;  1 dimensional reduction calculated: umap</span></span></code></pre></div>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Plot UMAP if available</span></span>
-<span><span class="kw">if</span> <span class="op">(</span><span class="st">"umap"</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://satijalab.github.io/seurat-object/reference/ObjectAccess.html" class="external-link">Reductions</a></span><span class="op">(</span><span class="va">crc</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="https://satijalab.org/seurat/reference/DimPlot.html" class="external-link">DimPlot</a></span><span class="op">(</span><span class="va">crc</span>, reduction <span class="op">=</span> <span class="st">"umap"</span>, pt.size <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span>
-<span><span class="op">}</span></span></code></pre></div>
+<div class="section level3">
+<h3 id="visualize-converted-data">Visualize Converted Data<a class="anchor" aria-label="anchor" href="#visualize-converted-data"></a>
+</h3>
+<p>The UMAP coordinates and normalized expression from scanpy are
+preserved:</p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://satijalab.org/seurat/reference/DimPlot.html" class="external-link">DimPlot</a></span><span class="op">(</span><span class="va">crc</span>, reduction <span class="op">=</span> <span class="st">"umap"</span>, group.by <span class="op">=</span> <span class="st">"tissue"</span>, pt.size <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span></code></pre></div>
 <p><img src="convert-anndata_files/figure-html/plot_crc-1.png" class="r-plt" alt="" width="100%"></p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://satijalab.org/seurat/reference/FeaturePlot.html" class="external-link">FeaturePlot</a></span><span class="op">(</span><span class="va">crc</span>, features <span class="op">=</span> <span class="st">"EPCAM"</span>, pt.size <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span></code></pre></div>
+<p><img src="convert-anndata_files/figure-html/plot_crc_epcam-1.png" class="r-plt" alt="" width="100%"></p>
+<p>The conversion preserves expression patterns - EPCAM shows consistent
+distribution in both tools.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="visium-spatial-data-conversion">Visium Spatial Data Conversion<a class="anchor" aria-label="anchor" href="#visium-spatial-data-conversion"></a>
 </h2>
 <p>For spatial transcriptomics data, we use the stxBrain dataset from
 SeuratData (Visium v2 format):</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="http://www.satijalab.org/seurat" class="external-link">SeuratData</a></span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Install stxBrain if not already installed</span></span>
 <span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="st">"stxBrain"</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="fu"><a href="https://satijalab.org/seurat/reference/InstalledData.html" class="external-link">InstalledData</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://satijalab.org/seurat/reference/InstallData.html" class="external-link">InstallData</a></span><span class="op">(</span><span class="st">"stxBrain"</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="co"># Load anterior1 section</span></span>
 <span><span class="va">brain</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://satijalab.github.io/seurat-object/reference/UpdateSeuratObject.html" class="external-link">UpdateSeuratObject</a></span><span class="op">(</span><span class="fu"><a href="https://satijalab.org/seurat/reference/LoadData.html" class="external-link">LoadData</a></span><span class="op">(</span><span class="st">"stxBrain"</span>, type <span class="op">=</span> <span class="st">"anterior1"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">brain</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://satijalab.org/seurat/reference/NormalizeData.html" class="external-link">NormalizeData</a></span><span class="op">(</span><span class="va">brain</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Layers:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="fu"><a href="https://satijalab.github.io/seurat-object/reference/Layers.html" class="external-link">Layers</a></span><span class="op">(</span><span class="va">brain</span><span class="op">)</span>, collapse <span class="op">=</span> <span class="st">", "</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Layers: counts, data</span></span>
+<span></span>
 <span><span class="fu"><a href="https://satijalab.org/seurat/reference/SpatialPlot.html" class="external-link">SpatialFeaturePlot</a></span><span class="op">(</span><span class="va">brain</span>, features <span class="op">=</span> <span class="st">"Hpca"</span><span class="op">)</span></span></code></pre></div>
 <p><img src="convert-anndata_files/figure-html/get_stxBrain-1.png" class="r-plt" alt="" width="100%"></p>
 <p>Convert to h5ad:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/SaveH5Seurat.html">SaveH5Seurat</a></span><span class="op">(</span><span class="va">brain</span>, filename <span class="op">=</span> <span class="st">"stxBrain.h5Seurat"</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/Convert.html">Convert</a></span><span class="op">(</span><span class="st">"stxBrain.h5Seurat"</span>, dest <span class="op">=</span> <span class="st">"h5ad"</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p>View in Python with Squidpy:</p>
-<div class="sourceCode" id="cb13"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="im">import</span> squidpy <span class="im">as</span> sq</span>
-<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="im">import</span> scanpy <span class="im">as</span> sc</span>
-<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a><span class="im">import</span> matplotlib</span>
-<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a>matplotlib.use(<span class="st">'Agg'</span>)</span>
-<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
-<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a></span>
-<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a>adata_spatial <span class="op">=</span> sc.read_h5ad(<span class="st">"stxBrain.h5ad"</span>)</span>
-<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="dv">8</span>))</span>
-<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a>sq.pl.spatial_scatter(</span>
-<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a>    adata_spatial,</span>
-<span id="cb13-11"><a href="#cb13-11" tabindex="-1"></a>    color<span class="op">=</span><span class="st">"Hpca"</span>,</span>
-<span id="cb13-12"><a href="#cb13-12" tabindex="-1"></a>    library_id<span class="op">=</span><span class="st">"anterior1"</span>,</span>
-<span id="cb13-13"><a href="#cb13-13" tabindex="-1"></a>    img_res_key<span class="op">=</span><span class="st">"lowres"</span>,</span>
-<span id="cb13-14"><a href="#cb13-14" tabindex="-1"></a>    size<span class="op">=</span><span class="fl">1.5</span>,</span>
-<span id="cb13-15"><a href="#cb13-15" tabindex="-1"></a>    ax<span class="op">=</span>ax</span>
-<span id="cb13-16"><a href="#cb13-16" tabindex="-1"></a>)</span>
-<span id="cb13-17"><a href="#cb13-17" tabindex="-1"></a>plt.savefig(<span class="st">'stxBrain_plot.png'</span>, dpi<span class="op">=</span><span class="dv">100</span>, bbox_inches<span class="op">=</span><span class="st">'tight'</span>)</span>
-<span id="cb13-18"><a href="#cb13-18" tabindex="-1"></a>plt.close()</span></code></pre></div>
-<p><img src="stxBrain_plot.png" class="r-plt" alt="" width="80%"></p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a><span class="im">import</span> squidpy <span class="im">as</span> sq</span>
+<span id="cb18-2"><a href="#cb18-2" tabindex="-1"></a><span class="im">import</span> scanpy <span class="im">as</span> sc</span>
+<span id="cb18-3"><a href="#cb18-3" tabindex="-1"></a></span>
+<span id="cb18-4"><a href="#cb18-4" tabindex="-1"></a>adata_spatial <span class="op">=</span> sc.read_h5ad(<span class="st">"stxBrain.h5ad"</span>)</span>
+<span id="cb18-5"><a href="#cb18-5" tabindex="-1"></a><span class="bu">print</span>(adata_spatial)</span>
+<span id="cb18-6"><a href="#cb18-6" tabindex="-1"></a><span class="co">#&gt; AnnData object with n_obs × n_vars = 2696 × 31053</span></span>
+<span id="cb18-7"><a href="#cb18-7" tabindex="-1"></a><span class="co">#&gt;     obs: 'orig.ident', 'nCount_Spatial', 'nFeature_Spatial', 'slice', 'region'</span></span>
+<span id="cb18-8"><a href="#cb18-8" tabindex="-1"></a><span class="co">#&gt;     var: 'features'</span></span>
+<span id="cb18-9"><a href="#cb18-9" tabindex="-1"></a><span class="co">#&gt;     uns: 'seurat', 'spatial'</span></span>
+<span id="cb18-10"><a href="#cb18-10" tabindex="-1"></a><span class="co">#&gt;     obsm: 'spatial'</span></span>
+<span id="cb18-11"><a href="#cb18-11" tabindex="-1"></a></span>
+<span id="cb18-12"><a href="#cb18-12" tabindex="-1"></a>sq.pl.spatial_scatter(adata_spatial, color<span class="op">=</span><span class="st">"Hpca"</span>, library_id<span class="op">=</span><span class="st">"anterior1"</span>,</span>
+<span id="cb18-13"><a href="#cb18-13" tabindex="-1"></a>                      img_res_key<span class="op">=</span><span class="st">"lowres"</span>, size<span class="op">=</span><span class="fl">1.5</span>, use_raw<span class="op">=</span><span class="va">False</span>)</span></code></pre></div>
+<p><img src="convert-anndata_files/figure-html/load_stxBrain-1.png" class="r-plt" alt="" width="100%"></p>
 </div>
 <div class="section level2">
-<h2 id="python-environment-setup">Python Environment Setup<a class="anchor" aria-label="anchor" href="#python-environment-setup"></a>
+<h2 id="multi-assay-conversion-cite-seq">Multi-assay Conversion (CITE-seq)<a class="anchor" aria-label="anchor" href="#multi-assay-conversion-cite-seq"></a>
 </h2>
-<p>For optimal interoperability, we recommend using a conda environment
-with scanpy:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://rstudio.github.io/reticulate/" class="external-link">reticulate</a></span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Use existing scverse environment</span></span>
-<span><span class="fu"><a href="https://rstudio.github.io/reticulate/reference/use_python.html" class="external-link">use_condaenv</a></span><span class="op">(</span><span class="st">"scverse"</span>, required <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Or create a new environment</span></span>
-<span><span class="co"># reticulate::conda_create("scverse")</span></span>
-<span><span class="co"># reticulate::conda_install("scverse", c("scanpy", "squidpy", "anndata"))</span></span>
-<span></span>
-<span><span class="co"># Verify configuration</span></span>
-<span><span class="fu"><a href="https://rstudio.github.io/reticulate/reference/py_config.html" class="external-link">py_config</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">sc</span> <span class="op">&lt;-</span> <span class="fu">reticulate</span><span class="fu">::</span><span class="fu"><a href="https://rstudio.github.io/reticulate/reference/import.html" class="external-link">import</a></span><span class="op">(</span><span class="st">"scanpy"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Scanpy version:"</span>, <span class="va">sc</span><span class="op">$</span><span class="va">`__version__`</span>, <span class="st">"\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Scanpy version: 1.11.3</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="metadata-preservation">Metadata Preservation<a class="anchor" aria-label="anchor" href="#metadata-preservation"></a>
-</h2>
-<p>srtdisk preserves cell metadata during conversion:</p>
+<p>For multi-modal data like CITE-seq, each assay must be converted
+separately since h5ad format only supports a single matrix per file.</p>
+<p><strong>Conversion behavior:</strong></p>
 <ul>
 <li>
-<strong>Categorical data</strong>: Cell types, clusters, batch
-labels</li>
+<strong>No assay specified</strong>: Only the default assay is
+converted</li>
 <li>
-<strong>Numerical data</strong>: QC metrics like nCount_RNA,
-percent.mt</li>
+<strong>Single assay specified</strong>: That specific assay is
+converted</li>
 <li>
-<strong>Factor ordering</strong>: Level order for visualization</li>
+<strong>Multiple assays</strong>: Must call the function multiple
+times, once per assay</li>
 </ul>
+<p>This example uses the <code>cbmc</code> dataset from SeuratData:</p>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="http://www.satijalab.org/seurat" class="external-link">SeuratData</a></span><span class="op">)</span></span>
+<span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="st">"cbmc"</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="fu"><a href="https://satijalab.org/seurat/reference/InstalledData.html" class="external-link">InstalledData</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://satijalab.org/seurat/reference/InstallData.html" class="external-link">InstallData</a></span><span class="op">(</span><span class="st">"cbmc"</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">"cbmc"</span>, package <span class="op">=</span> <span class="st">"cbmc.SeuratData"</span><span class="op">)</span></span>
+<span><span class="va">cbmc</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://satijalab.github.io/seurat-object/reference/UpdateSeuratObject.html" class="external-link">UpdateSeuratObject</a></span><span class="op">(</span><span class="va">cbmc</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Assays:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="fu"><a href="https://satijalab.github.io/seurat-object/reference/ObjectAccess.html" class="external-link">Assays</a></span><span class="op">(</span><span class="va">cbmc</span><span class="op">)</span>, collapse <span class="op">=</span> <span class="st">", "</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Assays: RNA, ADT</span></span>
+<span></span>
+<span><span class="co"># Convert RNA assay (default)</span></span>
+<span><span class="fu"><a href="https://satijalab.github.io/seurat-object/reference/DefaultAssay.html" class="external-link">DefaultAssay</a></span><span class="op">(</span><span class="va">cbmc</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="st">"RNA"</span></span>
+<span><span class="fu"><a href="../reference/SaveH5Seurat.html">SaveH5Seurat</a></span><span class="op">(</span><span class="va">cbmc</span>, <span class="st">"cbmc_rna.h5seurat"</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/Convert.html">Convert</a></span><span class="op">(</span><span class="st">"cbmc_rna.h5seurat"</span>, dest <span class="op">=</span> <span class="st">"h5ad"</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<p>Verify the converted file in scanpy:</p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" tabindex="-1"></a><span class="im">import</span> scanpy <span class="im">as</span> sc</span>
+<span id="cb20-2"><a href="#cb20-2" tabindex="-1"></a>adata_rna <span class="op">=</span> sc.read_h5ad(<span class="st">"cbmc_rna.h5ad"</span>)</span>
+<span id="cb20-3"><a href="#cb20-3" tabindex="-1"></a><span class="bu">print</span>(adata_rna)</span>
+<span id="cb20-4"><a href="#cb20-4" tabindex="-1"></a><span class="co">#&gt; AnnData object with n_obs × n_vars = 8617 × 20501</span></span>
+<span id="cb20-5"><a href="#cb20-5" tabindex="-1"></a><span class="co">#&gt;     obs: 'orig.ident', 'nCount_RNA', 'nFeature_RNA', 'nCount_ADT', 'nFeature_ADT', 'rna_annotations', 'protein_annotations'</span></span>
+<span id="cb20-6"><a href="#cb20-6" tabindex="-1"></a><span class="co">#&gt;     var: 'features'</span></span>
+<span id="cb20-7"><a href="#cb20-7" tabindex="-1"></a><span class="co">#&gt;     uns: 'seurat'</span></span>
+<span id="cb20-8"><a href="#cb20-8" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"obs columns:"</span>, <span class="bu">list</span>(adata_rna.obs.columns)[:<span class="dv">10</span>])</span>
+<span id="cb20-9"><a href="#cb20-9" tabindex="-1"></a><span class="co">#&gt; obs columns: ['orig.ident', 'nCount_RNA', 'nFeature_RNA', 'nCount_ADT', 'nFeature_ADT', 'rna_annotations', 'protein_annotations']</span></span></code></pre></div>
+<p>The h5ad file preserves the full structure: gene expression matrix
+(X), cell metadata (obs), and gene info (var).</p>
+<p>Convert the ADT assay separately:</p>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Convert ADT assay</span></span>
+<span><span class="fu"><a href="https://satijalab.github.io/seurat-object/reference/DefaultAssay.html" class="external-link">DefaultAssay</a></span><span class="op">(</span><span class="va">cbmc</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="st">"ADT"</span></span>
+<span><span class="fu"><a href="../reference/SaveH5Seurat.html">SaveH5Seurat</a></span><span class="op">(</span><span class="va">cbmc</span>, <span class="st">"cbmc_adt.h5seurat"</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/Convert.html">Convert</a></span><span class="op">(</span><span class="st">"cbmc_adt.h5seurat"</span>, dest <span class="op">=</span> <span class="st">"h5ad"</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb22"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" tabindex="-1"></a><span class="im">import</span> scanpy <span class="im">as</span> sc</span>
+<span id="cb22-2"><a href="#cb22-2" tabindex="-1"></a>adata_adt <span class="op">=</span> sc.read_h5ad(<span class="st">"cbmc_adt.h5ad"</span>)</span>
+<span id="cb22-3"><a href="#cb22-3" tabindex="-1"></a><span class="bu">print</span>(adata_adt)</span>
+<span id="cb22-4"><a href="#cb22-4" tabindex="-1"></a><span class="co">#&gt; AnnData object with n_obs × n_vars = 8617 × 10</span></span>
+<span id="cb22-5"><a href="#cb22-5" tabindex="-1"></a><span class="co">#&gt;     obs: 'orig.ident', 'nCount_RNA', 'nFeature_RNA', 'nCount_ADT', 'nFeature_ADT', 'rna_annotations', 'protein_annotations'</span></span>
+<span id="cb22-6"><a href="#cb22-6" tabindex="-1"></a><span class="co">#&gt;     var: 'features'</span></span>
+<span id="cb22-7"><a href="#cb22-7" tabindex="-1"></a><span class="co">#&gt;     uns: 'seurat'</span></span>
+<span id="cb22-8"><a href="#cb22-8" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"ADT features:"</span>, <span class="bu">list</span>(adata_adt.var_names)[:<span class="dv">10</span>])</span>
+<span id="cb22-9"><a href="#cb22-9" tabindex="-1"></a><span class="co">#&gt; ADT features: ['CD3', 'CD4', 'CD8', 'CD45RA', 'CD56', 'CD16', 'CD11c', 'CD14', 'CD19', 'CD34']</span></span></code></pre></div>
+<p>Each assay produces a separate h5ad file with the same cell metadata
+but different features.</p>
+<blockquote>
+<p><strong>Note on h5mu format</strong>: For true multi-modal
+interoperability, consider the <a href="https://muon.scverse.org/" class="external-link">MuData/h5mu format</a> from the scverse
+ecosystem. The <a href="https://pmbio.github.io/MuDataSeurat/" class="external-link">MuDataSeurat</a> R package
+provides <code>ReadH5MU()</code> and <code>WriteH5MU()</code> functions
+for Seurat objects. This allows storing multiple modalities in a single
+file with shared cell annotations, though some Seurat-specific features
+may not round-trip perfectly.</p>
+</blockquote>
+</div>
+<div class="section level2">
+<h2 id="spatial-h5ad-to-seurat">Spatial h5ad to Seurat<a class="anchor" aria-label="anchor" href="#spatial-h5ad-to-seurat"></a>
+</h2>
+<p>Converting native spatial h5ad files to Seurat is fully supported. We
+use a Visium colon sample from <a href="https://cellxgene.cziscience.com" class="external-link">CellxGene</a> that was processed
+with scanpy/squidpy standard workflows:</p>
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">cache_dir</span> <span class="op">&lt;-</span> <span class="fu">tools</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/tools/userdir.html" class="external-link">R_user_dir</a></span><span class="op">(</span><span class="st">"srtdisk"</span>, which <span class="op">=</span> <span class="st">"cache"</span><span class="op">)</span></span>
+<span><span class="va">cache_path</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">cache_dir</span>, <span class="st">"visium_colon.h5ad"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/files.html" class="external-link">file.exists</a></span><span class="op">(</span><span class="va">cache_path</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.create</a></span><span class="op">(</span><span class="va">cache_dir</span>, recursive <span class="op">=</span> <span class="cn">TRUE</span>, showWarnings <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/message.html" class="external-link">message</a></span><span class="op">(</span><span class="st">"Downloading Visium colon dataset (~1.7GB)..."</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/utils/download.file.html" class="external-link">download.file</a></span><span class="op">(</span></span>
+<span>    <span class="st">"https://datasets.cellxgene.cziscience.com/ab9f4860-c0e3-444b-a982-38c13f0be6f5.h5ad"</span>,</span>
+<span>    <span class="va">cache_path</span>, mode <span class="op">=</span> <span class="st">"wb"</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/files.html" class="external-link">file.copy</a></span><span class="op">(</span><span class="va">cache_path</span>, <span class="st">"visium_colon.h5ad"</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] TRUE</span></span></code></pre></div>
+<p>View the native spatial h5ad in Python:</p>
+<div class="sourceCode" id="cb24"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" tabindex="-1"></a><span class="im">import</span> scanpy <span class="im">as</span> sc</span>
+<span id="cb24-2"><a href="#cb24-2" tabindex="-1"></a>adata_spatial <span class="op">=</span> sc.read_h5ad(<span class="st">"visium_colon.h5ad"</span>)</span>
+<span id="cb24-3"><a href="#cb24-3" tabindex="-1"></a><span class="bu">print</span>(adata_spatial)</span>
+<span id="cb24-4"><a href="#cb24-4" tabindex="-1"></a><span class="co">#&gt; AnnData object with n_obs × n_vars = 4992 × 32397</span></span>
+<span id="cb24-5"><a href="#cb24-5" tabindex="-1"></a><span class="co">#&gt;     obs: 'in_tissue', 'array_row', 'array_col', 'n_genes_by_counts', 'log1p_n_genes_by_counts', 'total_counts', 'log1p_total_counts', 'sangerID', 'region', 'donor_type', 'age', 'facility', 'flushed', 'annotation_final', 'Adip1', 'Adip2', 'Adip3', 'B', 'B_plasma', 'CD14+Mo', 'CD16+Mo', 'CD4+T_act', 'CD4+T_naive', 'CD8+T_cytox', 'CD8+T_em', 'CD8+T_te', 'CD8+T_trans', 'DC', 'EC10_CMC-like', 'EC1_cap', 'EC2_cap', 'EC3_cap', 'EC4_immune', 'EC5_art', 'EC6_ven', 'EC7_endocardial', 'EC8_ln', 'FB1', 'FB2', 'FB3', 'FB4_activated', 'FB5', 'FB6', 'ILC', 'LYVE1+IGF1+MP', 'LYVE1+MP_cycling', 'LYVE1+TIMD4+MP', 'MAIT-like', 'Mast', 'Meso', 'MoMP', 'NC1_glial', 'NC2_glial_NGF+', 'NK_CD16hi', 'NK_CD56hi', 'Neut', 'PC1_vent', 'PC2_atria', 'PC3_str', 'SAN_P_cell', 'SMC1_basic', 'SMC2_art', 'T/NK_cycling', 'aCM1', 'aCM2', 'aCM3', 'aCM4', 'AVN_bundle_cell', 'PC4_CMC-like', 'vCM1', 'vCM2', 'vCM3_stressed', 'vCM4', 'vCM5', 'AVN_P_cell', 'CD4+T_Tfh', 'CD4+T_Th1', 'CD4+T_Th2', 'CD4+T_reg', 'NC5_glial', 'aCM5', 'Adip4', 'NC3_glial', 'NC6_schwann', 'EC9_FB-like', 'gdT', 'Adip1_abundance', 'Adip2_abundance', 'Adip3_abundance', 'B_abundance', 'B_plasma_abundance', 'CD14+Mo_abundance', 'CD16+Mo_abundance', 'CD4+T_act_abundance', 'CD4+T_naive_abundance', 'CD8+T_cytox_abundance', 'CD8+T_em_abundance', 'CD8+T_te_abundance', 'CD8+T_trans_abundance', 'DC_abundance', 'EC10_CMC-like_abundance', 'EC1_cap_abundance', 'EC2_cap_abundance', 'EC3_cap_abundance', 'EC4_immune_abundance', 'EC5_art_abundance', 'EC6_ven_abundance', 'EC7_endocardial_abundance', 'EC8_ln_abundance', 'FB1_abundance', 'FB2_abundance', 'FB3_abundance', 'FB4_activated_abundance', 'FB5_abundance', 'FB6_abundance', 'ILC_abundance', 'LYVE1+IGF1+MP_abundance', 'LYVE1+MP_cycling_abundance', 'LYVE1+TIMD4+MP_abundance', 'MAIT-like_abundance', 'Mast_abundance', 'Meso_abundance', 'MoMP_abundance', 'NC1_glial_abundance', 'NC2_glial_NGF+_abundance', 'NK_CD16hi_abundance', 'NK_CD56hi_abundance', 'Neut_abundance', 'PC1_vent_abundance', 'PC2_atria_abundance', 'PC3_str_abundance', 'SAN_P_cell_abundance', 'SMC1_basic_abundance', 'SMC2_art_abundance', 'T/NK_cycling_abundance', 'aCM1_abundance', 'aCM2_abundance', 'aCM3_abundance', 'aCM4_abundance', 'AVN_bundle_cell_abundance', 'PC4_CMC-like_abundance', 'vCM1_abundance', 'vCM2_abundance', 'vCM3_stressed_abundance', 'vCM4_abundance', 'vCM5_abundance', 'AVN_P_cell_abundance', 'CD4+T_Tfh_abundance', 'CD4+T_Th1_abundance', 'CD4+T_Th2_abundance', 'CD4+T_reg_abundance', 'NC5_glial_abundance', 'aCM5_abundance', 'Adip4_abundance', 'NC3_glial_abundance', 'NC6_schwann_abundance', 'EC9_FB-like_abundance', 'gdT_abundance', 'assay_ontology_term_id', 'cell_type_ontology_term_id', 'donor_id', 'development_stage_ontology_term_id', 'disease_ontology_term_id', 'is_primary_data', 'self_reported_ethnicity_ontology_term_id', 'sex_ontology_term_id', 'suspension_type', 'tissue_ontology_term_id', 'tissue_type', 'cell_type', 'assay', 'disease', 'sex', 'tissue', 'self_reported_ethnicity', 'development_stage', 'observation_joinid'</span></span>
+<span id="cb24-6"><a href="#cb24-6" tabindex="-1"></a><span class="co">#&gt;     var: 'feature_is_filtered', 'feature_name', 'feature_reference', 'feature_biotype', 'feature_length', 'feature_type'</span></span>
+<span id="cb24-7"><a href="#cb24-7" tabindex="-1"></a><span class="co">#&gt;     uns: 'cell_type_ontology_term_id_colors', 'citation', 'fullres_xml_metadata', 'organism', 'organism_ontology_term_id', 'schema_reference', 'schema_version', 'spatial', 'spatial_metadata', 'title'</span></span>
+<span id="cb24-8"><a href="#cb24-8" tabindex="-1"></a><span class="co">#&gt;     obsm: 'X_means_cell_abundance_w_sf', 'X_prop', 'X_q05_cell_abundance_w_sf', 'X_q95_cell_abundance_w_sf', 'X_stds_cell_abundance_w_sf', 'spatial'</span></span>
+<span id="cb24-9"><a href="#cb24-9" tabindex="-1"></a></span>
+<span id="cb24-10"><a href="#cb24-10" tabindex="-1"></a>lib_id <span class="op">=</span> <span class="bu">list</span>(adata_spatial.uns[<span class="st">'spatial'</span>].keys())[<span class="dv">0</span>]</span>
+<span id="cb24-11"><a href="#cb24-11" tabindex="-1"></a>spatial_data <span class="op">=</span> adata_spatial.uns[<span class="st">'spatial'</span>][lib_id]</span>
+<span id="cb24-12"><a href="#cb24-12" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"</span><span class="ch">\n</span><span class="st">Spatial library:"</span>, lib_id)</span>
+<span id="cb24-13"><a href="#cb24-13" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb24-14"><a href="#cb24-14" tabindex="-1"></a><span class="co">#&gt; Spatial library: HCAHeartST13228106</span></span>
+<span id="cb24-15"><a href="#cb24-15" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Image keys:"</span>, <span class="bu">list</span>(spatial_data.get(<span class="st">'images'</span>, {}).keys()))</span>
+<span id="cb24-16"><a href="#cb24-16" tabindex="-1"></a><span class="co">#&gt; Image keys: ['fullres', 'hires']</span></span>
+<span id="cb24-17"><a href="#cb24-17" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"in_tissue column:"</span>, <span class="st">'in_tissue'</span> <span class="kw">in</span> adata_spatial.obs.columns)</span>
+<span id="cb24-18"><a href="#cb24-18" tabindex="-1"></a><span class="co">#&gt; in_tissue column: True</span></span></code></pre></div>
+<p>Normalize, set gene symbols, and save for conversion:</p>
+<div class="sourceCode" id="cb25"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" tabindex="-1"></a><span class="im">import</span> squidpy <span class="im">as</span> sq</span>
+<span id="cb25-2"><a href="#cb25-2" tabindex="-1"></a><span class="im">import</span> scanpy <span class="im">as</span> sc</span>
+<span id="cb25-3"><a href="#cb25-3" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb25-4"><a href="#cb25-4" tabindex="-1"></a></span>
+<span id="cb25-5"><a href="#cb25-5" tabindex="-1"></a>adata_spatial <span class="op">=</span> sc.read_h5ad(<span class="st">"visium_colon.h5ad"</span>)</span>
+<span id="cb25-6"><a href="#cb25-6" tabindex="-1"></a></span>
+<span id="cb25-7"><a href="#cb25-7" tabindex="-1"></a><span class="co"># Filter to tissue spots only</span></span>
+<span id="cb25-8"><a href="#cb25-8" tabindex="-1"></a>adata_spatial <span class="op">=</span> adata_spatial[adata_spatial.obs[<span class="st">'in_tissue'</span>] <span class="op">==</span> <span class="dv">1</span>].copy()</span>
+<span id="cb25-9"><a href="#cb25-9" tabindex="-1"></a></span>
+<span id="cb25-10"><a href="#cb25-10" tabindex="-1"></a>sc.pp.normalize_total(adata_spatial, target_sum<span class="op">=</span><span class="fl">1e4</span>)</span>
+<span id="cb25-11"><a href="#cb25-11" tabindex="-1"></a>sc.pp.log1p(adata_spatial)</span>
+<span id="cb25-12"><a href="#cb25-12" tabindex="-1"></a></span>
+<span id="cb25-13"><a href="#cb25-13" tabindex="-1"></a>adata_spatial.var_names <span class="op">=</span> pd.Index(adata_spatial.var[<span class="st">'feature_name'</span>].astype(<span class="bu">str</span>).values)</span>
+<span id="cb25-14"><a href="#cb25-14" tabindex="-1"></a>adata_spatial.var_names_make_unique()</span>
+<span id="cb25-15"><a href="#cb25-15" tabindex="-1"></a></span>
+<span id="cb25-16"><a href="#cb25-16" tabindex="-1"></a>adata_spatial.write_h5ad(<span class="st">"visium_normalized.h5ad"</span>)</span>
+<span id="cb25-17"><a href="#cb25-17" tabindex="-1"></a></span>
+<span id="cb25-18"><a href="#cb25-18" tabindex="-1"></a>lib_id <span class="op">=</span> <span class="bu">list</span>(adata_spatial.uns[<span class="st">'spatial'</span>].keys())[<span class="dv">0</span>]</span>
+<span id="cb25-19"><a href="#cb25-19" tabindex="-1"></a>sq.pl.spatial_scatter(adata_spatial, color<span class="op">=</span><span class="st">'ACTC1'</span>, library_id<span class="op">=</span>lib_id,</span>
+<span id="cb25-20"><a href="#cb25-20" tabindex="-1"></a>                      size<span class="op">=</span><span class="fl">1.5</span>, alpha<span class="op">=</span><span class="fl">0.8</span>, use_raw<span class="op">=</span><span class="va">False</span>, title<span class="op">=</span><span class="st">'ACTC1'</span>)</span></code></pre></div>
+<p><img src="convert-anndata_files/figure-html/squidpy_spatial_ACTC1-1.png" class="r-plt" alt="" width="100%"></p>
+<p>Convert to Seurat:</p>
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/Convert.html">Convert</a></span><span class="op">(</span><span class="st">"visium_normalized.h5ad"</span>, dest <span class="op">=</span> <span class="st">"h5seurat"</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">visium</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/LoadH5Seurat.html">LoadH5Seurat</a></span><span class="op">(</span><span class="st">"visium_normalized.h5seurat"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Verify layer mapping: X -&gt; data (log-normalized)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Layers:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="fu"><a href="https://satijalab.github.io/seurat-object/reference/Layers.html" class="external-link">Layers</a></span><span class="op">(</span><span class="va">visium</span><span class="op">)</span>, collapse <span class="op">=</span> <span class="st">", "</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Layers: counts, data</span></span>
+<span><span class="va">visium</span></span>
+<span><span class="co">#&gt; An object of class Seurat </span></span>
+<span><span class="co">#&gt; 32397 features across 3452 samples within 1 assay </span></span>
+<span><span class="co">#&gt; Active assay: RNA (32397 features, 0 variable features)</span></span>
+<span><span class="co">#&gt;  2 layers present: counts, data</span></span>
+<span><span class="co">#&gt;  5 dimensional reductions calculated: means_cell_abundance_w_sf, prop, q05_cell_abundance_w_sf, q95_cell_abundance_w_sf, stds_cell_abundance_w_sf</span></span>
+<span><span class="co">#&gt;  1 spatial field of view present: HCAHeartST13228106</span></span></code></pre></div>
+<p>Verify spatial data was preserved:</p>
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://satijalab.org/seurat/reference/SpatialPlot.html" class="external-link">SpatialFeaturePlot</a></span><span class="op">(</span><span class="va">visium</span>, features <span class="op">=</span> <span class="st">"ACTC1"</span>, pt.size.factor <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
+<p><img src="convert-anndata_files/figure-html/plot_spatial_native-1.png" class="r-plt" alt="" width="100%"></p>
+<blockquote>
+<p><strong>Note</strong>: Spatial images and coordinates are preserved
+during conversion. Some scanpy-specific structures (like neighbor graphs
+in <code>obsp</code>) may need to be recomputed in Seurat using
+<code><a href="https://satijalab.org/seurat/reference/FindNeighbors.html" class="external-link">FindNeighbors()</a></code>.</p>
+</blockquote>
+</div>
+<div class="section level2">
+<h2 id="data-mapping-reference">Data Mapping Reference<a class="anchor" aria-label="anchor" href="#data-mapping-reference"></a>
+</h2>
+<p>This section provides comprehensive mapping tables showing how data
+is converted between Seurat and AnnData formats.</p>
 <div class="section level3">
-<h3 id="cluster-column-mapping">Cluster Column Mapping<a class="anchor" aria-label="anchor" href="#cluster-column-mapping"></a>
+<h3 id="core-data-slots">Core Data Slots<a class="anchor" aria-label="anchor" href="#core-data-slots"></a>
 </h3>
+<p><strong>Layer mapping during h5ad -&gt; Seurat
+conversion:</strong></p>
+<table class="table">
+<colgroup>
+<col width="35%">
+<col width="35%">
+<col width="29%">
+</colgroup>
+<thead><tr class="header">
+<th>Seurat Slot</th>
+<th>h5ad Source</th>
+<th>Condition</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>data</code></td>
+<td><code>X</code></td>
+<td>Always mapped</td>
+</tr>
+<tr class="even">
+<td><code>counts</code></td>
+<td><code>raw/X</code></td>
+<td>If <code>raw</code> group exists</td>
+</tr>
+<tr class="odd">
+<td><code>counts</code></td>
+<td><code>X</code></td>
+<td>Fallback if no <code>raw</code> group</td>
+</tr>
+<tr class="even">
+<td><code>scale.data</code></td>
+<td>N/A</td>
+<td>Not stored in h5ad; recompute with <code><a href="https://satijalab.org/seurat/reference/ScaleData.html" class="external-link">ScaleData()</a></code>
+</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Note</strong>: The <code>data</code> slot always receives
+<code>X</code> (which typically contains log-normalized values in scanpy
+workflows). If the h5ad file has a <code>raw</code> group, its
+<code>X</code> matrix becomes <code>counts</code>. This matches the
+scanpy convention where <code>adata.X</code> holds processed data and
+<code>adata.raw.X</code> holds raw counts. Scaled data (z-scores for
+~2000 variable features) is not stored in standard h5ad files and should
+be recomputed in Seurat using <code><a href="https://satijalab.org/seurat/reference/ScaleData.html" class="external-link">ScaleData()</a></code> after
+conversion.</p>
+</blockquote>
+<p><strong>Other data structures:</strong></p>
 <table class="table">
 <thead><tr class="header">
-<th>Seurat</th>
-<th>AnnData/scanpy</th>
+<th>Data Type</th>
+<th>Seurat Location</th>
+<th>AnnData Location</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>Cell metadata</td>
+<td><code>meta.data</code></td>
+<td><code>obs</code></td>
+</tr>
+<tr class="even">
+<td>Feature metadata</td>
+<td><code>meta.features</code></td>
+<td><code>var</code></td>
+</tr>
+<tr class="odd">
+<td>UMAP coords</td>
+<td><code>reductions$umap</code></td>
+<td><code>obsm['X_umap']</code></td>
+</tr>
+<tr class="even">
+<td>PCA coords</td>
+<td><code>reductions$pca</code></td>
+<td><code>obsm['X_pca']</code></td>
+</tr>
+<tr class="odd">
+<td>Variable features</td>
+<td><code><a href="https://satijalab.github.io/seurat-object/reference/VariableFeatures.html" class="external-link">VariableFeatures()</a></code></td>
+<td><code>var['highly_variable']</code></td>
+</tr>
+<tr class="even">
+<td>Spatial coords</td>
+<td><code><a href="https://satijalab.github.io/seurat-object/reference/GetTissueCoordinates.html" class="external-link">GetTissueCoordinates()</a></code></td>
+<td><code>obsm['spatial']</code></td>
+</tr>
+<tr class="odd">
+<td>Spatial images</td>
+<td><code><a href="https://satijalab.github.io/seurat-object/reference/Images.html" class="external-link">Images()</a></code></td>
+<td><code>uns['spatial'][lib]['images']</code></td>
+</tr>
+<tr class="even">
+<td>Neighbor graphs</td>
+<td><code><a href="https://satijalab.github.io/seurat-object/reference/ObjectAccess.html" class="external-link">Graphs()</a></code></td>
+<td><code>obsp['distances'/'connectivities']</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="metadata-column-mapping">Metadata Column Mapping<a class="anchor" aria-label="anchor" href="#metadata-column-mapping"></a>
+</h3>
+<p>Common column name conventions differ between Seurat and scanpy
+workflows:</p>
+<table class="table">
+<colgroup>
+<col width="41%">
+<col width="33%">
+<col width="25%">
+</colgroup>
+<thead><tr class="header">
+<th>Seurat (<code>meta.data</code>)</th>
+<th>AnnData (<code>obs</code>)</th>
+<th>Description</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td><code>seurat_clusters</code></td>
 <td>
-<code>leiden</code> or <code>louvain</code>
+<code>leiden</code> / <code>louvain</code>
 </td>
+<td>Cluster assignments</td>
 </tr>
 <tr class="even">
 <td><code>orig.ident</code></td>
-<td><code>batch</code></td>
+<td>
+<code>batch</code> / <code>sample</code>
+</td>
+<td>Sample identifier</td>
 </tr>
 <tr class="odd">
 <td><code>nCount_RNA</code></td>
-<td><code>n_counts</code></td>
+<td>
+<code>n_counts</code> / <code>total_counts</code>
+</td>
+<td>Total UMI per cell</td>
 </tr>
 <tr class="even">
 <td><code>nFeature_RNA</code></td>
-<td><code>n_genes</code></td>
+<td>
+<code>n_genes</code> / <code>n_genes_by_counts</code>
+</td>
+<td>Genes detected per cell</td>
+</tr>
+<tr class="odd">
+<td><code>percent.mt</code></td>
+<td>
+<code>pct_counts_mt</code> / <code>percent_mito</code>
+</td>
+<td>Mitochondrial fraction</td>
+</tr>
+<tr class="even">
+<td><code>cell_type</code></td>
+<td>
+<code>cell_type</code> / <code>celltype</code>
+</td>
+<td>Cell type annotations</td>
+</tr>
+<tr class="odd">
+<td><code>Phase</code></td>
+<td>
+<code>phase</code> / <code>cell_cycle_phase</code>
+</td>
+<td>Cell cycle phase</td>
 </tr>
 </tbody>
 </table>
+</div>
+<div class="section level3">
+<h3 id="column-name-standardization-option">Column Name Standardization Option<a class="anchor" aria-label="anchor" href="#column-name-standardization-option"></a>
+</h3>
+<p>By default, column names are preserved exactly. Use
+<code>standardize = TRUE</code> for automatic name conversion to scanpy
+conventions:</p>
+<table class="table">
+<thead><tr class="header">
+<th>Seurat Name</th>
+<th>scanpy Name (with <code>standardize=TRUE</code>)</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>seurat_clusters</code></td>
+<td><code>clusters</code></td>
+</tr>
+<tr class="even">
+<td><code>nCount_RNA</code></td>
+<td><code>n_counts</code></td>
+</tr>
+<tr class="odd">
+<td><code>nFeature_RNA</code></td>
+<td><code>n_genes</code></td>
+</tr>
+<tr class="even">
+<td><code>percent.mt</code></td>
+<td><code>percent_mito</code></td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Preserve original names (default)</span></span>
+<span><span class="fu"><a href="../reference/Convert.html">Convert</a></span><span class="op">(</span><span class="st">"data.h5Seurat"</span>, dest <span class="op">=</span> <span class="st">"h5ad"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Convert to scanpy naming conventions</span></span>
+<span><span class="fu"><a href="../reference/Convert.html">Convert</a></span><span class="op">(</span><span class="st">"data.h5Seurat"</span>, dest <span class="op">=</span> <span class="st">"h5ad"</span>, standardize <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="expression-scale-handling">Expression Scale Handling<a class="anchor" aria-label="anchor" href="#expression-scale-handling"></a>
+</h3>
+<p><strong>Automatic Layer Detection</strong>: srtdisk maps layers based
+on h5ad structure:</p>
+<table class="table">
+<thead><tr class="header">
+<th>h5ad Source</th>
+<th>Seurat Destination</th>
+<th>Condition</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>X</code></td>
+<td><code>data</code></td>
+<td>Always</td>
+</tr>
+<tr class="even">
+<td><code>raw/X</code></td>
+<td><code>counts</code></td>
+<td>If <code>raw</code> group exists</td>
+</tr>
+<tr class="odd">
+<td><code>X</code></td>
+<td><code>counts</code></td>
+<td>Fallback if no <code>raw</code>
+</td>
+</tr>
+</tbody>
+</table>
+<p><strong>When Scales Match</strong>: If h5ad follows scanpy
+conventions (<code>X</code> = log-normalized, <code>raw.X</code> =
+counts), no additional processing needed after conversion.</p>
+<p><strong>When Scales Differ</strong>: If <code>X</code> contains raw
+counts instead of normalized data:</p>
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Normalize after conversion</span></span>
+<span><span class="va">seurat_obj</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://satijalab.org/seurat/reference/NormalizeData.html" class="external-link">NormalizeData</a></span><span class="op">(</span><span class="va">seurat_obj</span><span class="op">)</span></span></code></pre></div>
+<blockquote>
+<p><strong>Warning</strong>: Do NOT normalize in both Python and R -
+this double-normalizes data.</p>
+</blockquote>
+</div>
+<div class="section level3">
+<h3 id="indexing-conventions">Indexing Conventions<a class="anchor" aria-label="anchor" href="#indexing-conventions"></a>
+</h3>
+<p>Python uses 0-based indexing; R uses 1-based. srtdisk handles this
+automatically:</p>
+<table class="table">
+<thead><tr class="header">
+<th>Data Type</th>
+<th>h5ad (Python)</th>
+<th>Seurat (R)</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>Categorical codes</td>
+<td>0-indexed</td>
+<td>1-indexed factors</td>
+</tr>
+<tr class="even">
+<td>Cluster labels</td>
+<td>Unchanged</td>
+<td>Unchanged</td>
+</tr>
+<tr class="odd">
+<td>Sparse matrix indices</td>
+<td>0-based (CSR/CSC)</td>
+<td>0-based (dgCMatrix)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example</strong>: Cluster 0 in scanpy remains labeled “0” in
+Seurat, but internally stored as factor level 1.</p>
+</div>
+<div class="section level3">
+<h3 id="structure-verification">Structure Verification<a class="anchor" aria-label="anchor" href="#structure-verification"></a>
+</h3>
+<p>After conversion, verify data integrity:</p>
+<p><strong>h5ad -&gt; Seurat:</strong></p>
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Check layers and dimensions</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Layers:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="fu"><a href="https://satijalab.github.io/seurat-object/reference/Layers.html" class="external-link">Layers</a></span><span class="op">(</span><span class="va">seurat_obj</span><span class="op">)</span>, collapse <span class="op">=</span> <span class="st">", "</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Cells:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">seurat_obj</span><span class="op">)</span>, <span class="st">"Genes:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">seurat_obj</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Verify data ranges (log-normalized data typically 0-6)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Data range:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="fu"><a href="https://satijalab.github.io/seurat-object/reference/AssayData.html" class="external-link">GetAssayData</a></span><span class="op">(</span><span class="va">seurat_obj</span>, layer <span class="op">=</span> <span class="st">"data"</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">100</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">]</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Check metadata preserved</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">seurat_obj</span><span class="op">[[</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span></code></pre></div>
+<p><strong>Seurat -&gt; h5ad:</strong></p>
+<div class="sourceCode" id="cb31"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb31-1"><a href="#cb31-1" tabindex="-1"></a><span class="im">import</span> scanpy <span class="im">as</span> sc</span>
+<span id="cb31-2"><a href="#cb31-2" tabindex="-1"></a>adata <span class="op">=</span> sc.read_h5ad(<span class="st">"converted.h5ad"</span>)</span>
+<span id="cb31-3"><a href="#cb31-3" tabindex="-1"></a><span class="bu">print</span>(adata)</span>
+<span id="cb31-4"><a href="#cb31-4" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"obs columns:"</span>, <span class="bu">list</span>(adata.obs.columns))</span>
+<span id="cb31-5"><a href="#cb31-5" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"X range:"</span>, adata.X.<span class="bu">min</span>(), <span class="st">"-"</span>, adata.X.<span class="bu">max</span>())</span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
 <h2 id="session-info">Session Info<a class="anchor" aria-label="anchor" href="#session-info"></a>
 </h2>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; R version 4.5.2 (2025-10-31)</span></span>
 <span><span class="co">#&gt; Platform: aarch64-apple-darwin20</span></span>
@@ -321,7 +753,7 @@ percent.mt</li>
 <span><span class="co">#&gt;  [3] ssHippo.SeuratData_3.1.4      pbmcref.SeuratData_1.0.0     </span></span>
 <span><span class="co">#&gt;  [5] pbmcMultiome.SeuratData_0.1.4 pbmc3k.SeuratData_3.1.4      </span></span>
 <span><span class="co">#&gt;  [7] panc8.SeuratData_3.0.2        cbmc.SeuratData_3.1.4        </span></span>
-<span><span class="co">#&gt;  [9] SeuratData_0.2.2.9002         srtdisk_0.1.0                </span></span>
+<span><span class="co">#&gt;  [9] SeuratData_0.2.2.9002         srtdisk_0.2.0                </span></span>
 <span><span class="co">#&gt; [11] Seurat_5.4.0                  SeuratObject_5.3.0           </span></span>
 <span><span class="co">#&gt; [13] sp_2.2-0                      reticulate_1.44.1            </span></span>
 <span><span class="co">#&gt; </span></span>
@@ -329,14 +761,14 @@ percent.mt</li>
 <span><span class="co">#&gt;   [1] RColorBrewer_1.1-3     jsonlite_2.0.0         magrittr_2.0.4        </span></span>
 <span><span class="co">#&gt;   [4] spatstat.utils_3.2-1   farver_2.1.2           rmarkdown_2.30        </span></span>
 <span><span class="co">#&gt;   [7] fs_1.6.6               ragg_1.5.0             vctrs_0.7.0           </span></span>
-<span><span class="co">#&gt;  [10] ROCR_1.0-11            spatstat.explore_3.6-0 htmltools_0.5.9       </span></span>
+<span><span class="co">#&gt;  [10] ROCR_1.0-11            spatstat.explore_3.7-0 htmltools_0.5.9       </span></span>
 <span><span class="co">#&gt;  [13] sass_0.4.10            sctransform_0.4.3      parallelly_1.46.1     </span></span>
 <span><span class="co">#&gt;  [16] KernSmooth_2.23-26     bslib_0.9.0            htmlwidgets_1.6.4     </span></span>
 <span><span class="co">#&gt;  [19] desc_1.4.3             ica_1.0-3              plyr_1.8.9            </span></span>
 <span><span class="co">#&gt;  [22] plotly_4.11.0          zoo_1.8-15             cachem_1.1.0          </span></span>
 <span><span class="co">#&gt;  [25] igraph_2.2.1           mime_0.13              lifecycle_1.0.5       </span></span>
 <span><span class="co">#&gt;  [28] pkgconfig_2.0.3        Matrix_1.7-4           R6_2.6.1              </span></span>
-<span><span class="co">#&gt;  [31] fastmap_1.2.0          fitdistrplus_1.2-4     future_1.69.0         </span></span>
+<span><span class="co">#&gt;  [31] fastmap_1.2.0          fitdistrplus_1.2-5     future_1.69.0         </span></span>
 <span><span class="co">#&gt;  [34] shiny_1.12.1           digest_0.6.39          patchwork_1.3.2       </span></span>
 <span><span class="co">#&gt;  [37] tensor_1.5.1           RSpectra_0.16-2        irlba_2.3.5.1         </span></span>
 <span><span class="co">#&gt;  [40] textshaping_1.0.4      labeling_0.4.3         progressr_0.18.0      </span></span>

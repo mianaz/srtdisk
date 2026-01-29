@@ -15,12 +15,27 @@
 ^vignettes/.*\.h5Seurat$
 ^vignettes/.*\.rds$
 ^vignettes/.*\.Rds$
+^vignettes/.*\.png$
 ^vignettes/anndata-Rmd\.Rmd$
 ^inst/testdata/pbmc3k_final\.h5ad$
+
+# Exclude large inst/testdata directories (keep only crc_sample.h5ad for vignettes)
+^inst/testdata/conversion_tests$
+^inst/testdata/seurat rds$
+^inst/testdata/scanpy h5ad$
+^inst/testdata/raw data$
+^inst/testdata/.*\.h5seurat$
+^inst/testdata/.*\.h5Seurat$
+^inst/testdata/.*\.rds$
+^inst/testdata/visium_colon_small\.h5ad$
+
+# Exclude build artifacts
+^srtdisk_.*\.tar\.gz$
+^\.\.Rcheck$
+
 ^\.claude$
 ^SESSION_SUMMARY\.md$
 ^check_output\.log$
 ^knitted_vignettes$
 ^test_.*\.h5Seurat$
 ^test_.*\.h5ad$
-^NEWS\.md$

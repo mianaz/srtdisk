@@ -24,15 +24,15 @@ goal of enhancing interoperability between Seurat and Scanpy. This
 version includes Seurat v5 Assay5 compatibility and improved spatial
 data handling.
 
-## What’s New in srtdisk (vs SeuratDisk)
+## What's New in srtdisk (vs SeuratDisk)
 
-| Feature              | SeuratDisk             | srtdisk                     |
-|----------------------|------------------------|-----------------------------|
-| Seurat v5 Assay5     | Not supported          | Full support                |
-| Spatial Technologies | Visium only            | Visium, SlideSeq, FOV       |
-| Categorical Metadata | Lost during conversion | Preserved                   |
-| Direct Conversion    | Two-step only          | `SeuratToH5AD()` wrapper    |
-| h5ad Compatibility   | Basic                  | Improved scanpy conventions |
+| Feature              | SeuratDisk    | srtdisk                     |
+|----------------------|---------------|-----------------------------|
+| Seurat v5 Assay5     | Not supported | Full support                |
+| Spatial Technologies | Visium only   | Visium, SlideSeq, FOV       |
+| Metadata             | Partial       | Preserved                   |
+| Direct Conversion    | Two-step only | `SeuratToH5AD()` wrapper    |
+| h5ad Compatibility   | Basic         | Improved scanpy conventions |
 
 ## Quick Start
 
@@ -69,7 +69,7 @@ Convert(h5ad_path, dest = "h5seurat", overwrite = TRUE)
 crc <- LoadH5Seurat("crc_sample.h5seurat")
 ```
 
-### Multi-assay (CITE-seq)
+### Multi-assay (e.g. CITE-seq)
 
 ``` r
 # Note: Converts one assay at a time
@@ -80,7 +80,7 @@ SeuratToH5AD(cbmc, filename = "cbmc_rna.h5ad", assay = "RNA", overwrite = TRUE)
 SeuratToH5AD(cbmc, filename = "cbmc_adt.h5ad", assay = "ADT", overwrite = TRUE)
 ```
 
-### Spatial Data Conversion (Beta)
+### Spatial Data Conversion
 
 ``` r
 library(SeuratData)
@@ -88,6 +88,40 @@ InstallData("stxBrain")
 brain <- UpdateSeuratObject(LoadData("stxBrain", type = "anterior1"))
 SeuratToH5AD(brain, filename = "brain_spatial.h5ad", overwrite = TRUE)
 ```
+
+## Function Reference
+
+### Core Conversion Functions
+
+| Function         | Description                               |
+|------------------|-------------------------------------------|
+| `SeuratToH5AD()` | Direct one-step Seurat to h5ad conversion |
+| `Convert()`      | Convert between h5Seurat and h5ad formats |
+| `SaveH5Seurat()` | Save Seurat object to h5Seurat file       |
+| `LoadH5Seurat()` | Load Seurat object from h5Seurat file     |
+
+### h5Seurat File Operations
+
+| Function       | Description                                      |
+|----------------|--------------------------------------------------|
+| `Connect()`    | Open connection to h5Seurat file for exploration |
+| `AppendData()` | Add data to existing Seurat object from h5Seurat |
+
+### Conversion Options
+
+| Option               | Description                                |
+|----------------------|--------------------------------------------|
+| `standardize = TRUE` | Convert column names to scanpy conventions |
+| `assays = "RNA"`     | Specify which assay(s) to convert          |
+| `overwrite = TRUE`   | Overwrite existing output files            |
+
+For detailed documentation, see the vignettes: - [Conversions: h5Seurat
+and
+AnnData](https://mianaz.github.io/srtdisk/articles/convert-anndata.html) -
+[Saving and Loading h5Seurat
+Files](https://mianaz.github.io/srtdisk/articles/h5Seurat-load.html) -
+[h5Seurat File Format
+Specification](https://mianaz.github.io/srtdisk/articles/h5Seurat-spec.html)
 
 ## Installation
 
@@ -110,7 +144,7 @@ srtdisk depends on the following non-standard packages:
 | cli | [CRAN](https://cran.r-project.org/package=cli) | [GitHub](https://github.com/r-lib/cli) | [Website](https://cli.r-lib.org) |
 | crayon | [CRAN](https://cran.r-project.org/package=crayon) | [GitHub](https://github.com/r-lib/crayon) | [Website](https://r-lib.github.io/crayon/) |
 | hdf5r | [CRAN](https://cran.r-project.org/package=hdf5r) | [GitHub](https://github.com/hhoeflin/hdf5r/) | [Website](https://hhoeflin.github.io/hdf5r/) |
-| Matrix | [CRAN](https://cran.r-project.org/package=Matrix) | – | [Website](https://Matrix.R-forge.R-project.org) |
+| Matrix | [CRAN](https://cran.r-project.org/package=Matrix) | \- | [Website](https://Matrix.R-forge.R-project.org) |
 | R6 | [CRAN](https://cran.r-project.org/package=R6) | [GitHub](https://github.com/r-lib/R6) | [Website](https://r6.r-lib.org) |
 | rlang | [CRAN](https://cran.r-project.org/package=rlang) | [GitHub](https://github.com/r-lib/rlang) | [Website](https://rlang.r-lib.org) |
 | Seurat | [CRAN](https://cran.r-project.org/package=Seurat) | [GitHub](https://github.com/satijalab/seurat) | [Website](https://satijalab.org/seurat) |

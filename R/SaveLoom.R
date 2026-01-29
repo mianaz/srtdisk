@@ -25,7 +25,7 @@ NULL
 #' @details
 #' The Loom format organizes data as follows:
 #' \itemize{
-#'   \item \code{/matrix}: Main expression matrix (features × cells)
+#'   \item \code{/matrix}: Main expression matrix (features x cells)
 #'   \item \code{/row_attrs}: Feature/gene-level annotations
 #'   \item \code{/col_attrs}: Cell/sample-level metadata (cell names, cluster assignments, etc.)
 #'   \item \code{/layers}: Additional expression layers if present

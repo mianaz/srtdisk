@@ -373,8 +373,23 @@ AssembleAssay <- function(assay, file, slots = NULL, verbose = TRUE) {
   colnames(x = init_data) <- Cells(x = file)
 
   # Create V5-compatible assay
+  # CreateSeuratObject always puts data in 'counts' layer initially
   temp_seurat <- CreateSeuratObject(counts = init_data, min.cells = -1, min.features = -1)
   obj <- temp_seurat[['RNA']]
+
+  # If we initialized with 'data' (not counts), we need to move the data to the correct layer
+  # The data is currently in 'counts' layer but should be in 'data' layer
+  if (!init_with_counts) {
+    # Move data from counts to data layer, clear counts
+    obj <- SetAssayDataCompat(object = obj, layer_or_slot = "data", new.data = init_data)
+    # Remove the incorrectly placed counts layer by setting empty matrix
+    empty_counts <- Matrix::sparseMatrix(
+      i = integer(0), j = integer(0), x = numeric(0),
+      dims = c(nrow(init_data), ncol(init_data)),
+      dimnames = list(features, Cells(x = file))
+    )
+    obj <- SetAssayDataCompat(object = obj, layer_or_slot = "counts", new.data = empty_counts)
+  }
 
   tryCatch(
     expr = Key(object = obj) <- Key(object = assay.group),
@@ -655,7 +670,7 @@ AssembleImage <- function(image, file, verbose = TRUE) {
       image_data <- NULL
       if (img_group$exists(name = 'image')) {
         image_data <- img_group[['image']]$read()
-        # Ensure proper format (should already be channels x width x height)
+        # Image data should be in Seurat format: height x width x channels
         if (length(dim(image_data)) == 3L) {
           # Normalize to 0-1 range if needed
           if (max(image_data) > 1) {
@@ -695,6 +710,13 @@ AssembleImage <- function(image, file, verbose = TRUE) {
       # Get spatial coordinates and boundaries - different for VisiumV1 vs VisiumV2
       coordinates <- NULL
       boundaries_list <- list()
+
+      if (verbose) {
+        message("Assembling spatial image: ", image)
+        message("  s4class: ", s4class)
+        message("  has image_data: ", !is.null(image_data))
+        message("  has scale_factors: ", !is.null(scale_factors))
+      }
 
       # Try boundaries/centroids (VisiumV2 style)
       if (img_group$exists(name = 'boundaries')) {
@@ -768,6 +790,97 @@ AssembleImage <- function(image, file, verbose = TRUE) {
             })
           }
         }
+      }
+
+      if (verbose) {
+        message("  boundaries_list length after boundaries check: ", length(boundaries_list))
+      }
+
+      # Fallback: If no boundaries/centroids found, try to create from spatial reduction
+      # This handles native h5ad files from scanpy/squidpy that store coords in obsm/spatial
+      if (length(boundaries_list) == 0 && file$exists(name = 'reductions/spatial')) {
+        if (verbose) {
+          message("  No boundaries found, attempting to create centroids from spatial reduction")
+        }
+
+        tryCatch({
+          spatial_reduc <- file[['reductions/spatial']]
+          if (spatial_reduc$exists(name = 'cell.embeddings')) {
+            coords_mat <- as.matrix(spatial_reduc[['cell.embeddings']])
+            all_cells <- Cells(x = file)
+
+            # Filter coordinates to cells from this library if applicable
+            cells_to_keep <- all_cells
+            if (file$exists(name = 'meta.data')) {
+              meta_group <- file[['meta.data']]
+              lib_col_names <- c('sangerID', 'library_id', 'sample', 'batch')
+
+              for (col_name in lib_col_names) {
+                if (meta_group$exists(col_name)) {
+                  col_obj <- meta_group[[col_name]]
+
+                  if (inherits(col_obj, 'H5Group')) {
+                    if (col_obj$exists('values') && col_obj$exists('levels')) {
+                      values_int <- col_obj[['values']]$read()
+                      levels_str <- col_obj[['levels']]$read()
+                      lib_ids <- levels_str[values_int + 1]
+                    } else {
+                      lib_ids <- NULL
+                    }
+                  } else {
+                    lib_ids <- as.character(col_obj$read())
+                  }
+
+                  if (!is.null(lib_ids)) {
+                    cells_to_keep <- all_cells[lib_ids == image]
+                    if (verbose) {
+                      message("  Filtering to ", length(cells_to_keep), " cells from library ", image)
+                    }
+                    break
+                  }
+                }
+              }
+            }
+
+            # Filter and prepare coordinates
+            cell_indices <- which(all_cells %in% cells_to_keep)
+            coords_mat_filtered <- coords_mat[cell_indices, , drop = FALSE]
+
+            # Ensure proper column names
+            if (is.null(colnames(coords_mat_filtered))) {
+              colnames(coords_mat_filtered) <- c('x', 'y')
+            }
+            rownames(coords_mat_filtered) <- cells_to_keep
+
+            # Create Centroids object for VisiumV2 compatibility
+            radius_val <- if (!is.null(scale_factors)) {
+              as.numeric(scale_factors[['spot']])
+            } else {
+              1  # Default radius
+            }
+
+            centroids_obj <- SeuratObject::CreateCentroids(
+              coords = coords_mat_filtered,
+              nsides = 0L,  # Circle
+              radius = radius_val,
+              theta = 0
+            )
+
+            boundaries_list[['centroids']] <- centroids_obj
+
+            if (verbose) {
+              message("  Created Centroids from spatial reduction with ", nrow(coords_mat_filtered), " cells")
+            }
+          }
+        }, error = function(e) {
+          if (verbose) {
+            message("  Could not create centroids from spatial reduction: ", conditionMessage(e))
+          }
+        })
+      }
+
+      if (verbose) {
+        message("  Final boundaries_list length: ", length(boundaries_list))
       }
 
       # For VisiumV1 and SliceImage, read coordinates from reductions or image group
@@ -867,6 +980,17 @@ AssembleImage <- function(image, file, verbose = TRUE) {
       # Only attempt to create a full Visium object if we have the required components
       can_create_v2 <- !is.null(image_data) && !is.null(scale_factors) && length(boundaries_list) > 0
       can_create_v1 <- !is.null(image_data) && !is.null(scale_factors) && !is.null(coordinates)
+
+      if (verbose) {
+        message("  Can create VisiumV2: ", can_create_v2,
+                " (image: ", !is.null(image_data),
+                ", scale_factors: ", !is.null(scale_factors),
+                ", boundaries: ", length(boundaries_list), ")")
+        message("  Can create VisiumV1: ", can_create_v1,
+                " (image: ", !is.null(image_data),
+                ", scale_factors: ", !is.null(scale_factors),
+                ", coordinates: ", !is.null(coordinates), ")")
+      }
 
       if (s4class == 'VisiumV2' && can_create_v2) {
         # VisiumV2 object

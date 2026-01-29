@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">srtdisk</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -250,13 +250,8 @@ writing data.</p>
 <span><span class="co">#&gt; [1,]    0    0    0    1</span></span>
 <span><span class="co">#&gt; [2,]    0    1    1    1</span></span>
 <span><span class="co">#&gt; [3,]    1    1    0    0</span></span>
-<span><span class="co">#&gt; Class: H5D</span></span>
-<span><span class="co">#&gt; Dataset: /densemat</span></span>
-<span><span class="co">#&gt; Filename: /private/var/folders/9l/bl67cpdj3rzgkx2pfk0flmhc0000gn/T/RtmpwezU36/file55f71184be5.h5</span></span>
-<span><span class="co">#&gt; Access type: H5F_ACC_RDWR</span></span>
-<span><span class="co">#&gt; Datatype: H5T_IEEE_F64LE</span></span>
-<span><span class="co">#&gt; Space: Type=Simple     Dims=3 x 4     Maxdims=Inf x Inf</span></span>
-<span><span class="co">#&gt; Chunk: 32 x 32</span></span>
+<span><span class="co">#&gt; HDF5 Dataset: densemat</span></span>
+<span><span class="co">#&gt;   Dimensions: 3 x 4</span></span>
 <span><span class="co">#&gt;      [,1] [,2] [,3] [,4]</span></span>
 <span><span class="co">#&gt; [1,]    0    0    0    1</span></span>
 <span><span class="co">#&gt; [2,]    0    1    1    1</span></span>
@@ -276,30 +271,15 @@ row numbers for each value in “data”</p>
 <span><span class="co">#&gt; [1,] . . . 1</span></span>
 <span><span class="co">#&gt; [2,] . 1 1 1</span></span>
 <span><span class="co">#&gt; [3,] 1 1 . .</span></span>
-<span><span class="co">#&gt; Class: H5Group</span></span>
-<span><span class="co">#&gt; Filename: /private/var/folders/9l/bl67cpdj3rzgkx2pfk0flmhc0000gn/T/RtmpwezU36/file55f71184be5.h5</span></span>
-<span><span class="co">#&gt; Group: /sparsemat</span></span>
-<span><span class="co">#&gt; Attributes: dims</span></span>
-<span><span class="co">#&gt; Listing:</span></span>
-<span><span class="co">#&gt;     name    obj_type dataset.dims dataset.type_class</span></span>
-<span><span class="co">#&gt;     data H5I_DATASET            6          H5T_FLOAT</span></span>
-<span><span class="co">#&gt;  indices H5I_DATASET            6        H5T_INTEGER</span></span>
-<span><span class="co">#&gt;   indptr H5I_DATASET            5        H5T_INTEGER</span></span>
-<span><span class="co">#&gt; Class: H5D</span></span>
-<span><span class="co">#&gt; Dataset: /sparsemat/indices</span></span>
-<span><span class="co">#&gt; Filename: /private/var/folders/9l/bl67cpdj3rzgkx2pfk0flmhc0000gn/T/RtmpwezU36/file55f71184be5.h5</span></span>
-<span><span class="co">#&gt; Access type: H5F_ACC_RDWR</span></span>
-<span><span class="co">#&gt; Datatype: H5T_STD_I32LE</span></span>
-<span><span class="co">#&gt; Space: Type=Simple     Dims=6     Maxdims=Inf</span></span>
-<span><span class="co">#&gt; Chunk: 2048</span></span>
+<span><span class="co">#&gt; HDF5 Group: sparsemat</span></span>
+<span><span class="co">#&gt;   Members: data, indices, indptr</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; HDF5 Dataset: sparsemat/indices</span></span>
+<span><span class="co">#&gt;   Length: 6</span></span>
 <span><span class="co">#&gt; [1] 2 1 2 1 0 1</span></span>
-<span><span class="co">#&gt; Class: H5D</span></span>
-<span><span class="co">#&gt; Dataset: /sparsemat/data</span></span>
-<span><span class="co">#&gt; Filename: /private/var/folders/9l/bl67cpdj3rzgkx2pfk0flmhc0000gn/T/RtmpwezU36/file55f71184be5.h5</span></span>
-<span><span class="co">#&gt; Access type: H5F_ACC_RDWR</span></span>
-<span><span class="co">#&gt; Datatype: H5T_IEEE_F64LE</span></span>
-<span><span class="co">#&gt; Space: Type=Simple     Dims=6     Maxdims=Inf</span></span>
-<span><span class="co">#&gt; Chunk: 1024</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; HDF5 Dataset: sparsemat/data</span></span>
+<span><span class="co">#&gt;   Length: 6</span></span>
 <span><span class="co">#&gt; [1] 1 1 1 1 1 1</span></span></code></pre>
 <p>“indptr” represents the points in “data” at which a new column is
 started. This dataset is
@@ -307,13 +287,8 @@ started. This dataset is
 and should be
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>n</mi><mrow><mi>c</mi><mi>o</mi><mi>l</mi><mi>u</mi><mi>m</mi><mi>n</mi><mi>s</mi></mrow></msub><mo>+</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">n_{columns} + 1</annotation></semantics></math>
 in length.</p>
-<pre><code><span><span class="co">#&gt; Class: H5D</span></span>
-<span><span class="co">#&gt; Dataset: /sparsemat/indptr</span></span>
-<span><span class="co">#&gt; Filename: /private/var/folders/9l/bl67cpdj3rzgkx2pfk0flmhc0000gn/T/RtmpwezU36/file55f71184be5.h5</span></span>
-<span><span class="co">#&gt; Access type: H5F_ACC_RDWR</span></span>
-<span><span class="co">#&gt; Datatype: H5T_STD_I32LE</span></span>
-<span><span class="co">#&gt; Space: Type=Simple     Dims=5     Maxdims=Inf</span></span>
-<span><span class="co">#&gt; Chunk: 2048</span></span>
+<pre><code><span><span class="co">#&gt; HDF5 Dataset: sparsemat/indptr</span></span>
+<span><span class="co">#&gt;   Length: 5</span></span>
 <span><span class="co">#&gt; [1] 0 1 3 4 6</span></span></code></pre>
 <p>The “indices”, “indptr”, and “data” datasets correspond to the “i”,
 “p”, and “x” slots in a
@@ -334,40 +309,20 @@ should be stored as an HDF5 group with two datasets: “levels” and
 “values”</p>
 <pre><code><span><span class="co">#&gt; [1] g1 g2 g1 g1 g2</span></span>
 <span><span class="co">#&gt; Levels: g1 g2</span></span>
-<span><span class="co">#&gt; Class: H5Group</span></span>
-<span><span class="co">#&gt; Filename: /private/var/folders/9l/bl67cpdj3rzgkx2pfk0flmhc0000gn/T/RtmpwezU36/file55f71184be5.h5</span></span>
-<span><span class="co">#&gt; Group: /factor</span></span>
-<span><span class="co">#&gt; Listing:</span></span>
-<span><span class="co">#&gt;    name    obj_type dataset.dims dataset.type_class</span></span>
-<span><span class="co">#&gt;  levels H5I_DATASET            2         H5T_STRING</span></span>
-<span><span class="co">#&gt;  values H5I_DATASET            5        H5T_INTEGER</span></span></code></pre>
+<span><span class="co">#&gt; HDF5 Group: factor</span></span>
+<span><span class="co">#&gt;   Members: levels, values</span></span></code></pre>
 <p>The “levels” dataset should be a
 <a href="#character-representation">character</a> dataset with one entry
 per
 <a href="https://stat.ethz.ch/R-manual/R-devel/library/base/html/levels.html" class="external-link">level</a></p>
-<pre><code><span><span class="co">#&gt; Class: H5D</span></span>
-<span><span class="co">#&gt; Dataset: /factor/levels</span></span>
-<span><span class="co">#&gt; Filename: /private/var/folders/9l/bl67cpdj3rzgkx2pfk0flmhc0000gn/T/RtmpwezU36/file55f71184be5.h5</span></span>
-<span><span class="co">#&gt; Access type: H5F_ACC_RDWR</span></span>
-<span><span class="co">#&gt; Datatype: H5T_STRING {</span></span>
-<span><span class="co">#&gt;       STRSIZE H5T_VARIABLE;</span></span>
-<span><span class="co">#&gt;       STRPAD H5T_STR_NULLTERM;</span></span>
-<span><span class="co">#&gt;       CSET H5T_CSET_UTF8;</span></span>
-<span><span class="co">#&gt;       CTYPE H5T_C_S1;</span></span>
-<span><span class="co">#&gt;    }</span></span>
-<span><span class="co">#&gt; Space: Type=Simple     Dims=2     Maxdims=Inf</span></span>
-<span><span class="co">#&gt; Chunk: 1024</span></span>
+<pre><code><span><span class="co">#&gt; HDF5 Dataset: factor/levels</span></span>
+<span><span class="co">#&gt;   Length: 2</span></span>
 <span><span class="co">#&gt; [1] "g1" "g2"</span></span></code></pre>
 <p>The “values” dataset should be an integer dataset with one entry per
 value in the original factor. These integers should correspond to the
 factor level they had in R</p>
-<pre><code><span><span class="co">#&gt; Class: H5D</span></span>
-<span><span class="co">#&gt; Dataset: /factor/values</span></span>
-<span><span class="co">#&gt; Filename: /private/var/folders/9l/bl67cpdj3rzgkx2pfk0flmhc0000gn/T/RtmpwezU36/file55f71184be5.h5</span></span>
-<span><span class="co">#&gt; Access type: H5F_ACC_RDWR</span></span>
-<span><span class="co">#&gt; Datatype: H5T_STD_I32LE</span></span>
-<span><span class="co">#&gt; Space: Type=Simple     Dims=5     Maxdims=Inf</span></span>
-<span><span class="co">#&gt; Chunk: 2048</span></span>
+<pre><code><span><span class="co">#&gt; HDF5 Dataset: factor/values</span></span>
+<span><span class="co">#&gt;   Length: 5</span></span>
 <span><span class="co">#&gt; [1] 1 2 1 1 2</span></span></code></pre>
 <p>The number of unique entries in “values” should not exceed the number
 of unique entries in “levels”</p>
@@ -381,7 +336,7 @@ datasets (enums)</a> which are an efficient way to store R factors
 on-disk. However, <a href="http://docs.h5py.org/en/stable/special.html#enumerated-types" class="external-link">some
 implementations of HDF5 do not support enums</a> and thus lose factor
 level information. In order to make h5Seurat as cross-language as
-possible, we’ve opted to store factors as HDF5 groups instead of HDF5
+possible, we have opted to store factors as HDF5 groups instead of HDF5
 enums.
 </details>
 </div>
@@ -394,14 +349,8 @@ following manner: <code>FALSE</code> is encoded as <code>0</code>,
 <code>TRUE</code> is encoded as <code>1</code>, and <code>NA</code> is
 encoded as <code>2</code></p>
 <pre><code><span><span class="co">#&gt; [1]  TRUE FALSE    NA</span></span>
-<span><span class="co">#&gt; Class: H5D</span></span>
-<span><span class="co">#&gt; Dataset: /logicals</span></span>
-<span><span class="co">#&gt; Filename: /private/var/folders/9l/bl67cpdj3rzgkx2pfk0flmhc0000gn/T/RtmpwezU36/file55f71184be5.h5</span></span>
-<span><span class="co">#&gt; Access type: H5F_ACC_RDWR</span></span>
-<span><span class="co">#&gt; Attributes: s3class</span></span>
-<span><span class="co">#&gt; Datatype: H5T_STD_I32LE</span></span>
-<span><span class="co">#&gt; Space: Type=Simple     Dims=3     Maxdims=Inf</span></span>
-<span><span class="co">#&gt; Chunk: 2048</span></span>
+<span><span class="co">#&gt; HDF5 Dataset: logicals</span></span>
+<span><span class="co">#&gt;   Length: 3</span></span>
 <span><span class="co">#&gt; [1] 1 0 2</span></span></code></pre>
 <p>An optional HDF5 attribute named “s3class” with the value “logical”
 is allowed to enforce reading in the dataset as logical values. This
@@ -468,21 +417,8 @@ labels should correspond to the data frame column names.</p>
 <span><span class="co">#&gt; 3 g2 3</span></span>
 <span><span class="co">#&gt; 4 g1 4</span></span>
 <span><span class="co">#&gt; 5 g2 5</span></span>
-<span><span class="co">#&gt; Class: H5D</span></span>
-<span><span class="co">#&gt; Dataset: /dfdataset</span></span>
-<span><span class="co">#&gt; Filename: /private/var/folders/9l/bl67cpdj3rzgkx2pfk0flmhc0000gn/T/RtmpwezU36/file55f71184be5.h5</span></span>
-<span><span class="co">#&gt; Access type: H5F_ACC_RDWR</span></span>
-<span><span class="co">#&gt; Datatype: H5T_COMPOUND {</span></span>
-<span><span class="co">#&gt;       H5T_STRING {</span></span>
-<span><span class="co">#&gt;          STRSIZE H5T_VARIABLE;</span></span>
-<span><span class="co">#&gt;          STRPAD H5T_STR_NULLTERM;</span></span>
-<span><span class="co">#&gt;          CSET H5T_CSET_UTF8;</span></span>
-<span><span class="co">#&gt;          CTYPE H5T_C_S1;</span></span>
-<span><span class="co">#&gt;       } "x" : 0;</span></span>
-<span><span class="co">#&gt;       H5T_STD_I32LE "y" : 8;</span></span>
-<span><span class="co">#&gt;    }</span></span>
-<span><span class="co">#&gt; Space: Type=Simple     Dims=5     Maxdims=Inf</span></span>
-<span><span class="co">#&gt; Chunk: 682</span></span>
+<span><span class="co">#&gt; HDF5 Dataset: dfdataset (compound)</span></span>
+<span><span class="co">#&gt;   Length: 5</span></span>
 <span><span class="co">#&gt;    x y</span></span>
 <span><span class="co">#&gt; 1 g1 1</span></span>
 <span><span class="co">#&gt; 2 g1 2</span></span>
@@ -511,15 +447,8 @@ group must adhere to the same requirements as standard datasets (eg.
 <a href="#logical-representation">logical mapping</a>, etc). The names of
 the datasets within the group correspond to the data frame column
 names</p>
-<pre><code><span><span class="co">#&gt; Class: H5Group</span></span>
-<span><span class="co">#&gt; Filename: /private/var/folders/9l/bl67cpdj3rzgkx2pfk0flmhc0000gn/T/RtmpwezU36/file55f71184be5.h5</span></span>
-<span><span class="co">#&gt; Group: /dfgroup</span></span>
-<span><span class="co">#&gt; Attributes: colnames, _index</span></span>
-<span><span class="co">#&gt; Listing:</span></span>
-<span><span class="co">#&gt;    name    obj_type dataset.dims dataset.type_class</span></span>
-<span><span class="co">#&gt;  _index H5I_DATASET            5         H5T_STRING</span></span>
-<span><span class="co">#&gt;       x   H5I_GROUP         &lt;NA&gt;               &lt;NA&gt;</span></span>
-<span><span class="co">#&gt;       y H5I_DATASET            5        H5T_INTEGER</span></span></code></pre>
+<pre><code><span><span class="co">#&gt; HDF5 Group: dfgroup</span></span>
+<span><span class="co">#&gt;   Members: _index, x, y</span></span></code></pre>
 <p>Data frame row names may be stored in a dataset called “row.names”
 within the group; this dataset should be a one-dimensional
 <a href="#character-representation">character</a> dataset. There are two
@@ -555,22 +484,11 @@ group within the first group.</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $b$b2</span></span>
 <span><span class="co">#&gt; [1] "tomato" "potato"</span></span>
-<span><span class="co">#&gt; Class: H5Group</span></span>
-<span><span class="co">#&gt; Filename: /private/var/folders/9l/bl67cpdj3rzgkx2pfk0flmhc0000gn/T/RtmpwezU36/file55f71184be5.h5</span></span>
-<span><span class="co">#&gt; Group: /list</span></span>
-<span><span class="co">#&gt; Attributes: names</span></span>
-<span><span class="co">#&gt; Listing:</span></span>
-<span><span class="co">#&gt;  name    obj_type dataset.dims dataset.type_class</span></span>
-<span><span class="co">#&gt;     a H5I_DATASET            3        H5T_INTEGER</span></span>
-<span><span class="co">#&gt;     b   H5I_GROUP         &lt;NA&gt;               &lt;NA&gt;</span></span>
-<span><span class="co">#&gt; Class: H5Group</span></span>
-<span><span class="co">#&gt; Filename: /private/var/folders/9l/bl67cpdj3rzgkx2pfk0flmhc0000gn/T/RtmpwezU36/file55f71184be5.h5</span></span>
-<span><span class="co">#&gt; Group: /list/b</span></span>
-<span><span class="co">#&gt; Attributes: names</span></span>
-<span><span class="co">#&gt; Listing:</span></span>
-<span><span class="co">#&gt;  name    obj_type dataset.dims dataset.type_class</span></span>
-<span><span class="co">#&gt;    b1 H5I_DATASET            1         H5T_STRING</span></span>
-<span><span class="co">#&gt;    b2 H5I_DATASET            2         H5T_STRING</span></span></code></pre>
+<span><span class="co">#&gt; HDF5 Group: list</span></span>
+<span><span class="co">#&gt;   Members: a, b</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; HDF5 Group: list/b</span></span>
+<span><span class="co">#&gt;   Members: b1, b2</span></span></code></pre>
 <p>Custom classes are stored as
 <a href="#list-and-custom-class-representation">lists</a> with a special
 HDF5 attribute. S3 classes are stored with the attribute “s3class”,

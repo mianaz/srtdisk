@@ -196,7 +196,8 @@ vals <- c(0, 0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 0)
 mat <- matrix(data = vals, nrow = 3)
 WriteH5Group(x = mat, name = "densemat", hgroup = hfile, verbose = FALSE)
 mat
-hfile[["densemat"]]
+cat("HDF5 Dataset: densemat\n")
+cat("  Dimensions:", paste(hfile[["densemat"]]$dims, collapse = " x "), "\n")
 hfile[["densemat"]][,]
 ```
 
@@ -208,17 +209,21 @@ Sparse matrices are stored as an HDF5 group with three datasets: "indices", "ind
 mat <- Matrix(data = vals, nrow = 3, sparse = TRUE)
 WriteH5Group(x = mat, name = "sparsemat", hgroup = hfile, verbose = FALSE)
 mat
-hfile[["sparsemat"]]
-hfile[["sparsemat/indices"]]
+cat("HDF5 Group: sparsemat\n")
+cat("  Members:", paste(names(hfile[["sparsemat"]]), collapse = ", "), "\n")
+cat("\nHDF5 Dataset: sparsemat/indices\n")
+cat("  Length:", hfile[["sparsemat/indices"]]$dims, "\n")
 hfile[["sparsemat/indices"]][]
-hfile[["sparsemat/data"]]
+cat("\nHDF5 Dataset: sparsemat/data\n")
+cat("  Length:", hfile[["sparsemat/data"]]$dims, "\n")
 hfile[["sparsemat/data"]][]
 ```
 
 "indptr" represents the points in "data" at which a new column is started. This dataset is $0$-based and should be $n_{columns} + 1$ in length.
 
 ```{r sparsemat_indptr, echo=FALSE}
-hfile[["sparsemat/indptr"]]
+cat("HDF5 Dataset: sparsemat/indptr\n")
+cat("  Length:", hfile[["sparsemat/indptr"]]$dims, "\n")
 hfile[["sparsemat/indptr"]][]
 ```
 
@@ -238,20 +243,23 @@ hfile[["sparsemat"]]$attr_open(attr_name = "dims")$read()
 fctr <- factor(x = c("g1", "g2", "g1", "g1", "g2"))
 WriteH5Group(x = fctr, name = "factor", hgroup = hfile, verbose = FALSE)
 fctr
-hfile[["factor"]]
+cat("HDF5 Group: factor\n")
+cat("  Members:", paste(names(hfile[["factor"]]), collapse = ", "), "\n")
 ```
 
 The "levels" dataset should be a <a href=`r vlink("char")`>character</a> dataset with one entry per <a href=`r plink("levels")`>level</a>
 
 ```{r factor_levels, echo=FALSE}
-hfile[["factor/levels"]]
+cat("HDF5 Dataset: factor/levels\n")
+cat("  Length:", hfile[["factor/levels"]]$dims, "\n")
 hfile[["factor/levels"]][]
 ```
 
 The "values" dataset should be an integer dataset with one entry per value in the original factor. These integers should correspond to the factor level they had in R
 
 ```{r factor_values, echo=FALSE}
-hfile[["factor/values"]]
+cat("HDF5 Dataset: factor/values\n")
+cat("  Length:", hfile[["factor/values"]]$dims, "\n")
 hfile[["factor/values"]][]
 ```
 
@@ -259,7 +267,7 @@ The number of unique entries in "values" should not exceed the number of unique 
 
 <details>
   <summary>Rationale</summary>
-  Storing factors in this manner seems excessive from an R perspective. HDF5 has the concept of <a href=`r hlink("ENUM")`>enumerated datasets (enums)</a> which are an efficient way to store R factors on-disk. However, [some implementations of HDF5 do not support enums](http://docs.h5py.org/en/stable/special.html#enumerated-types) and thus lose factor level information. In order to make h5Seurat as cross-language as possible, we’ve opted to store factors as HDF5 groups instead of HDF5 enums.
+  Storing factors in this manner seems excessive from an R perspective. HDF5 has the concept of <a href=`r hlink("ENUM")`>enumerated datasets (enums)</a> which are an efficient way to store R factors on-disk. However, [some implementations of HDF5 do not support enums](http://docs.h5py.org/en/stable/special.html#enumerated-types) and thus lose factor level information. In order to make h5Seurat as cross-language as possible, we have opted to store factors as HDF5 groups instead of HDF5 enums.
 </details>
 
 ### Logical Representation
@@ -270,7 +278,8 @@ The number of unique entries in "values" should not exceed the number of unique 
 vals <- c(TRUE, FALSE, NA)
 WriteH5Group(x = vals, name = "logicals", hgroup = hfile, verbose = FALSE)
 vals
-hfile[["logicals"]]
+cat("HDF5 Dataset: logicals\n")
+cat("  Length:", hfile[["logicals"]]$dims, "\n")
 hfile[["logicals"]][]
 ```
 
@@ -311,7 +320,8 @@ df <- data.frame(
 )
 df
 WriteH5Group(x = df, name = "dfdataset", hgroup = hfile)
-hfile[["dfdataset"]]
+cat("HDF5 Dataset: dfdataset (compound)\n")
+cat("  Length:", hfile[["dfdataset"]]$dims, "\n")
 hfile[["dfdataset"]][]
 ```
 
@@ -328,7 +338,8 @@ Data frames stored as groups are used when <a href=`r plink("factor")`>factors</
 ```{r dfgroup, echo=FALSE}
 df$x <- factor(x = df$x)
 WriteH5Group(x = df, name = "dfgroup", hgroup = hfile)
-hfile[["dfgroup"]]
+cat("HDF5 Group: dfgroup\n")
+cat("  Members:", paste(names(hfile[["dfgroup"]]), collapse = ", "), "\n")
 ```
 
 Data frame row names may be stored in a dataset called "row.names" within the group; this dataset should be a one-dimensional <a href=`r vlink("char")`>character</a> dataset. There are two optional attributes allowed: "colnames" and "logicals"; the "colnames" attribute contains the column names in the same order as was present in the in-memory <a href=`r plink("data.frame")`>data frame</a> as <a href=`r vlink("char")`>character values</a>. This is used to control column order when reading the data frame back into memory. Note, the "colnames" attribute does not need to contain the name of every dataset.
@@ -343,8 +354,10 @@ The "logicals" attribute contains the names of <a href=`r plink("logical")`>logi
 l <- list(a = 1:3, b = list(b1 = "hello", b2 = c("tomato", "potato")))
 l
 WriteH5Group(x = l, name = "list", hgroup = hfile)
-hfile[["list"]]
-hfile[["list/b"]]
+cat("HDF5 Group: list\n")
+cat("  Members:", paste(names(hfile[["list"]]), collapse = ", "), "\n")
+cat("\nHDF5 Group: list/b\n")
+cat("  Members:", paste(names(hfile[["list/b"]]), collapse = ", "), "\n")
 ```
 
 Custom classes are stored as <a href=`r vlink("list")`>lists</a> with a special HDF5 attribute. S3 classes are stored with the attribute "s3class", which has a value equal to the class of the object. This attribute is a variable-length <a href=`r vlink("char")`>character</a> value.
