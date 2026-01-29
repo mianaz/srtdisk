@@ -15,15 +15,31 @@ vignette: >
 ```{r setup, include = FALSE}
 library(reticulate)
 
-# Configure Python - try conda base first, then system python
+# Configure Python - try multiple options for portability
 python_configured <- FALSE
-tryCatch({
-  if (file.exists("/opt/homebrew/Caskroom/miniconda/base/bin/python3")) {
-    use_python("/opt/homebrew/Caskroom/miniconda/base/bin/python3", required = TRUE)
-    python_configured <- TRUE
-  }
-}, error = function(e) NULL)
 
+# Option 1: ov-nightly conda env (local, working squidpy on ARM Macs)
+if (!python_configured) {
+  tryCatch({
+    ov_python <- "/opt/homebrew/Caskroom/miniconda/base/envs/ov-nightly/bin/python"
+    if (file.exists(ov_python)) {
+      use_python(ov_python, required = TRUE)
+      python_configured <- TRUE
+    }
+  }, error = function(e) NULL)
+}
+
+# Option 2: conda base (local)
+if (!python_configured) {
+  tryCatch({
+    if (file.exists("/opt/homebrew/Caskroom/miniconda/base/bin/python3")) {
+      use_python("/opt/homebrew/Caskroom/miniconda/base/bin/python3", required = TRUE)
+      python_configured <- TRUE
+    }
+  }, error = function(e) NULL)
+}
+
+# Option 3: system python (CI/GitHub Actions)
 if (!python_configured) {
   tryCatch({
     use_python(Sys.which("python3"), required = FALSE)
@@ -50,22 +66,14 @@ knitr::opts_chunk$set(
 
 ```{r cleanup, echo=FALSE, results='hide'}
 outs <- c(
-  "pbmc3k.h5Seurat",
-  "pbmc3k.h5ad",
-  "pbmc3k_final.h5ad",
-  "pbmc3k_final.h5seurat",
-  "stxBrain.h5Seurat",
-  "stxBrain.h5ad",
-  "stxBrain.h5seurat",
-  "stxBrain_plot.png",
-  "umap_plot.png",
-  "crc_converted.h5seurat"
+  "pbmc3k.h5Seurat", "pbmc3k.h5ad",
+  "stxBrain.h5Seurat", "stxBrain.h5ad",
+  "crc_sample.h5ad", "crc_normalized.h5ad", "crc_normalized.h5seurat",
+  "visium_colon.h5ad", "visium_normalized.h5ad", "visium_normalized.h5seurat",
+  "cbmc_rna.h5seurat", "cbmc_rna.h5ad", "cbmc_adt.h5seurat", "cbmc_adt.h5ad"
 )
-# Only remove files that exist to avoid warnings
 existing_files <- outs[file.exists(outs)]
-if (length(existing_files) > 0) {
-  file.remove(existing_files)
-}
+if (length(existing_files) > 0) file.remove(existing_files)
 ```
 
 This vignette showcases how to convert between `Seurat` objects and AnnData files via h5Seurat files. This allows interoperability between Seurat and [Scanpy](https://scanpy.readthedocs.io/).
@@ -81,13 +89,10 @@ To demonstrate conversion from a `Seurat` object to an AnnData file, we'll use t
 
 ```{r get_data, message=FALSE, warning=FALSE, eval = has_SeuratData}
 library(SeuratData)
-
-# Install pbmc3k if not already installed
 if (!"pbmc3k.final" %in% rownames(InstalledData())) {
   InstallData("pbmc3k")
 }
 
-# Load the processed pbmc3k dataset
 data("pbmc3k.final", package = "pbmc3k.SeuratData")
 pbmc <- UpdateSeuratObject(pbmc3k.final)
 pbmc
@@ -99,12 +104,17 @@ This is a fully processed Seurat object with clustering and dimensional reductio
 DimPlot(pbmc, reduction = "umap", label = TRUE, pt.size = 0.5) + NoLegend()
 ```
 
+```{r plot_pbmc_cd14, eval = has_SeuratData}
+FeaturePlot(pbmc, features = "CD14", pt.size = 0.5)
+```
+
 Converting the `Seurat` object to an AnnData file is a two-step process:
 
 1. Save the `Seurat` object as an h5Seurat file using `SaveH5Seurat()`
 2. Convert to AnnData using `Convert()`
 
 ```{r convert_seurat, eval = has_SeuratData}
+cat("Seurat layers:", paste(Layers(pbmc), collapse = ", "), "\n")
 SaveH5Seurat(pbmc, filename = "pbmc3k.h5Seurat", overwrite = TRUE)
 Convert("pbmc3k.h5Seurat", dest = "h5ad", overwrite = TRUE)
 ```
@@ -120,37 +130,27 @@ print(adata)
 And visualize with cluster annotations:
 
 ```{python plot_adata, fig.width=8, fig.height=6, eval = has_scanpy && has_SeuratData}
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-
-sc.pl.umap(adata, color='seurat_annotations', legend_loc='on data', legend_fontsize=8, show=False)
-plt.tight_layout()
-plt.savefig('umap_plot.png', dpi=100, bbox_inches='tight')
-plt.close()
+sc.pl.umap(adata, color='seurat_annotations', legend_loc='on data', legend_fontsize=8)
 ```
 
-```{r show_plot, echo=FALSE, eval = has_scanpy && has_SeuratData, out.width="80%"}
-if (file.exists("umap_plot.png")) {
-  knitr::include_graphics("umap_plot.png")
-}
+```{python plot_adata_cd14, fig.width=8, fig.height=6, eval = has_scanpy && has_SeuratData}
+sc.pl.umap(adata, color='CD14')
 ```
+
+The conversion preserves expression patterns - CD14 shows consistent distribution in both tools.
 
 ## Converting from AnnData to Seurat via h5Seurat
 
 To demonstrate conversion from AnnData to Seurat, we'll use a colorectal cancer sample from [CellxGene](https://cellxgene.cziscience.com) that's bundled with the package.
 
 ```{r get_h5ad}
-# Copy bundled CRC h5ad file to working directory
 h5ad_path <- system.file("testdata", "crc_sample.h5ad", package = "srtdisk")
 if (file.exists(h5ad_path)) {
   file.copy(h5ad_path, "crc_sample.h5ad", overwrite = TRUE)
 } else {
-  # Download if not bundled (for development)
   download.file(
     "https://datasets.cellxgene.cziscience.com/91cf9a95-0b9a-4ece-b8eb-7b9e3409a0d3.h5ad",
-    "crc_sample.h5ad",
-    mode = "wb"
+    "crc_sample.h5ad", mode = "wb"
   )
 }
 ```
@@ -161,28 +161,58 @@ View the h5ad file in Scanpy:
 import scanpy as sc
 adata_crc = sc.read_h5ad("crc_sample.h5ad")
 print(adata_crc)
-print("\nobs columns:", list(adata_crc.obs.columns)[:10])
+```
+
+CellxGene datasets use Ensembl IDs as `var_names` by default. The `feature_name` column contains gene symbols. During conversion, srtdisk automatically uses gene symbols when `feature_name` is available.
+
+> **Note on data layers**: During conversion, AnnData's `X` matrix (typically log-normalized data indicated by `log1p_total_counts` in obs) is stored in Seurat's `data` layer. If `raw/X` exists, it becomes the `counts` layer.
+
+Visualize with scanpy before conversion:
+
+```{python scanpy_umap, eval = has_scanpy, fig.width=8, fig.height=6}
+sc.pl.umap(adata_crc, color='tissue')
+```
+
+```{python scanpy_epcam, eval = has_scanpy, fig.width=8, fig.height=6}
+import pandas as pd
+
+sc.pp.normalize_total(adata_crc, target_sum=1e4)
+sc.pp.log1p(adata_crc)
+
+# Set gene symbols as var_names (force string conversion from Categorical)
+adata_crc.var_names = pd.Index(adata_crc.var['feature_name'].astype(str).values)
+adata_crc.var_names_make_unique()
+
+adata_crc.write_h5ad("crc_normalized.h5ad")
+
+sc.pl.umap(adata_crc, color='EPCAM', use_raw=False, title='EPCAM')
 ```
 
 Convert to Seurat:
 
 ```{r convert_crc}
-Convert("crc_sample.h5ad", dest = "h5seurat", overwrite = TRUE)
-crc <- LoadH5Seurat("crc_sample.h5seurat")
+Convert("crc_normalized.h5ad", dest = "h5seurat", overwrite = TRUE)
+crc <- LoadH5Seurat("crc_normalized.h5seurat")
+
+# Verify layer mapping: X -> data (log-normalized), raw/X -> counts (if exists)
+cat("Layers:", paste(Layers(crc), collapse = ", "), "\n")
+cat("Data layer range:", round(range(GetAssayData(crc, layer = "data")[1:100, 1:10]), 2), "\n")
 crc
 ```
 
+### Visualize Converted Data
+
+The UMAP coordinates and normalized expression from scanpy are preserved:
+
 ```{r plot_crc}
-# Run UMAP if not present in converted object
-if (!"umap" %in% Reductions(crc)) {
-  crc <- NormalizeData(crc, verbose = FALSE)
-  crc <- FindVariableFeatures(crc, verbose = FALSE)
-  crc <- ScaleData(crc, verbose = FALSE)
-  crc <- RunPCA(crc, verbose = FALSE)
-  crc <- RunUMAP(crc, dims = 1:30, verbose = FALSE)
-}
-DimPlot(crc, reduction = "umap", pt.size = 0.5)
+DimPlot(crc, reduction = "umap", group.by = "tissue", pt.size = 0.5)
 ```
+
+```{r plot_crc_epcam}
+FeaturePlot(crc, features = "EPCAM", pt.size = 0.5)
+```
+
+The conversion preserves expression patterns - EPCAM shows consistent distribution in both tools.
 
 ## Visium Spatial Data Conversion
 
@@ -190,15 +220,14 @@ For spatial transcriptomics data, we use the stxBrain dataset from SeuratData (V
 
 ```{r get_stxBrain, eval = has_SeuratData}
 library(SeuratData)
-
-# Install stxBrain if not already installed
 if (!"stxBrain" %in% rownames(InstalledData())) {
   InstallData("stxBrain")
 }
 
-# Load anterior1 section
 brain <- UpdateSeuratObject(LoadData("stxBrain", type = "anterior1"))
 brain <- NormalizeData(brain)
+cat("Layers:", paste(Layers(brain), collapse = ", "), "\n")
+
 SpatialFeaturePlot(brain, features = "Hpca")
 ```
 
@@ -214,105 +243,288 @@ View in Python with Squidpy:
 ```{python load_stxBrain, fig.width=10, fig.height=8, eval = has_SeuratData && has_squidpy}
 import squidpy as sq
 import scanpy as sc
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 
 adata_spatial = sc.read_h5ad("stxBrain.h5ad")
-fig, ax = plt.subplots(figsize=(10, 8))
-sq.pl.spatial_scatter(
-    adata_spatial,
-    color="Hpca",
-    library_id="anterior1",
-    img_res_key="lowres",
-    size=1.5,
-    ax=ax
-)
-plt.savefig('stxBrain_plot.png', dpi=100, bbox_inches='tight')
-plt.close()
-```
+print(adata_spatial)
 
-```{r show_stxBrain_plot, echo=FALSE, eval = has_SeuratData && has_squidpy, out.width="80%"}
-if (file.exists("stxBrain_plot.png")) {
-  knitr::include_graphics("stxBrain_plot.png")
-}
+sq.pl.spatial_scatter(adata_spatial, color="Hpca", library_id="anterior1",
+                      img_res_key="lowres", size=1.5, use_raw=False)
 ```
 
 ## Multi-assay Conversion (CITE-seq)
 
-For multi-modal data like CITE-seq, convert each assay separately. This example uses the `cbmc` dataset from SeuratData:
+For multi-modal data like CITE-seq, each assay must be converted separately since h5ad format only supports a single matrix per file.
 
-```{r cite_seq_conversion, eval = FALSE}
+**Conversion behavior:**
+
+- **No assay specified**: Only the default assay is converted
+- **Single assay specified**: That specific assay is converted
+- **Multiple assays**: Must call the function multiple times, once per assay
+
+This example uses the `cbmc` dataset from SeuratData:
+
+```{r cite_seq_conversion, eval = has_SeuratData}
 library(SeuratData)
-InstallData("cbmc")
+if (!"cbmc" %in% rownames(InstalledData())) {
+  InstallData("cbmc")
+}
 data("cbmc", package = "cbmc.SeuratData")
+cbmc <- UpdateSeuratObject(cbmc)
 
-# RNA assay
-SeuratToH5AD(cbmc, filename = "cbmc_rna.h5ad", assay = "RNA", overwrite = TRUE)
+cat("Assays:", paste(Assays(cbmc), collapse = ", "), "\n")
 
-# ADT (protein) assay
-SeuratToH5AD(cbmc, filename = "cbmc_adt.h5ad", assay = "ADT", overwrite = TRUE)
+# Convert RNA assay (default)
+DefaultAssay(cbmc) <- "RNA"
+SaveH5Seurat(cbmc, "cbmc_rna.h5seurat", overwrite = TRUE)
+Convert("cbmc_rna.h5seurat", dest = "h5ad", overwrite = TRUE)
 ```
 
-Each h5ad file can then be loaded separately in Python for analysis with scanpy.
+Verify the converted file in scanpy:
 
-## Spatial h5ad to Seurat (Beta)
-
-Converting spatial h5ad files back to Seurat is supported but currently in beta:
-
-```{r spatial_h5ad_to_seurat, eval = FALSE}
-# Convert spatial h5ad back to Seurat
-Convert("stxBrain.h5ad", dest = "h5seurat", overwrite = TRUE)
-brain_back <- LoadH5Seurat("stxBrain.h5seurat")
-
-# Verify spatial data was preserved
-SpatialDimPlot(brain_back)
+```{python verify_cbmc_h5ad, eval = has_scanpy && has_SeuratData}
+import scanpy as sc
+adata_rna = sc.read_h5ad("cbmc_rna.h5ad")
+print(adata_rna)
+print("obs columns:", list(adata_rna.obs.columns)[:10])
 ```
 
-Note: Spatial coordinate systems may require manual verification after round-trip conversion.
+The h5ad file preserves the full structure: gene expression matrix (X), cell metadata (obs), and gene info (var).
 
-## Python Environment Setup
+Convert the ADT assay separately:
 
-For optimal interoperability, we recommend using a conda environment with scanpy:
-
-```{r python_setup, eval = FALSE}
-library(reticulate)
-
-# Use existing scverse environment
-use_condaenv("scverse", required = FALSE)
-
-# Or create a new environment
-# reticulate::conda_create("scverse")
-# reticulate::conda_install("scverse", c("scanpy", "squidpy", "anndata"))
-
-# Verify configuration
-py_config()
+```{r cite_seq_adt, eval = has_SeuratData}
+# Convert ADT assay
+DefaultAssay(cbmc) <- "ADT"
+SaveH5Seurat(cbmc, "cbmc_adt.h5seurat", overwrite = TRUE)
+Convert("cbmc_adt.h5seurat", dest = "h5ad", overwrite = TRUE)
 ```
 
-```{r check_scanpy, eval = has_scanpy}
-sc <- reticulate::import("scanpy")
-cat("Scanpy version:", sc$`__version__`, "\n")
+```{python verify_adt_h5ad, eval = has_scanpy && has_SeuratData}
+import scanpy as sc
+adata_adt = sc.read_h5ad("cbmc_adt.h5ad")
+print(adata_adt)
+print("ADT features:", list(adata_adt.var_names)[:10])
 ```
 
-## Metadata Preservation
+Each assay produces a separate h5ad file with the same cell metadata but different features.
 
-srtdisk preserves cell metadata during conversion:
+> **Note on h5mu format**: For true multi-modal interoperability, consider the [MuData/h5mu format](https://muon.scverse.org/) from the scverse ecosystem. The [MuDataSeurat](https://pmbio.github.io/MuDataSeurat/) R package provides `ReadH5MU()` and `WriteH5MU()` functions for Seurat objects. This allows storing multiple modalities in a single file with shared cell annotations, though some Seurat-specific features may not round-trip perfectly.
 
-- **Categorical data**: Cell types, clusters, batch labels
-- **Numerical data**: QC metrics like nCount_RNA, percent.mt
-- **Factor ordering**: Level order for visualization
+## Spatial h5ad to Seurat
 
-### Cluster Column Mapping
+Converting native spatial h5ad files to Seurat is fully supported. We use a Visium colon sample from [CellxGene](https://cellxgene.cziscience.com) that was processed with scanpy/squidpy standard workflows:
 
-| Seurat | AnnData/scanpy |
-|--------|----------------|
-| `seurat_clusters` | `leiden` or `louvain` |
-| `orig.ident` | `batch` |
+```{r get_spatial_h5ad}
+cache_dir <- tools::R_user_dir("srtdisk", which = "cache")
+cache_path <- file.path(cache_dir, "visium_colon.h5ad")
+
+if (!file.exists(cache_path)) {
+  dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
+  message("Downloading Visium colon dataset (~1.7GB)...")
+  download.file(
+    "https://datasets.cellxgene.cziscience.com/ab9f4860-c0e3-444b-a982-38c13f0be6f5.h5ad",
+    cache_path, mode = "wb"
+  )
+}
+file.copy(cache_path, "visium_colon.h5ad", overwrite = TRUE)
+```
+
+View the native spatial h5ad in Python:
+
+```{python view_spatial_h5ad, eval = has_scanpy}
+import scanpy as sc
+adata_spatial = sc.read_h5ad("visium_colon.h5ad")
+print(adata_spatial)
+
+lib_id = list(adata_spatial.uns['spatial'].keys())[0]
+spatial_data = adata_spatial.uns['spatial'][lib_id]
+print("\nSpatial library:", lib_id)
+print("Image keys:", list(spatial_data.get('images', {}).keys()))
+print("in_tissue column:", 'in_tissue' in adata_spatial.obs.columns)
+```
+
+Normalize, set gene symbols, and save for conversion:
+
+```{python squidpy_spatial_ACTC1, eval = has_squidpy, fig.width=10, fig.height=8}
+import squidpy as sq
+import scanpy as sc
+import pandas as pd
+
+adata_spatial = sc.read_h5ad("visium_colon.h5ad")
+
+# Filter to tissue spots only
+adata_spatial = adata_spatial[adata_spatial.obs['in_tissue'] == 1].copy()
+
+sc.pp.normalize_total(adata_spatial, target_sum=1e4)
+sc.pp.log1p(adata_spatial)
+
+adata_spatial.var_names = pd.Index(adata_spatial.var['feature_name'].astype(str).values)
+adata_spatial.var_names_make_unique()
+
+adata_spatial.write_h5ad("visium_normalized.h5ad")
+
+lib_id = list(adata_spatial.uns['spatial'].keys())[0]
+sq.pl.spatial_scatter(adata_spatial, color='ACTC1', library_id=lib_id,
+                      size=1.5, alpha=0.8, use_raw=False, title='ACTC1')
+```
+
+Convert to Seurat:
+
+```{r spatial_h5ad_to_seurat}
+Convert("visium_normalized.h5ad", dest = "h5seurat", overwrite = TRUE)
+visium <- LoadH5Seurat("visium_normalized.h5seurat")
+
+# Verify layer mapping: X -> data (log-normalized)
+cat("Layers:", paste(Layers(visium), collapse = ", "), "\n")
+visium
+```
+
+Verify spatial data was preserved:
+
+```{r plot_spatial_native, fig.width=10, fig.height=8}
+SpatialFeaturePlot(visium, features = "ACTC1", pt.size.factor = 2)
+```
+
+> **Note**: Spatial images and coordinates are preserved during conversion. Some scanpy-specific structures (like neighbor graphs in `obsp`) may need to be recomputed in Seurat using `FindNeighbors()`.
+
+## Data Mapping Reference
+
+This section provides comprehensive mapping tables showing how data is converted between Seurat and AnnData formats.
+
+### Core Data Slots
+
+**Layer mapping during h5ad -> Seurat conversion:**
+
+| Seurat Slot | h5ad Source | Condition |
+|-------------|-------------|-----------|
+| `data` | `X` | Always mapped |
+| `counts` | `raw/X` | If `raw` group exists |
+| `counts` | `X` | Fallback if no `raw` group |
+| `scale.data` | N/A | Not stored in h5ad; recompute with `ScaleData()` |
+
+> **Note**: The `data` slot always receives `X` (which typically contains log-normalized values in scanpy workflows). If the h5ad file has a `raw` group, its `X` matrix becomes `counts`. This matches the scanpy convention where `adata.X` holds processed data and `adata.raw.X` holds raw counts. Scaled data (z-scores for ~2000 variable features) is not stored in standard h5ad files and should be recomputed in Seurat using `ScaleData()` after conversion.
+
+**Other data structures:**
+
+| Data Type | Seurat Location | AnnData Location |
+|-----------|-----------------|------------------|
+| Cell metadata | `meta.data` | `obs` |
+| Feature metadata | `meta.features` | `var` |
+| UMAP coords | `reductions$umap` | `obsm['X_umap']` |
+| PCA coords | `reductions$pca` | `obsm['X_pca']` |
+| Variable features | `VariableFeatures()` | `var['highly_variable']` |
+| Spatial coords | `GetTissueCoordinates()` | `obsm['spatial']` |
+| Spatial images | `Images()` | `uns['spatial'][lib]['images']` |
+| Neighbor graphs | `Graphs()` | `obsp['distances'/'connectivities']` |
+
+### Metadata Column Mapping
+
+Common column name conventions differ between Seurat and scanpy workflows:
+
+| Seurat (`meta.data`) | AnnData (`obs`) | Description |
+|---------------------|-----------------|-------------|
+| `seurat_clusters` | `leiden` / `louvain` | Cluster assignments |
+| `orig.ident` | `batch` / `sample` | Sample identifier |
+| `nCount_RNA` | `n_counts` / `total_counts` | Total UMI per cell |
+| `nFeature_RNA` | `n_genes` / `n_genes_by_counts` | Genes detected per cell |
+| `percent.mt` | `pct_counts_mt` / `percent_mito` | Mitochondrial fraction |
+| `cell_type` | `cell_type` / `celltype` | Cell type annotations |
+| `Phase` | `phase` / `cell_cycle_phase` | Cell cycle phase |
+
+### Column Name Standardization Option
+
+By default, column names are preserved exactly. Use `standardize = TRUE` for automatic name conversion to scanpy conventions:
+
+| Seurat Name | scanpy Name (with `standardize=TRUE`) |
+|-------------|---------------------------------------|
+| `seurat_clusters` | `clusters` |
 | `nCount_RNA` | `n_counts` |
 | `nFeature_RNA` | `n_genes` |
+| `percent.mt` | `percent_mito` |
+
+```r
+# Preserve original names (default)
+Convert("data.h5Seurat", dest = "h5ad")
+
+# Convert to scanpy naming conventions
+Convert("data.h5Seurat", dest = "h5ad", standardize = TRUE)
+```
+
+### Expression Scale Handling
+
+**Automatic Layer Detection**: srtdisk maps layers based on h5ad structure:
+
+| h5ad Source | Seurat Destination | Condition |
+|-------------|-------------------|-----------|
+| `X` | `data` | Always |
+| `raw/X` | `counts` | If `raw` group exists |
+| `X` | `counts` | Fallback if no `raw` |
+
+**When Scales Match**: If h5ad follows scanpy conventions (`X` = log-normalized, `raw.X` = counts), no additional processing needed after conversion.
+
+**When Scales Differ**: If `X` contains raw counts instead of normalized data:
+
+```r
+# Normalize after conversion
+seurat_obj <- NormalizeData(seurat_obj)
+```
+
+> **Warning**: Do NOT normalize in both Python and R - this double-normalizes data.
+
+### Indexing Conventions
+
+Python uses 0-based indexing; R uses 1-based. srtdisk handles this automatically:
+
+| Data Type | h5ad (Python) | Seurat (R) |
+|-----------|---------------|------------|
+| Categorical codes | 0-indexed | 1-indexed factors |
+| Cluster labels | Unchanged | Unchanged |
+| Sparse matrix indices | 0-based (CSR/CSC) | 0-based (dgCMatrix) |
+
+**Example**: Cluster 0 in scanpy remains labeled "0" in Seurat, but internally stored as factor level 1.
+
+### Structure Verification
+
+After conversion, verify data integrity:
+
+**h5ad -> Seurat:**
+
+```r
+# Check layers and dimensions
+cat("Layers:", paste(Layers(seurat_obj), collapse = ", "), "\n")
+cat("Cells:", ncol(seurat_obj), "Genes:", nrow(seurat_obj), "\n")
+
+# Verify data ranges (log-normalized data typically 0-6)
+cat("Data range:", range(GetAssayData(seurat_obj, layer = "data")[1:100, 1:10]), "\n")
+
+# Check metadata preserved
+head(seurat_obj[[]])
+```
+
+**Seurat -> h5ad:**
+
+```python
+import scanpy as sc
+adata = sc.read_h5ad("converted.h5ad")
+print(adata)
+print("obs columns:", list(adata.obs.columns))
+print("X range:", adata.X.min(), "-", adata.X.max())
+```
 
 ## Session Info
 
 ```{r sessionInfo}
 sessionInfo()
+```
+
+```{r cleanup-final, echo=FALSE, results='hide'}
+outs <- c(
+  "pbmc3k.h5Seurat", "pbmc3k.h5ad",
+  "stxBrain.h5Seurat", "stxBrain.h5ad",
+  "crc_sample.h5ad", "crc_normalized.h5ad", "crc_normalized.h5seurat",
+  "visium_colon.h5ad", "visium_normalized.h5ad", "visium_normalized.h5seurat",
+  "cbmc_rna.h5seurat", "cbmc_rna.h5ad", "cbmc_adt.h5seurat", "cbmc_adt.h5ad"
+)
+existing_files <- outs[file.exists(outs)]
+if (length(existing_files) > 0) file.remove(existing_files)
 ```

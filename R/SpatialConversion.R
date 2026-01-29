@@ -315,11 +315,14 @@ ReadH5ImageDataset <- function(dataset) {
   arr <- dataset$read()
   dims <- dataset$dims
 
-  # Reorder dimensions if needed (HDF5 stores as channels x height x width)
+  # Reorder dimensions if needed
+  # h5ad stores as (channels, height, width), Seurat expects (height, width, channels)
   if (length(dims) == 3L && dims[1] == 3L) {
-    arr <- aperm(arr, c(3L, 2L, 1L))
+    # (channels, height, width) -> (height, width, channels)
+    arr <- aperm(arr, c(2L, 3L, 1L))
   } else if (length(dims) == 3L && dims[3] == 3L) {
-    arr <- aperm(arr, c(1L, 2L, 3L))
+    # Already in (height, width, channels) format, no change needed
+    arr <- arr
   }
 
   # Normalize to [0, 1]

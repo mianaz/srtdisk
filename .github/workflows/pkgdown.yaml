@@ -1,5 +1,8 @@
 # Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
 # Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
+#
+# Note: Vignettes require Python with scanpy/squidpy and are pre-built locally.
+# This workflow builds reference docs and deploys the full docs/ folder including pre-built articles.
 on:
   push:
     branches: [main, master]
@@ -39,9 +42,15 @@ jobs:
 
       - name: Build site
         run: |
-          # Build reference docs only, skip vignettes (built manually with large test data)
-          pkgdown::build_reference()
+          # Build reference docs and home page
+          # Articles/vignettes are pre-built locally (require Python with scanpy/squidpy)
+          # and committed to docs/articles/
           pkgdown::build_home()
+          pkgdown::build_reference()
+          pkgdown::build_news()
+          pkgdown::build_redirects()
+          # Build article index without re-rendering the articles
+          pkgdown:::build_articles_index(pkgdown::as_pkgdown("."))
         shell: Rscript {0}
 
       - name: Deploy to GitHub pages 🚀

@@ -426,8 +426,9 @@ as.Seurat.h5Seurat <- function(
     slots <- assays[[assay]]
 
     # Ensure slots is a non-empty character vector (requested)
+    # When NULL, load all available expression slots (counts, data, scale.data)
     if (is.null(slots) || length(slots) == 0 || !is.character(slots)) {
-      slots <- "data"  # Default fallback
+      slots <- c("counts", "data", "scale.data")  # Try to load all expression slots
     }
 
     # Inspect the h5 file for available layer names for this assay

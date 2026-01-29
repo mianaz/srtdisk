@@ -242,3 +242,12 @@ cat("Reloaded images:", Images(brain2), "\n")
 ```{r sessionInfo}
 sessionInfo()
 ```
+
+```{r cleanup-final, echo=FALSE, results='hide'}
+# Clean up generated h5Seurat files
+outs <- c("pbmc3k.h5Seurat", "stxBrain.h5Seurat")
+existing_files <- outs[file.exists(outs)]
+if (length(existing_files) > 0) {
+  file.remove(existing_files)
+}
+```

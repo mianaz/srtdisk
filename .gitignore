@@ -10,8 +10,9 @@ inst/doc
 doc
 Meta
 
-# Ignore extra pkgdown files
-*_files
+# Ignore pkgdown intermediate markdown files (HTML and figures are kept)
+docs/**/*.md
+docs/*.md
 
 # Ignore data and script files in the top-level directory
 /*.loom
@@ -23,7 +24,7 @@ Meta
 /*.rds
 /*.Rds
 
-# ignore test data (keep crc_sample.h5ad for testing)
+# ignore test data (keep sample h5ad files for vignettes)
 examples/
 inst/testdata/*
 !inst/testdata/crc_sample.h5ad

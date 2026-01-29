@@ -24,8 +24,8 @@ NULL
 #' @param dest Name/path of destination file. If only a file type is provided
 #'   (e.g., "h5seurat", "h5ad"), the extension is appended to the source filename.
 #'   Supported formats: h5seurat, h5ad
-#' @param assay For h5Seurat → other formats: name of assay to convert.
-#'   For other formats → h5Seurat: name to assign to the assay.
+#' @param assay For h5Seurat -> other formats: name of assay to convert.
+#'   For other formats -> h5Seurat: name to assign to the assay.
 #'   Default is "RNA".
 #' @param overwrite Logical; if \code{TRUE}, overwrite an existing destination file.
 #'   Default is \code{FALSE}.
@@ -33,7 +33,7 @@ NULL
 #' @param standardize Logical; if \code{TRUE}, convert Seurat-style metadata column names
 #'   to scanpy/AnnData conventions when converting to h5ad format. For example,
 #'   \code{nCount_RNA} becomes \code{n_counts}, \code{nFeature_RNA} becomes \code{n_genes}.
-#'   Only applicable for h5Seurat → h5ad conversions. Default is \code{FALSE}.
+#'   Only applicable for h5Seurat -> h5ad conversions. Default is \code{FALSE}.
 #' @param ... Arguments passed to specific conversion methods
 #'
 #' @return If \code{source} is a character path, invisibly returns the destination
@@ -46,8 +46,8 @@ NULL
 #' @details
 #' \strong{Supported Conversion Pathways:}
 #' \itemize{
-#'   \item \code{h5ad ↔ h5Seurat}: Convert between Python AnnData and R Seurat formats
-#'   \item \code{Loom ↔ h5Seurat}: Convert Loom files (limited support)
+#'   \item \code{h5ad <-> h5Seurat}: Convert between Python AnnData and R Seurat formats
+#'   \item \code{Loom <-> h5Seurat}: Convert Loom files (limited support)
 #' }
 #'
 #' \strong{Key Features:}
@@ -682,11 +682,8 @@ except Exception as e:
     } else {
       NULL
     },
-    data = if (inherits(x = source[['X']], what = 'H5D') && source$exists(name = 'raw')) {
-      'raw/X'
-    } else {
-      'X'
-    },
+    # Always use X for data slot - X contains normalized data when raw/X has counts
+    data = 'X',
     counts = if (source$exists(name = 'raw')) {
       'raw/X'
     } else {
@@ -1118,22 +1115,54 @@ except Exception as e:
     }
 
     tryCatch({
-      highly_variable <- source[['var/highly_variable']][]
+      # Check if highly_variable is a categorical (H5Group with categories/codes)
+      # CellxGene stores as categorical with string "True"/"False" values
+      hv_obj <- source[['var/highly_variable']]
 
-      # Convert to logical if needed
-      if (is.numeric(highly_variable)) {
-        highly_variable <- as.logical(highly_variable)
+      # Check object type
+      is_h5group <- inherits(hv_obj, 'H5Group')
+      has_categories <- is_h5group && hv_obj$exists('categories')
+      has_codes <- is_h5group && hv_obj$exists('codes')
+
+      if (is_h5group && has_categories && has_codes) {
+        # Decode categorical: categories[codes + 1]
+        categories <- hv_obj[['categories']][]
+        codes <- hv_obj[['codes']][]
+        decoded_values <- categories[codes + 1L]
+        # Convert string "True"/"False" to logical
+        highly_variable <- decoded_values == "True"
+        if (verbose) {
+          message("Decoded categorical highly_variable: ", sum(highly_variable), " of ", length(highly_variable), " are True")
+        }
+      } else if (inherits(hv_obj, 'H5D')) {
+        # Direct read for non-categorical H5D dataset
+        highly_variable <- hv_obj[]
+
+        # Convert to logical if needed
+        if (is.numeric(highly_variable)) {
+          highly_variable <- as.logical(highly_variable)
+        }
+      } else {
+        # Unsupported type
+        if (verbose) {
+          message("highly_variable is not a recognized type (H5Group categorical or H5D): ", class(hv_obj)[1])
+        }
+        highly_variable <- logical(0)
       }
 
       # Get feature names from /var (same dimension as highly_variable)
-      rownames_dset <- GetRownames(dset = 'var')
-
-      # Read feature names from var group
-      if (source[['var']]$exists(rownames_dset)) {
-        all_features <- source[[paste('var', rownames_dset, sep = '/')]][]
+      # Use the same feature names as the Seurat object: prioritize feature_name (gene symbols)
+      categorical_features <- ReadCategoricalFeatures(dset = 'var')
+      if (!is.null(categorical_features)) {
+        all_features <- categorical_features
       } else {
-        # Fallback to reading first column if default rownames not found
-        all_features <- source[['var']]$get_cpd_labels()
+        # Fallback to index dataset (Ensembl IDs) or compound labels
+        rownames_dset <- GetRownames(dset = 'var')
+        if (source[['var']]$exists(rownames_dset)) {
+          all_features <- source[[paste('var', rownames_dset, sep = '/')]][]
+        } else {
+          all_features <- source[['var']]$get_cpd_labels()
+        }
       }
 
       # Get variable features
@@ -1581,6 +1610,82 @@ except Exception as e:
       }
     }
   }
+
+  # Also check obsp for neighbor graphs (scanpy default location)
+  # This handles h5ad files where neighbors are stored directly in obsp
+  # rather than in uns/neighbors
+  if (source$exists(name = 'obsp')) {
+    obsp_names <- names(x = source[['obsp']])
+    nn.graph.name <- paste(assay, 'nn', sep = '_')
+    snn.graph.name <- paste(assay, 'snn', sep = '_')
+
+    # Transfer distances as NN graph if not already done from uns/neighbors
+    if ('distances' %in% obsp_names && !dfile[['graphs']]$exists(nn.graph.name)) {
+      if (verbose) {
+        message("Saving obsp/distances as ", nn.graph.name)
+      }
+      dfile[['graphs']]$obj_copy_from(
+        src_loc = source,
+        src_name = 'obsp/distances',
+        dst_name = nn.graph.name
+      )
+      # Convert 'shape' attribute to 'dims' for compatibility
+      if (isTRUE(x = AttrExists(x = dfile[['graphs']][[nn.graph.name]], name = 'shape'))) {
+        if (!isTRUE(x = AttrExists(x = dfile[['graphs']][[nn.graph.name]], name = 'dims'))) {
+          dfile[['graphs']][[nn.graph.name]]$create_attr(
+            attr_name = 'dims',
+            robj = h5attr(x = dfile[['graphs']][[nn.graph.name]], which = 'shape'),
+            dtype = GuessDType(x = h5attr(
+              x = dfile[['graphs']][[nn.graph.name]],
+              which = 'shape'
+            ))
+          )
+        }
+        dfile[['graphs']][[nn.graph.name]]$attr_delete(attr_name = 'shape')
+      }
+      if (!isTRUE(x = AttrExists(x = dfile[['graphs']][[nn.graph.name]], name = 'assay.used'))) {
+        dfile[['graphs']][[nn.graph.name]]$create_attr(
+          attr_name = 'assay.used',
+          robj = assay,
+          dtype = GuessDType(x = assay)
+        )
+      }
+    }
+
+    # Transfer connectivities as SNN graph if not already done from uns/neighbors
+    if ('connectivities' %in% obsp_names && !dfile[['graphs']]$exists(snn.graph.name)) {
+      if (verbose) {
+        message("Saving obsp/connectivities as ", snn.graph.name)
+      }
+      dfile[['graphs']]$obj_copy_from(
+        src_loc = source,
+        src_name = 'obsp/connectivities',
+        dst_name = snn.graph.name
+      )
+      # Convert 'shape' attribute to 'dims' for compatibility
+      if (isTRUE(x = AttrExists(x = dfile[['graphs']][[snn.graph.name]], name = 'shape'))) {
+        if (!isTRUE(x = AttrExists(x = dfile[['graphs']][[snn.graph.name]], name = 'dims'))) {
+          dfile[['graphs']][[snn.graph.name]]$create_attr(
+            attr_name = 'dims',
+            robj = h5attr(x = dfile[['graphs']][[snn.graph.name]], which = 'shape'),
+            dtype = GuessDType(x = h5attr(
+              x = dfile[['graphs']][[snn.graph.name]],
+              which = 'shape'
+            ))
+          )
+        }
+        dfile[['graphs']][[snn.graph.name]]$attr_delete(attr_name = 'shape')
+      }
+      if (!isTRUE(x = AttrExists(x = dfile[['graphs']][[snn.graph.name]], name = 'assay.used'))) {
+        dfile[['graphs']][[snn.graph.name]]$create_attr(
+          attr_name = 'assay.used',
+          robj = assay,
+          dtype = GuessDType(x = assay)
+        )
+      }
+    }
+  }
+
   # Add miscellaneous information
   if (source$exists(name = 'uns')) {
     misc <- setdiff(
@@ -1611,6 +1716,25 @@ except Exception as e:
     }
     spatial_uns <- source[['uns/spatial']]
     library_ids <- names(x = spatial_uns)
+
+    # Detect coordinate format early to determine if image needs transformation
+    # Native h5ad (scanpy/CellXGene): shape is (n_cells, 2)
+    # h5ad from Seurat conversion: shape is (2, n_cells)
+    is_native_h5ad <- FALSE
+    spatial_key <- if (source$exists(name = 'obsm/X_spatial')) {
+      'obsm/X_spatial'
+    } else if (source$exists(name = 'obsm/spatial')) {
+      'obsm/spatial'
+    } else {
+      NULL
+    }
+    if (!is.null(spatial_key)) {
+      coords_dims <- dim(source[[spatial_key]]$read())
+      is_native_h5ad <- coords_dims[2] == 2  # (n_cells, 2) format
+      if (verbose) {
+        message("  Detected ", if(is_native_h5ad) "native h5ad" else "Seurat-converted", " coordinate format")
+      }
+    }
 
     for (lib_id in library_ids) {
       lib_group <- spatial_uns[[lib_id]]
@@ -1681,10 +1805,11 @@ except Exception as e:
           # Read lowres image data from h5ad
           img_data <- images_group[['lowres']]$read()
 
-          # Check if this is a 3D array (height x width x channels)
+          # Check if this is a 3D array
           if (length(dim(img_data)) == 3L) {
-            # Transpose from h5ad format (height, width, channels) to
-            # h5seurat format (channels, width, height)
+            # h5ad/anndata stores images as (channels, width, height) in HDF5
+            # Seurat expects (height, width, channels)
+            # aperm(c(3,2,1)) converts (C,W,H) -> (H,W,C)
             img_arr <- aperm(img_data, c(3L, 2L, 1L))
 
             # Write to h5seurat as 'image' dataset
@@ -1709,6 +1834,9 @@ except Exception as e:
 
           img_data <- images_group[['hires']]$read()
           if (length(dim(img_data)) == 3L) {
+            # h5ad/anndata stores images as (channels, width, height) in HDF5
+            # Seurat expects (height, width, channels)
+            # aperm(c(3,2,1)) converts (C,W,H) -> (H,W,C)
             img_arr <- aperm(img_data, c(3L, 2L, 1L))
             if (img_h5$exists(name = 'image')) {
               img_h5$link_delete(name = 'image')
@@ -1765,6 +1893,21 @@ except Exception as e:
               dtype = GuessDType(x = sf_value)
             )
           }
+
+          # If lowres scale factor is missing but hires exists, set lowres = hires
+          # This is needed when h5ad only has hires image (no lowres)
+          # Seurat's SpatialFeaturePlot defaults to using lowres scale
+          if (!sf_group$exists('lowres') && sf_group$exists('hires')) {
+            hires_val <- sf_group[['hires']][]
+            sf_group$create_dataset(
+              name = 'lowres',
+              robj = hires_val,
+              dtype = GuessDType(x = hires_val)
+            )
+            if (verbose) {
+              message("      Setting lowres scale factor = hires (", hires_val, ")")
+            }
+          }
         }
 
         # Create boundaries/centroids structure for VisiumV2
@@ -1782,9 +1925,21 @@ except Exception as e:
             message("    Creating boundaries/centroids for VisiumV2 (using ", spatial_key, ")")
           }
 
-          # Read spatial coordinates (shape: 2 x n_cells in h5ad)
+          # Read spatial coordinates from h5ad
           # Use $read() instead of [] to avoid HDF5 indexing issues
           coords_h5ad <- source[[spatial_key]]$read()
+
+          # Detect coordinate orientation:
+          # - Native h5ad (scanpy/CellXGene): shape is (n_cells, 2) where rows are cells
+          # - h5ad from Seurat conversion: shape is (2, n_cells) where columns are cells
+          # We detect by checking which dimension is 2
+          coords_dims <- dim(coords_h5ad)
+          is_native_h5ad <- coords_dims[2] == 2  # (n_cells, 2) format
+
+          if (verbose) {
+            message("    Coordinate array shape: ", paste(coords_dims, collapse=" x "),
+                    " (", if(is_native_h5ad) "native h5ad format" else "Seurat-converted format", ")")
+          }
 
           # Get cell names from the h5Seurat file (already loaded earlier)
           cell_names <- as.character(dfile[['cell.names']][])
@@ -1822,18 +1977,28 @@ except Exception as e:
                 message("    Warning: No cells found for library ", lib_id, ", skipping centroids")
               }
             } else {
-              filtered_coords <- coords_h5ad[, cell_mask, drop = FALSE]
+              # Filter coordinates based on format
+              if (is_native_h5ad) {
+                # Native format (n_cells, 2): filter rows
+                filtered_coords <- coords_h5ad[cell_mask, , drop = FALSE]
+              } else {
+                # Seurat-converted format (2, n_cells): filter columns
+                filtered_coords <- coords_h5ad[, cell_mask, drop = FALSE]
+              }
               filtered_cells <- cell_names[cell_mask]
 
               if (verbose) {
                 message("    Filtered to ", length(filtered_cells), " cells for library ", lib_id)
               }
 
-              # Transpose from (2, n) to (n, 2) format for centroids
-              # In h5ad (from Seurat), coordinates are stored as [X, Y] in row format
-              # Row 1 = X coordinates, Row 2 = Y coordinates
-              coords_matrix <- t(filtered_coords)  # Now (n, 2) with [X, Y]
-              # No swap needed - h5ad already has correct [X, Y] order
+              # Convert to (n, 2) format for centroids
+              if (is_native_h5ad) {
+                # Native h5ad: already in (n, 2) format
+                coords_matrix <- filtered_coords
+              } else {
+                # Seurat-converted: transpose from (2, n) to (n, 2)
+                coords_matrix <- t(filtered_coords)
+              }
 
               # Note: Coordinates are kept in full resolution
               # Seurat's GetTissueCoordinates() will handle scaling via scale.factors
@@ -1906,9 +2071,14 @@ except Exception as e:
             }
 
             # Use all cells if no library ID found
-            # In h5ad (from Seurat), coordinates are stored as [X, Y] in row format
-            coords_matrix <- t(coords_h5ad)  # Now (n, 2) with [X, Y]
-            # No swap needed - h5ad already has correct [X, Y] order
+            # Convert to (n, 2) format for centroids based on detected format
+            if (is_native_h5ad) {
+              # Native h5ad: already in (n, 2) format
+              coords_matrix <- coords_h5ad
+            } else {
+              # Seurat-converted: transpose from (2, n) to (n, 2)
+              coords_matrix <- t(coords_h5ad)
+            }
 
             radius <- if (img_h5$exists('scale.factors/spot')) {
               img_h5[['scale.factors/spot']][]
@@ -2165,13 +2335,16 @@ H5SeuratToH5AD <- function(
               # Use newer anndata format: each categorical is a group with categories/codes
               dfile[['obs']]$create_group(name = mapped_col)
 
-              # Convert codes to 0-based indices
-              codes_values <- meta_group[[col]][['values']][index] - 1L
+              # Convert codes to 0-based indices, handling NA values
+              # R factor codes are 1-based; h5ad uses 0-based with -1 for missing
+              raw_codes <- meta_group[[col]][['values']][index]
+              codes_values <- ifelse(is.na(raw_codes), -1L, raw_codes - 1L)
               n_categories <- length(meta_group[[col]][['levels']][])
+              has_na <- any(is.na(raw_codes))
 
               # Choose appropriate integer dtype based on number of categories
-              # This ensures scanpy reads categorical data correctly
-              codes_dtype <- if (n_categories <= 127) {
+              # Must use signed integers when NA values present (need -1)
+              codes_dtype <- if (has_na || n_categories <= 127) {
                 hdf5r::h5types$H5T_NATIVE_INT8
               } else if (n_categories <= 255) {
                 hdf5r::h5types$H5T_NATIVE_UINT8
@@ -2313,13 +2486,16 @@ H5SeuratToH5AD <- function(
           # Use newer anndata format: each categorical is a group with categories/codes
           dfile[[dname]]$create_group(name = mapped_i)
 
-          # Convert codes to 0-based indices
-          codes_values <- src[[i]][['values']][index] - 1L
+          # Convert codes to 0-based indices, handling NA values
+          # R factor codes are 1-based; h5ad uses 0-based with -1 for missing
+          raw_codes <- src[[i]][['values']][index]
+          codes_values <- ifelse(is.na(raw_codes), -1L, raw_codes - 1L)
           n_categories <- length(src[[i]][['levels']][])
+          has_na <- any(is.na(raw_codes))
 
           # Choose appropriate integer dtype based on number of categories
-          # This ensures scanpy reads categorical data correctly
-          codes_dtype <- if (n_categories <= 127) {
+          # Must use signed integers when NA values present (need -1)
+          codes_dtype <- if (has_na || n_categories <= 127) {
             hdf5r::h5types$H5T_NATIVE_INT8
           } else if (n_categories <= 255) {
             hdf5r::h5types$H5T_NATIVE_UINT8
@@ -2911,13 +3087,16 @@ H5SeuratToH5AD <- function(
               # Use newer anndata format: each categorical is a group with categories/codes
               dfile[['obs']]$create_group(name = col)
 
-              # Convert codes to 0-based indices
-              codes_values <- meta.src[[col]][['values']][] - 1L
+              # Convert codes to 0-based indices, handling NA values
+              # R factor codes are 1-based; h5ad uses 0-based with -1 for missing
+              raw_codes <- meta.src[[col]][['values']][]
+              codes_values <- ifelse(is.na(raw_codes), -1L, raw_codes - 1L)
               n_categories <- length(meta.src[[col]][['levels']][])
+              has_na <- any(is.na(raw_codes))
 
               # Choose appropriate integer dtype based on number of categories
-              # This ensures scanpy reads categorical data correctly
-              codes_dtype <- if (n_categories <= 127) {
+              # Must use signed integers when NA values present (need -1)
+              codes_dtype <- if (has_na || n_categories <= 127) {
                 hdf5r::h5types$H5T_NATIVE_INT8
               } else if (n_categories <= 255) {
                 hdf5r::h5types$H5T_NATIVE_UINT8
