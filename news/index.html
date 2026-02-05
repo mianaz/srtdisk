@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">srtdisk</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -40,9 +40,34 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.2.1" id="srtdisk-021-development">srtdisk 0.2.1 (Development)<a class="anchor" aria-label="anchor" href="#srtdisk-021-development"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.2.1" id="srtdisk-021">srtdisk 0.2.1<a class="anchor" aria-label="anchor" href="#srtdisk-021"></a></h2>
+<blockquote>
+<p><strong>Release Date:</strong> 2026-02-05</p>
+</blockquote>
 <div class="section level3">
-<h3 id="new-features-0-2-1">New Features<a class="anchor" aria-label="anchor" href="#new-features-0-2-1"></a></h3>
+<h3 id="highlights-0-2-1">Highlights<a class="anchor" aria-label="anchor" href="#highlights-0-2-1"></a></h3>
+<div class="section level4">
+<h4 id="correct-gene-set-in-h5seurat-to-h5ad-conversion-0-2-1">Correct Gene Set in h5Seurat to h5ad Conversion<a class="anchor" aria-label="anchor" href="#correct-gene-set-in-h5seurat-to-h5ad-conversion-0-2-1"></a></h4>
+<p>Fixed a critical issue where <code>scale.data</code> (containing only ~2,000 variable features) was prioritized as <code>X</code> during h5Seurat to h5ad conversion, causing <code>var</code> to contain only variable genes instead of the full gene set. The conversion now correctly uses <code>data</code> (normalized, all genes) as <code>X</code> and <code>counts</code> as <code>raw/X</code>, matching standard AnnData conventions. <code>scale.data</code> is only used as a last-resort fallback.</p>
+<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr class="header"><th>Seurat</th>
+<th>h5ad</th>
+<th>Notes</th>
+</tr></thead><tbody><tr class="odd"><td>
+<code>data</code> (normalized)</td>
+<td><code>X</code></td>
+<td>All genes</td>
+</tr><tr class="even"><td>
+<code>counts</code> (raw)</td>
+<td><code>raw/X</code></td>
+<td>All genes</td>
+</tr><tr class="odd"><td><code>scale.data</code></td>
+<td><em>(skipped)</em></td>
+<td>Can be recomputed with <code>sc.pp.scale()</code>
+</td>
+</tr><tr class="even"><td>variable features</td>
+<td><code>var['highly_variable']</code></td>
+<td>Boolean column marking ~2,000 genes</td>
+</tr></tbody></table></div>
 <div class="section level4">
 <h4 id="native-anndata-preprocessing-0-2-1">Native AnnData Preprocessing<a class="anchor" aria-label="anchor" href="#native-anndata-preprocessing-0-2-1"></a></h4>
 <p>srtdisk now handles “messy” AnnData files natively without requiring Python preprocessing:</p>
@@ -69,7 +94,8 @@
 </div>
 <div class="section level3">
 <h3 id="bug-fixes-0-2-1">Bug Fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-2-1"></a></h3>
-<ul><li>Fixed handling of obs/var column names containing special characters</li>
+<ul><li>Fixed h5Seurat to h5ad conversion using <code>scale.data</code> (2,000 variable features) as <code>X</code> instead of <code>data</code> (all genes)</li>
+<li>Fixed handling of obs/var column names containing special characters</li>
 <li>Improved robustness of compound dataset reading with Python fallback</li>
 </ul><hr></div>
 </div>
