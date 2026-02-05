@@ -1,6 +1,19 @@
-# srtdisk 0.2.1 (Development)
+# srtdisk 0.2.1
 
-## New Features
+> **Release Date:** 2026-02-05
+
+## Highlights
+
+### Correct Gene Set in h5Seurat to h5ad Conversion
+
+Fixed a critical issue where `scale.data` (containing only ~2,000 variable features) was prioritized as `X` during h5Seurat to h5ad conversion, causing `var` to contain only variable genes instead of the full gene set. The conversion now correctly uses `data` (normalized, all genes) as `X` and `counts` as `raw/X`, matching standard AnnData conventions. `scale.data` is only used as a last-resort fallback.
+
+| Seurat | h5ad | Notes |
+|---|---|---|
+| `data` (normalized) | `X` | All genes |
+| `counts` (raw) | `raw/X` | All genes |
+| `scale.data` | *(skipped)* | Can be recomputed with `sc.pp.scale()` |
+| variable features | `var['highly_variable']` | Boolean column marking ~2,000 genes |
 
 ### Native AnnData Preprocessing
 
@@ -23,6 +36,7 @@ srtdisk now handles "messy" AnnData files natively without requiring Python prep
 
 ## Bug Fixes
 
+- Fixed h5Seurat to h5ad conversion using `scale.data` (2,000 variable features) as `X` instead of `data` (all genes)
 - Fixed handling of obs/var column names containing special characters
 - Improved robustness of compound dataset reading with Python fallback
 

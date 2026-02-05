@@ -794,6 +794,42 @@ except Exception as e:
       dtype = GuessDType(x = 'Cell1')
     )
   }
+  # Sanitize column names and handle nullable dtypes in HDF5 dataframes
+  SanitizeH5DFColumns <- function(dfgroup) {
+    col_names <- names(dfgroup)
+    # Skip internal names
+    col_names <- col_names[!col_names %in% c('__categories', '_index')]
+    col_name_map <- SanitizeColumnNames(col_names)
+    for (old_name in names(col_name_map)) {
+      new_name <- col_name_map[[old_name]]
+      col_obj <- dfgroup[[old_name]]
+
+      # Handle nullable dtype (mask+values) groups
+      if (inherits(col_obj, 'H5Group')) {
+        flattened <- FlattenNullable(col_obj)
+        if (!is.null(flattened)) {
+          # Delete old group and create flattened dataset
+          dfgroup$link_delete(name = old_name)
+          dfgroup$create_dataset(
+            name = new_name,
+            robj = flattened,
+            dtype = GuessDType(x = if (length(flattened) > 0) flattened[1] else flattened)
+          )
+          next
+        }
+      }
+
+      # Rename if needed
+      if (old_name != new_name) {
+        dfgroup$obj_copy_from(
+          src_loc = dfgroup,
+          src_name = old_name,
+          dst_name = new_name
+        )
+        dfgroup$link_delete(name = old_name)
+      }
+    }
+  }
   ds.map <- c(
     scale.data = if (inherits(x = source[['X']], what = 'H5D')) {
       'X'
@@ -1367,42 +1403,6 @@ except Exception as e:
     }
     NormalizeH5ADCategorical(dfgroup = dfile[['meta.data']])
     ColToFactor(dfgroup = dfile[['meta.data']])
-    # Sanitize column names and handle nullable dtypes in meta.data
-    SanitizeH5DFColumns <- function(dfgroup) {
-      col_names <- names(dfgroup)
-      # Skip internal names
-      col_names <- col_names[!col_names %in% c('__categories', '_index')]
-      col_name_map <- SanitizeColumnNames(col_names)
-      for (old_name in names(col_name_map)) {
-        new_name <- col_name_map[[old_name]]
-        col_obj <- dfgroup[[old_name]]
-
-        # Handle nullable dtype (mask+values) groups
-        if (inherits(col_obj, 'H5Group')) {
-          flattened <- FlattenNullable(col_obj)
-          if (!is.null(flattened)) {
-            # Delete old group and create flattened dataset
-            dfgroup$link_delete(name = old_name)
-            dfgroup$create_dataset(
-              name = new_name,
-              robj = flattened,
-              dtype = GuessDType(x = if (length(flattened) > 0) flattened[1] else flattened)
-            )
-            next
-          }
-        }
-
-        # Rename if needed
-        if (old_name != new_name) {
-          dfgroup$obj_copy_from(
-            src_loc = dfgroup,
-            src_name = old_name,
-            dst_name = new_name
-          )
-          dfgroup$link_delete(name = old_name)
-        }
-      }
-    }
     SanitizeH5DFColumns(dfgroup = dfile[['meta.data']])
     # if (dfile[['meta.data']]$attr_exists(attr_name = 'column-order')) {
     if (isTRUE(x = AttrExists(x = dfile[['meta.data']], name = 'column-order'))) {
@@ -2828,16 +2828,8 @@ H5SeuratToH5AD <- function(
   # Determine the appropriate data paths based on structure
   if (has_layers) {
     # V5 structure: data is under layers/
-    if (assay.group$exists(name = 'scale.data')) {
-      x.data <- 'scale.data'
-      raw.data <- if (assay.group[['layers']]$exists(name = 'data')) {
-        'layers/data'
-      } else if (assay.group[['layers']]$exists(name = 'counts')) {
-        'layers/counts'
-      } else {
-        NULL
-      }
-    } else if (assay.group[['layers']]$exists(name = 'data')) {
+    # Prioritize layers/data (all genes) over scale.data (variable features only)
+    if (assay.group[['layers']]$exists(name = 'data')) {
       x.data <- 'layers/data'
       raw.data <- if (assay.group[['layers']]$exists(name = 'counts')) {
         'layers/counts'
@@ -2845,26 +2837,19 @@ H5SeuratToH5AD <- function(
         NULL
       }
     } else if (assay.group[['layers']]$exists(name = 'counts')) {
-      # Only counts available - use it for X and no raw
       x.data <- 'layers/counts'
+      raw.data <- NULL
+    } else if (assay.group$exists(name = 'scale.data')) {
+      # Fallback: only scale.data available (unusual)
+      x.data <- 'scale.data'
       raw.data <- NULL
     } else {
       stop("Cannot find data or counts in V5 h5Seurat file", call. = FALSE)
     }
   } else {
     # Legacy structure
-    if (source$index()[[assay]]$slots[['scale.data']]) {
-      x.data <- 'scale.data'
-      # Check if data actually exists before using it as raw
-      raw.data <- if (source$index()[[assay]]$slots[['data']]) {
-        'data'
-      } else if (source$index()[[assay]]$slots[['counts']]) {
-        'counts'
-      } else {
-        NULL
-      }
-    } else if (source$index()[[assay]]$slots[['data']]) {
-      # data exists, use it
+    # Prioritize data (all genes) over scale.data (variable features only)
+    if (source$index()[[assay]]$slots[['data']]) {
       x.data <- 'data'
       raw.data <- if (source$index()[[assay]]$slots[['counts']]) {
         'counts'
@@ -2872,8 +2857,11 @@ H5SeuratToH5AD <- function(
         NULL
       }
     } else if (source$index()[[assay]]$slots[['counts']]) {
-      # Only counts exists (common for spatial data), use it for X
       x.data <- 'counts'
+      raw.data <- NULL
+    } else if (source$index()[[assay]]$slots[['scale.data']]) {
+      # Fallback: only scale.data available (unusual)
+      x.data <- 'scale.data'
       raw.data <- NULL
     } else {
       stop("Cannot find data or counts in h5Seurat file", call. = FALSE)

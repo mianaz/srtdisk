@@ -62,3 +62,6 @@ check_output.log
 
 # ignore session summary (development notes)
 SESSION_SUMMARY.md
+
+# h5mu staging (v0.3.0 development files)
+.h5mu_staging/

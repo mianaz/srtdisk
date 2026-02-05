@@ -110,7 +110,7 @@ hfile[["reductions/umap"]]
 
 When finished exploring an h5Seurat file, remember to close the connection. Because we're working with file on disk directly rather than loading it into memory, we need to close it to prevent file corruption. You can also open the file in read-only mode (`mode = "r"`) to help alleviate file corruption, though it's still a good habit to close the h5Seurat file when done working with it.
 
-```{r close, eval=FALSE}
+```{r close, eval = has_SeuratData}
 hfile$close_all()
 ```
 
