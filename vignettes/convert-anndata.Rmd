@@ -308,7 +308,7 @@ print("ADT features:", list(adata_adt.var_names)[:10])
 
 Each assay produces a separate h5ad file with the same cell metadata but different features.
 
-> **Note on h5mu format**: For true multi-modal interoperability, consider the [MuData/h5mu format](https://muon.scverse.org/) from the scverse ecosystem. The [MuDataSeurat](https://pmbio.github.io/MuDataSeurat/) R package provides `ReadH5MU()` and `WriteH5MU()` functions for Seurat objects. This allows storing multiple modalities in a single file with shared cell annotations, though some Seurat-specific features may not round-trip perfectly.
+> **Note on multi-modal formats**: For true multi-modal interoperability, consider the [MuData/h5mu format](https://muon.scverse.org/) from the scverse ecosystem. The [MuDataSeurat](https://pmbio.github.io/MuDataSeurat/) R package provides `ReadH5MU()` and `WriteH5MU()` functions for Seurat objects. This allows storing multiple modalities in a single file with shared cell annotations, though some Seurat-specific features may not round-trip perfectly.
 
 ## Spatial h5ad to Seurat
 
@@ -392,6 +392,17 @@ SpatialFeaturePlot(visium, features = "ACTC1", pt.size.factor = 2)
 This section provides comprehensive mapping tables showing how data is converted between Seurat and AnnData formats.
 
 ### Core Data Slots
+
+**Layer mapping during Seurat -> h5ad conversion (via h5Seurat):**
+
+| Seurat Slot | h5ad Destination | Notes |
+|-------------|------------------|-------|
+| `data` (normalized) | `X` | All genes; used as primary matrix |
+| `counts` (raw) | `raw/X` | All genes; if available |
+| `scale.data` | *(skipped)* | Only ~2,000 variable features; recompute with `sc.pp.scale()` |
+| `VariableFeatures()` | `var['highly_variable']` | Boolean column in `var` |
+
+> **Note**: srtdisk prioritizes `data` (all genes) over `scale.data` (variable features only) when writing `X`. This ensures `var` contains the full gene set. Variable features are preserved as a boolean `highly_variable` column in `var`. `scale.data` is only used as a fallback if neither `data` nor `counts` are available.
 
 **Layer mapping during h5ad -> Seurat conversion:**
 

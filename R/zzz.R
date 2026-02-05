@@ -930,7 +930,6 @@ WriteMode <- function(overwrite = FALSE) {
 
 .onLoad <- function(libname, pkgname) {
   # Make the classes defined in SeuratDisk compatible with S4 generics/methods
-  # setOldClass(Classes = c('scdisk', 'h5Seurat', 'loom'))
   setOldClass(Classes = c('scdisk', 'h5Seurat'))
   RegisterSCDisk(r6class = h5Seurat)
   RegisterSCDisk(r6class = loom)

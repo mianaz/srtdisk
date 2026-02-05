@@ -1,7 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# srtdisk v0.2.0
+# srtdisk v0.2.1
 
 <!-- badges: start -->
 
