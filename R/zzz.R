@@ -137,7 +137,7 @@ ConvertBPCellsMatrix <- function(mat, verbose = FALSE) {
 #' @return An integer vector
 #'
 #' @seealso \link[base]{integer} \link[base]{logical} \code{\link[base]{NA}}
-#' \code{\link{WriteH5Seurat}}
+#' \code{\link{SaveH5Seurat}}
 #'
 #' @keywords internal
 #'
@@ -411,11 +411,11 @@ GetClass <- function(class, packages = 'Seurat') {
 #' @param dims Dimensions of a dataset
 #' @param MARGIN Either an integer value contained within
 #' \code{1:length(x = dims)} or one of the possible values of
-#' \code{\link[srtdisk]{SeuratDisk.chunking.MARGIN}}
+#' the \code{SeuratDisk.chunking.MARGIN} option
 #'
 #' @return An integer value with the \code{MARGIN}
 #'
-#' @seealso \code{\link[srtdisk]{SeuratDisk.chunking.MARGIN}}
+#' @seealso \code{\link{srtdisk-package}} for package options
 #'
 #' @keywords internal
 #'

@@ -1,0 +1,439 @@
+---
+title: 'Conversions: Seurat and Loom'
+output:
+  rmarkdown::html_document:
+    theme: cosmo
+    toc: true
+    toc_float: true
+    code_folding: show
+vignette: >
+  %\VignetteIndexEntry{Conversions: Seurat and Loom}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+library(reticulate)
+
+# Configure Python - try multiple options for portability
+python_configured <- FALSE
+
+# Option 1: ov-nightly conda env (local, working loompy on ARM Macs)
+if (!python_configured) {
+  tryCatch({
+    ov_python <- "/opt/homebrew/Caskroom/miniconda/base/envs/ov-nightly/bin/python"
+    if (file.exists(ov_python)) {
+      use_python(ov_python, required = TRUE)
+      python_configured <- TRUE
+    }
+  }, error = function(e) NULL)
+}
+
+# Option 2: conda base (local)
+if (!python_configured) {
+  tryCatch({
+    if (file.exists("/opt/homebrew/Caskroom/miniconda/base/bin/python3")) {
+      use_python("/opt/homebrew/Caskroom/miniconda/base/bin/python3", required = TRUE)
+      python_configured <- TRUE
+    }
+  }, error = function(e) NULL)
+}
+
+# Option 3: system python (CI/GitHub Actions)
+if (!python_configured) {
+  tryCatch({
+    use_python(Sys.which("python3"), required = FALSE)
+  }, error = function(e) NULL)
+}
+
+# Check if loompy is available for conditional evaluation
+has_loompy <- py_module_available("loompy")
+has_scanpy <- py_module_available("scanpy")
+
+# Check if SeuratData is available
+has_SeuratData <- requireNamespace("SeuratData", quietly = TRUE)
+
+knitr::opts_chunk$set(
+  message = FALSE,
+  warning = FALSE,
+  collapse = TRUE,
+  comment = "#>",
+  tidy = FALSE,
+  out.width = "100%",
+  dev = "png"
+)
+```
+
+```{r cleanup, echo=FALSE, results='hide'}
+outs <- c(
+  "pbmc3k.loom", "velocity_test.loom", "test_roundtrip.loom"
+)
+existing_files <- outs[file.exists(outs)]
+if (length(existing_files) > 0) file.remove(existing_files)
+```
+
+This vignette demonstrates how to convert between Seurat objects and Loom files using srtdisk. The [Loom format](http://loompy.org/) is an HDF5-based file format commonly used for storing single-cell RNA-seq data, particularly in RNA velocity workflows with tools like [velocyto](http://velocyto.org/) and [scVelo](https://scvelo.readthedocs.io/).
+
+```{r packages}
+library(Seurat)
+library(srtdisk)
+```
+
+## Loom File Format Overview
+
+Loom files organize single-cell data in a specific HDF5 structure:
+
+- `/matrix`: Main expression matrix (genes × cells, transposed from Seurat convention)
+- `/row_attrs`: Gene/feature-level metadata (gene names, coordinates, etc.)
+- `/col_attrs`: Cell/sample-level metadata (cell IDs, cluster labels, etc.)
+- `/layers`: Additional expression layers (counts, normalized data, spliced/unspliced for velocity)
+
+This format is particularly useful for:
+
+- **RNA velocity analysis**: velocyto and scVelo store spliced/unspliced counts in layers
+- **Python interoperability**: loompy package provides fast access in Python
+- **Archival storage**: Self-contained format with all annotations
+
+## Converting from Seurat to Loom
+
+### Basic Conversion
+
+To save a Seurat object as a Loom file, use `SaveLoom()`:
+
+```{r create_seurat, message=FALSE, warning=FALSE, eval = has_SeuratData}
+library(SeuratData)
+if (!"pbmc3k.final" %in% rownames(InstalledData())) {
+  InstallData("pbmc3k")
+}
+
+data("pbmc3k.final", package = "pbmc3k.SeuratData")
+pbmc <- UpdateSeuratObject(pbmc3k.final)
+pbmc
+```
+
+```{r plot_pbmc_umap, eval = has_SeuratData}
+DimPlot(pbmc, reduction = "umap", label = TRUE, pt.size = 0.5) + NoLegend()
+```
+
+Now save to Loom format:
+
+```{r save_loom, eval = has_SeuratData}
+SaveLoom(pbmc, filename = "pbmc3k.loom", overwrite = TRUE, verbose = TRUE)
+```
+
+### What Gets Saved
+
+When saving a Seurat object to Loom:
+
+| Seurat Data | Loom Location | Notes |
+|-------------|---------------|-------|
+| Default assay data | `/matrix` | Normalized expression |
+| Counts layer | `/layers/counts` | Raw counts if different from data |
+| Scale.data | `/layers/scale.data` | Scaled data if present |
+| Cell names | `/col_attrs/CellID` | Cell barcodes |
+| Gene names | `/row_attrs/Gene` | Feature names |
+| Cell metadata | `/col_attrs/*` | All columns from `meta.data` |
+| Feature metadata | `/row_attrs/*` | All columns from assay meta.features |
+| Dimensional reductions | `/reductions/*` | PCA, UMAP embeddings, etc. |
+| Graphs | `/col_graphs/*` | SNN graphs if present |
+
+## Viewing Loom Files in Python
+
+The saved Loom file can be opened with loompy or scanpy in Python:
+
+```{python load_loom_python, eval = has_loompy && has_SeuratData}
+import loompy
+
+# Connect to the loom file
+with loompy.connect("pbmc3k.loom") as ds:
+    print(f"Shape: {ds.shape[0]} genes x {ds.shape[1]} cells")
+    print(f"\nRow attributes (genes): {list(ds.ra.keys())}")
+    print(f"\nColumn attributes (cells): {list(ds.ca.keys())[:10]}...")  # First 10
+    print(f"\nLayers: {list(ds.layers.keys())}")
+```
+
+With scanpy:
+
+```{python load_loom_scanpy, eval = has_scanpy && has_SeuratData}
+import scanpy as sc
+
+# Read loom file as AnnData
+adata = sc.read_loom("pbmc3k.loom", sparse=True, cleanup=False)
+print(adata)
+print("\nColumn attributes:", list(adata.obs.columns)[:10])
+```
+
+## Converting from Loom to Seurat
+
+### Loading Loom Files
+
+Use `LoadLoom()` to read a Loom file as a Seurat object:
+```{r load_loom_basic, eval = has_SeuratData}
+# Load the loom file we just created
+loaded_pbmc <- LoadLoom("pbmc3k.loom", verbose = TRUE)
+loaded_pbmc
+```
+
+```{r compare_loaded, eval = has_SeuratData}
+# Verify dimensions match
+cat("Original:", ncol(pbmc), "cells,", nrow(pbmc), "genes\n")
+cat("Loaded:  ", ncol(loaded_pbmc), "cells,", nrow(loaded_pbmc), "genes\n")
+
+# Check metadata was preserved
+cat("\nMetadata columns preserved:\n")
+print(intersect(colnames(pbmc[[]]), colnames(loaded_pbmc[[]])))
+```
+
+### LoadLoom Parameters
+
+`LoadLoom()` provides several options for customizing the import:
+
+```{r loadloom_params, eval = FALSE}
+LoadLoom(
+  file,                    # Path to loom file
+
+  assay = NULL,            # Name for the assay (default: "RNA" or from file)
+  cells = "CellID",        # Column attribute containing cell names
+  features = "Gene",       # Row attribute containing gene names
+  normalized = NULL,       # Layer to load as normalized data
+  scaled = NULL,           # Layer to load as scaled data
+  filter = "none",         # Filter cells/features by Valid attributes
+  verbose = TRUE           # Show progress messages
+)
+```
+
+### Loading Specific Layers
+
+If your Loom file has additional layers (e.g., from velocyto):
+
+```{r load_layers, eval = FALSE}
+# Load with specific layers
+seurat_obj <- LoadLoom(
+  "velocity_data.loom",
+  normalized = "spliced",      # Use spliced counts as normalized
+  scaled = "ambiguous"         # Optional scaled layer
+)
+```
+
+### Loading velocyto Output
+
+Loom files from velocyto contain spliced, unspliced, and ambiguous count matrices:
+
+```{r velocyto_example, eval = FALSE}
+# Load velocyto loom file
+# The main matrix typically contains spliced counts
+velocity_obj <- LoadLoom(
+  "sample.loom",
+  cells = "CellID",
+  features = "Gene"
+)
+
+# The spliced/unspliced/ambiguous layers can be accessed after loading
+# or you may need to load them separately depending on your analysis needs
+```
+
+## Round-Trip Conversion
+
+srtdisk preserves data integrity during Seurat ↔ Loom conversion:
+
+```{r roundtrip, eval = has_SeuratData}
+# Create a simple test object
+set.seed(42)
+test_obj <- CreateSeuratObject(
+  counts = pbmc[["RNA"]]$counts[1:100, 1:50],
+  project = "RoundTrip"
+)
+test_obj$custom_cluster <- sample(c("A", "B", "C"), 50, replace = TRUE)
+test_obj$numeric_value <- rnorm(50)
+
+# Save and reload
+SaveLoom(test_obj, "test_roundtrip.loom", overwrite = TRUE, verbose = FALSE)
+reloaded <- LoadLoom("test_roundtrip.loom", verbose = FALSE)
+
+# Compare
+cat("Cell names match:", all(colnames(test_obj) == colnames(reloaded)), "\n")
+cat("Gene names match:", all(rownames(test_obj) == rownames(reloaded)), "\n")
+cat("Metadata columns:", paste(colnames(reloaded[[]]), collapse = ", "), "\n")
+```
+
+Verify expression data is preserved:
+
+```{r verify_expression, eval = has_SeuratData}
+original_data <- GetAssayData(test_obj, layer = "data")
+reloaded_data <- GetAssayData(reloaded, layer = "data")[
+  rownames(original_data),
+  colnames(original_data)
+]
+
+max_diff <- max(abs(as.matrix(original_data) - as.matrix(reloaded_data)))
+cat("Maximum expression difference:", max_diff, "\n")
+```
+
+## Working with RNA Velocity Data
+
+A common use case for Loom files is RNA velocity analysis. Here's a typical workflow:
+
+### 1. Generate Loom with velocyto
+
+```bash
+# Run velocyto on Cell Ranger output (command line)
+velocyto run10x -m repeat_mask.gtf sample_dir genes.gtf
+```
+
+This creates a `.loom` file with spliced/unspliced counts.
+
+### 2. Load in R for QC and Annotation
+
+```{r velocity_workflow, eval = FALSE}
+# Load velocyto output
+velocity_data <- LoadLoom("sample.loom")
+
+# Perform standard Seurat QC and clustering
+velocity_data <- NormalizeData(velocity_data)
+velocity_data <- FindVariableFeatures(velocity_data)
+velocity_data <- ScaleData(velocity_data)
+velocity_data <- RunPCA(velocity_data)
+velocity_data <- FindNeighbors(velocity_data)
+velocity_data <- FindClusters(velocity_data)
+velocity_data <- RunUMAP(velocity_data, dims = 1:30)
+
+# Add cell type annotations
+velocity_data$cell_type <- ...  # Your annotation method
+
+# Save back to loom with annotations
+SaveLoom(velocity_data, "sample_annotated.loom", overwrite = TRUE)
+```
+
+### 3. Continue Velocity Analysis in Python
+
+```{python velocity_python, eval = FALSE}
+import scvelo as scv
+
+# Load annotated loom file
+adata = scv.read("sample_annotated.loom")
+
+# Run velocity analysis
+scv.pp.filter_and_normalize(adata)
+scv.pp.moments(adata)
+scv.tl.velocity(adata)
+scv.tl.velocity_graph(adata)
+
+# Visualize with Seurat annotations
+scv.pl.velocity_embedding_stream(adata, color='cell_type')
+```
+
+## Data Mapping Reference
+
+### Seurat to Loom
+
+| Seurat Location | Loom Location | Notes |
+|-----------------|---------------|-------|
+| `GetAssayData(layer = "data")` | `/matrix` | Main expression matrix |
+| `GetAssayData(layer = "counts")` | `/layers/counts` | If different from data |
+| `GetAssayData(layer = "scale.data")` | `/layers/scale.data` | If present |
+| `colnames(obj)` | `/col_attrs/CellID` | Cell barcodes |
+| `rownames(obj)` | `/row_attrs/Gene` | Gene names |
+| `obj[[]]` (meta.data) | `/col_attrs/*` | Each column as attribute |
+| `obj[[assay]][[]]` | `/row_attrs/*` | Feature metadata |
+| `Embeddings(obj, "pca")` | `/reductions/pca/embeddings` | Transposed |
+| `Loadings(obj, "pca")` | `/reductions/pca/loadings` | If present |
+| `Stdev(obj, "pca")` | `/reductions/pca/stdev` | If present |
+
+### Loom to Seurat
+
+| Loom Location | Seurat Destination | Notes |
+|---------------|-------------------|-------|
+| `/matrix` | `data` layer | Stored as counts if no normalization detected |
+| `/layers/*` | Additional layers | Via `normalized`/`scaled` parameters |
+| `/col_attrs/CellID` | Cell names | Configurable via `cells` parameter |
+| `/row_attrs/Gene` | Feature names | Configurable via `features` parameter |
+| `/col_attrs/*` | `meta.data` | All except CellID and Valid |
+| `/row_attrs/*` | `meta.features` | All except Gene and Valid |
+| `/reductions/*/embeddings` | `Reductions()` | If present |
+| `/col_graphs/*` | `Graphs()` | SNN/KNN graphs |
+
+## Comparison with Other Formats
+
+| Feature | Loom | h5Seurat | h5ad |
+|---------|------|----------|------|
+| Primary ecosystem | velocyto, loompy | Seurat | scanpy |
+| Multiple assays | Via layers | Native support | Single X matrix |
+| Spatial data | Limited | Full support | Full support |
+| RNA velocity | Native | Not standard | Via layers |
+| Graph storage | Native | Native | In obsp |
+| Python access | loompy, scanpy | Limited | scanpy |
+| R access | srtdisk | srtdisk | srtdisk |
+
+**When to use Loom:**
+
+- RNA velocity analysis with velocyto/scVelo
+- Workflows requiring loompy compatibility
+- Simpler single-assay datasets
+
+**When to use h5Seurat:**
+
+- Seurat-native workflows
+- Multi-modal data (CITE-seq)
+- Full Seurat object preservation
+
+**When to use h5ad:**
+
+- scanpy-based workflows
+- Spatial transcriptomics with squidpy
+- CellxGene data sharing
+
+## Troubleshooting
+
+### Common Issues
+
+**"Cannot find feature names dataset"**
+
+The Loom file uses non-standard attribute names. Specify them explicitly:
+
+```{r troubleshoot_features, eval = FALSE}
+# Check what attributes exist
+h5 <- hdf5r::H5File$new("data.loom", mode = "r")
+print(names(h5[["row_attrs"]]))
+h5$close_all()
+
+# Use the correct attribute name
+obj <- LoadLoom("data.loom", features = "gene_name")
+```
+
+**"Cannot find cell names dataset"**
+
+Similar to above, check column attributes:
+
+```{r troubleshoot_cells, eval = FALSE}
+h5 <- hdf5r::H5File$new("data.loom", mode = "r")
+print(names(h5[["col_attrs"]]))
+h5$close_all()
+
+# Use the correct attribute name
+obj <- LoadLoom("data.loom", cells = "obs_names")
+```
+
+**Duplicate feature names**
+
+Loom files sometimes have duplicate gene names. srtdisk will make them unique with a warning:
+
+```{r duplicate_warning, eval = FALSE}
+# Warning: Duplicate feature names found, making unique
+obj <- LoadLoom("data.loom")
+
+# The names will be Gene, Gene.1, Gene.2, etc.
+```
+
+## Session Info
+
+```{r sessionInfo}
+sessionInfo()
+```
+
+```{r cleanup-final, echo=FALSE, results='hide'}
+outs <- c(
+  "pbmc3k.loom", "velocity_test.loom", "test_roundtrip.loom"
+)
+existing_files <- outs[file.exists(outs)]
+if (length(existing_files) > 0) file.remove(existing_files)
+```

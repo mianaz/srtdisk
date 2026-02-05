@@ -36,6 +36,7 @@ inst/testdata/*
 FUNCTION_INDEX.md
 CLAUDE.md
 README.html
+.claude
 
 # ignore test output files
 tests/*.h5seurat
