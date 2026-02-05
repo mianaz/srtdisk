@@ -19,6 +19,7 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/convert-anndata.html">Conversions: h5Seurat and AnnData</a></li>
+    <li><a class="dropdown-item" href="../articles/convert-loom.html">Conversions: Seurat and Loom</a></li>
     <li><a class="dropdown-item" href="../articles/h5Seurat-load.html">Saving and Loading Data from an h5Seurat File</a></li>
     <li><a class="dropdown-item" href="../articles/h5Seurat-spec.html">h5Seurat File Format Specification</a></li>
   </ul></li>
@@ -39,9 +40,43 @@
     </div>
 
     <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.2.1" id="srtdisk-021-development">srtdisk 0.2.1 (Development)<a class="anchor" aria-label="anchor" href="#srtdisk-021-development"></a></h2>
+<div class="section level3">
+<h3 id="new-features-0-2-1">New Features<a class="anchor" aria-label="anchor" href="#new-features-0-2-1"></a></h3>
+<div class="section level4">
+<h4 id="native-anndata-preprocessing-0-2-1">Native AnnData Preprocessing<a class="anchor" aria-label="anchor" href="#native-anndata-preprocessing-0-2-1"></a></h4>
+<p>srtdisk now handles “messy” AnnData files natively without requiring Python preprocessing:</p>
+<ul><li>
+<strong>Column Name Sanitization</strong>: Automatically sanitizes obs/var column names during h5ad to h5Seurat conversion
+<ul><li>Replaces problematic characters (<code>/</code>, spaces, commas, semicolons, colons, backslashes) with underscores</li>
+<li>Handles duplicate names by appending <code>__dup1</code>, <code>__dup2</code>, etc.</li>
+<li>Ensures valid R names (prefixes with <code>X</code> if column starts with a number)</li>
+<li>Example: <code>cell/type</code> -&gt; <code>cell_type</code>, <code>sample name</code> -&gt; <code>sample_name</code>
+</li>
+</ul></li>
+<li>
+<strong>List/Dict Column Conversion</strong>: Converts list and dict columns in compound datasets to R-compatible strings
+<ul><li>Simple lists converted to semicolon-delimited strings (e.g., <code>["A", "B", "C"]</code> -&gt; <code>"A;B;C"</code>)</li>
+<li>Complex nested structures converted to JSON strings</li>
+<li>Dict columns converted to JSON strings</li>
+</ul></li>
+<li>
+<strong>Nullable Dtype Handling</strong>: Properly handles pandas nullable extension dtypes stored as mask+values structures
+<ul><li>Automatically flattens mask+values groups to simple vectors with NA values</li>
+<li>Preserves missing value semantics during conversion</li>
+</ul></li>
+</ul></div>
+</div>
+<div class="section level3">
+<h3 id="bug-fixes-0-2-1">Bug Fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-2-1"></a></h3>
+<ul><li>Fixed handling of obs/var column names containing special characters</li>
+<li>Improved robustness of compound dataset reading with Python fallback</li>
+</ul><hr></div>
+</div>
+    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.2.0" id="srtdisk-020">srtdisk 0.2.0<a class="anchor" aria-label="anchor" href="#srtdisk-020"></a></h2>
 <blockquote>
-<p><strong>Release Date:</strong> 2026-01-22</p>
+<p><strong>Release Date:</strong> 2026-01-29</p>
 </blockquote>
 <div class="section level3">
 <h3 id="highlights-0-2-0">Highlights<a class="anchor" aria-label="anchor" href="#highlights-0-2-0"></a></h3>
