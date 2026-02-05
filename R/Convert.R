@@ -220,6 +220,93 @@ Convert.h5Seurat <- function(
 # Implementations
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+# AnnData Preprocessing Helpers
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+# Sanitize a single column name to valid R/Seurat format
+# Replaces /, spaces, commas, semicolons, colons, backslashes with underscore
+# Removes consecutive and trailing underscores
+# Ensures valid R name (can't start with number)
+#
+# @param x Character string to sanitize
+#
+# @return Sanitized character string
+#
+# @keywords internal
+#
+SanitizeColumnName <- function(x) {
+  # Replace problematic characters with underscore
+  x <- gsub(pattern = '[/\\s,;:\\\\]', replacement = '_', x = x, perl = TRUE)
+  # Remove consecutive underscores
+  x <- gsub(pattern = '_+', replacement = '_', x = x)
+  # Remove leading/trailing underscores
+  x <- gsub(pattern = '^_|_$', replacement = '', x = x)
+  # Ensure valid R name (can't start with number)
+  if (grepl('^[0-9]', x)) {
+    x <- paste0('X', x)
+  }
+  return(x)
+}
+
+# Sanitize all column names, handling duplicates
+# Returns a named vector mapping original -> sanitized names
+#
+# @param names Character vector of column names to sanitize
+#
+# @return Named character vector where names are original and values are sanitized
+#
+# @keywords internal
+#
+SanitizeColumnNames <- function(names) {
+  sanitized <- vapply(names, SanitizeColumnName, character(1), USE.NAMES = FALSE)
+  # Handle duplicates by appending __dupN
+  if (anyDuplicated(sanitized)) {
+    counts <- table(sanitized)
+    dups <- names(counts[counts > 1])
+    for (dup in dups) {
+      idx <- which(sanitized == dup)
+      sanitized[idx[-1]] <- paste0(dup, '__dup', seq_along(idx[-1]))
+    }
+  }
+  names(sanitized) <- names  # Map original -> sanitized
+  return(sanitized)
+}
+
+# Flatten nullable dtype (mask+values group) to simple vector
+# h5ad stores nullable dtypes as groups with 'mask' (boolean) and 'values' arrays
+# In h5ad nullable dtypes, mask=TRUE means the value is MISSING (NA)
+#
+# @param col_group H5Group object that may contain mask+values structure
+#
+# @return Flattened vector with NA values where mask is TRUE, or NULL if not a mask+values structure
+#
+# @keywords internal
+#
+FlattenNullable <- function(col_group) {
+  if (!inherits(col_group, 'H5Group')) {
+    return(NULL)  # Not a group, skip
+  }
+
+  # Check if this is a mask+values structure (not categorical which has categories/codes)
+  if (col_group$exists('mask') && col_group$exists('values')) {
+    # Skip if this looks like a categorical (has categories attribute or encoding-type)
+    if (col_group$exists('categories') ||
+        isTRUE(x = AttrExists(x = col_group, name = 'encoding-type'))) {
+      return(NULL)
+    }
+
+    values <- col_group[['values']][]
+    mask <- col_group[['mask']][]
+
+    # In h5ad nullable dtypes, mask=TRUE means the value is MISSING (NA)
+    values[mask] <- NA
+    return(values)
+  }
+
+  return(NULL)  # Not a mask+values structure
+}
+
 #' Convert AnnData/H5AD files to h5Seurat files
 #'
 #' @inheritParams Convert
@@ -266,7 +353,7 @@ Convert.h5Seurat <- function(
 #' \dQuote{__categories} dataset is present, each dataset within
 #' \dQuote{__categories} will be stored as a factor group. Cell-level metadata
 #' will be added as an HDF5 group unless factors are \strong{not} present and
-#' \code{\link[srtdisk]{SeuratDisk.dtype.dataframe_as_group}} is \code{FALSE}
+#' the \code{SeuratDisk.dtypes.dataframe_as_group} option is \code{FALSE}
 #' }
 #' \subsection{Dimensional reduction information:}{
 #'  Cell embeddings are taken from \code{/obsm}; dimensional reductions are
@@ -451,12 +538,13 @@ import h5py
 import pandas as pd
 import sys
 import numpy as np
+import json
 
 try:
     with h5py.File("%s", "r") as f:
         data = f["%s"][:]
         df = pd.DataFrame(data)
-        
+
         # Decode bytes to strings if needed
         for col in df.columns:
             if df[col].dtype == object:
@@ -464,7 +552,7 @@ try:
                     df[col] = df[col].str.decode("utf-8")
                 except:
                     pass
-        
+
         # Handle categorical columns stored in __categories
         categories_path = "%s/__categories"
         if categories_path in f:
@@ -478,19 +566,49 @@ try:
                         categories = np.array([c.decode("utf-8") if isinstance(c, bytes) else str(c) for c in categories])
                     else:
                         categories = categories.astype(str)
-                    
+
                     # Get the codes (integer indices) from the dataframe
                     codes = df[col].values
-                    
+
                     # Map codes to categories using vectorized operations (codes are 0-based indices)
                     # Handle -1 or out-of-range codes as missing/NA
                     valid_mask = (codes >= 0) & (codes < len(categories))
                     decoded = np.empty(len(codes), dtype=object)
                     decoded[valid_mask] = categories[codes[valid_mask]]
                     decoded[~valid_mask] = None  # Will be NA in R
-                    
+
                     df[col] = decoded
-        
+
+        # Handle list/dict columns by converting to JSON or semicolon-delimited strings
+        for col in df.columns:
+            if df[col].dtype == object:
+                # Check if any non-null value is a list or dict
+                non_null = df[col].dropna()
+                if len(non_null) > 0:
+                    sample = non_null.iloc[0]
+                    if isinstance(sample, (list, tuple)):
+                        # Convert lists to semicolon-delimited or JSON strings
+                        def convert_list(x):
+                            if x is None or (isinstance(x, float) and np.isnan(x)):
+                                return ""
+                            if isinstance(x, (list, tuple)):
+                                # Simple list of primitives: semicolon-delimited
+                                if all(isinstance(i, (str, int, float, type(None))) for i in x):
+                                    return ";".join(str(i) for i in x if i is not None)
+                                # Complex nested structure: JSON
+                                return json.dumps(x)
+                            return str(x)
+                        df[col] = df[col].apply(convert_list)
+                    elif isinstance(sample, dict):
+                        # Convert dicts to JSON strings
+                        def convert_dict(x):
+                            if x is None or (isinstance(x, float) and np.isnan(x)):
+                                return ""
+                            if isinstance(x, dict):
+                                return json.dumps(x)
+                            return str(x)
+                        df[col] = df[col].apply(convert_dict)
+
         df.to_csv("%s", index=False)
 except Exception as e:
     sys.stderr.write(str(e))
@@ -840,6 +958,8 @@ except Exception as e:
       if (!assay.group$exists(name = 'meta.features')) {
         assay.group$create_group(name = 'meta.features')
       }
+      # Sanitize column names for var metadata
+      col_name_map <- SanitizeColumnNames(names(var_data))
       for (col_name in names(var_data)) {
         # Skip the column used for feature names (rownames)
         # If using feature_name for rownames, preserve index (Ensembl IDs) as metadata
@@ -851,8 +971,9 @@ except Exception as e:
           next  # Skip the index column as it's used for rownames
         }
         col_data <- var_data[[col_name]]
+        sanitized_name <- col_name_map[[col_name]]
         assay.group[['meta.features']]$create_dataset(
-          name = col_name,
+          name = sanitized_name,
           robj = col_data,
           dtype = GuessDType(x = if (length(col_data) > 0) col_data[1] else col_data)
         )
@@ -1084,12 +1205,18 @@ except Exception as e:
     }
   }
   ColToFactor(dfgroup = assay.group[['meta.features']])
+  # Sanitize column names and handle nullable dtypes in meta.features
+  if (assay.group$exists(name = 'meta.features')) {
+    SanitizeH5DFColumns(dfgroup = assay.group[['meta.features']])
+  }
   # if (assay.group[['meta.features']]$attr_exists(attr_name = 'column-order')) {
   if (isTRUE(x = AttrExists(x = assay.group[['meta.features']], name = 'column-order'))) {
     colnames <- h5attr(
       x = assay.group[['meta.features']],
       which = 'column-order'
     )
+    # Sanitize column names in the column-order attribute
+    colnames <- vapply(colnames, SanitizeColumnName, character(1), USE.NAMES = FALSE)
     assay.group[['meta.features']]$create_attr(
       attr_name = 'colnames',
       robj = colnames,
@@ -1240,9 +1367,48 @@ except Exception as e:
     }
     NormalizeH5ADCategorical(dfgroup = dfile[['meta.data']])
     ColToFactor(dfgroup = dfile[['meta.data']])
+    # Sanitize column names and handle nullable dtypes in meta.data
+    SanitizeH5DFColumns <- function(dfgroup) {
+      col_names <- names(dfgroup)
+      # Skip internal names
+      col_names <- col_names[!col_names %in% c('__categories', '_index')]
+      col_name_map <- SanitizeColumnNames(col_names)
+      for (old_name in names(col_name_map)) {
+        new_name <- col_name_map[[old_name]]
+        col_obj <- dfgroup[[old_name]]
+
+        # Handle nullable dtype (mask+values) groups
+        if (inherits(col_obj, 'H5Group')) {
+          flattened <- FlattenNullable(col_obj)
+          if (!is.null(flattened)) {
+            # Delete old group and create flattened dataset
+            dfgroup$link_delete(name = old_name)
+            dfgroup$create_dataset(
+              name = new_name,
+              robj = flattened,
+              dtype = GuessDType(x = if (length(flattened) > 0) flattened[1] else flattened)
+            )
+            next
+          }
+        }
+
+        # Rename if needed
+        if (old_name != new_name) {
+          dfgroup$obj_copy_from(
+            src_loc = dfgroup,
+            src_name = old_name,
+            dst_name = new_name
+          )
+          dfgroup$link_delete(name = old_name)
+        }
+      }
+    }
+    SanitizeH5DFColumns(dfgroup = dfile[['meta.data']])
     # if (dfile[['meta.data']]$attr_exists(attr_name = 'column-order')) {
     if (isTRUE(x = AttrExists(x = dfile[['meta.data']], name = 'column-order'))) {
       colnames <- h5attr(x = dfile[['meta.data']], which = 'column-order')
+      # Sanitize column names in the column-order attribute
+      colnames <- vapply(colnames, SanitizeColumnName, character(1), USE.NAMES = FALSE)
       dfile[['meta.data']]$create_attr(
         attr_name = 'colnames',
         robj = colnames,
@@ -1286,13 +1452,16 @@ except Exception as e:
 
       # Create meta.data group and add columns
       dfile$create_group(name = 'meta.data')
+      # Sanitize column names for obs metadata
+      obs_col_name_map <- SanitizeColumnNames(names(obs_data))
       for (col_name in names(obs_data)) {
         if (col_name == 'index' || col_name == names(obs_data)[1]) {
           next  # Skip the index column as it's used for cell names
         }
         col_data <- obs_data[[col_name]]
+        sanitized_name <- obs_col_name_map[[col_name]]
         dfile[['meta.data']]$create_dataset(
-          name = col_name,
+          name = sanitized_name,
           robj = col_data,
           dtype = GuessDType(x = if (length(col_data) > 0) col_data[1] else col_data)
         )
@@ -3870,7 +4039,7 @@ H5SeuratToH5AD <- function(
 #' @export
 #'
 readH5AD_obs <- function(file) {
-  suppressWarnings(expr = hfile <- SeuratDisk:: Connect(filename = file, force = TRUE))
+  suppressWarnings(expr = hfile <- Connect(filename = file, force = TRUE))
   hfile_obs <- hfile[['obs']]
   obs_groups <- setdiff(names(hfile_obs), c('__categories', '_index'))
   matrix <- as.data.frame(
@@ -3919,7 +4088,7 @@ readH5AD_obs <- function(file) {
 #' @export
 #' 
 readH5AD_obsm <-  function(file) {
-  hfile <- SeuratDisk:: Connect(filename = file, force = TRUE)
+  hfile <- Connect(filename = file, force = TRUE)
   hfile_obsm <- hfile[['obsm']]
   if (length(names(hfile_obsm)) == 0) {
     message('No obsm if found in this object')

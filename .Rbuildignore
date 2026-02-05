@@ -20,10 +20,10 @@
 ^inst/testdata/pbmc3k_final\.h5ad$
 
 # Exclude large inst/testdata directories (keep only crc_sample.h5ad for vignettes)
-^inst/testdata/conversion_tests$
-^inst/testdata/seurat rds$
-^inst/testdata/scanpy h5ad$
-^inst/testdata/raw data$
+^inst/testdata/conversion_tests
+^inst/testdata/seurat\ rds
+^inst/testdata/scanpy\ h5ad
+^inst/testdata/raw\ data
 ^inst/testdata/.*\.h5seurat$
 ^inst/testdata/.*\.h5Seurat$
 ^inst/testdata/.*\.rds$
@@ -31,10 +31,15 @@
 
 # Exclude build artifacts
 ^srtdisk_.*\.tar\.gz$
+^srtdisk_.*\.tgz$
 ^\.\.Rcheck$
+^srtdisk\.Rcheck$
+^visium_colon\.h5ad$
+^README\.html$
 
 ^\.claude$
 ^SESSION_SUMMARY\.md$
+^codecov\.yml$
 ^check_output\.log$
 ^knitted_vignettes$
 ^test_.*\.h5Seurat$

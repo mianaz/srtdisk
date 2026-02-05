@@ -248,23 +248,26 @@ as.loom.Seurat <- function(
   }
   lfile <- loom$new(filename = filename, mode = 'w')
   AddSlots <- function(assay) {
-    for (slot in c('counts', 'scale.data')) {
-      mat <- GetAssayData(object = x, slot = slot, assay = assay)
-      if (identical(x = dim(x = mat), y = dim(x = x))) {
+    for (layer_name in c('counts', 'scale.data')) {
+      mat <- tryCatch(
+        GetAssayData(object = x, layer = layer_name, assay = assay),
+        error = function(e) NULL
+      )
+      if (!is.null(mat) && identical(x = dim(x = mat), y = dim(x = x))) {
         if (isTRUE(x = verbose)) {
-          message("Adding slot ", slot, " for assay ", assay)
+          message("Adding layer ", layer_name, " for assay ", assay)
         }
         name <- ifelse(
           test = assay == DefaultAssay(object = x),
-          yes = slot,
-          no = paste(assay, slot, sep = '_')
+          yes = layer_name,
+          no = paste(assay, layer_name, sep = '_')
         )
         lfile$add_layer(
           x = mat,
           name = ifelse(
             test = assay == DefaultAssay(object = x),
-            yes = slot,
-            no = paste(assay, slot, sep = '_')
+            yes = layer_name,
+            no = paste(assay, layer_name, sep = '_')
           ),
           verbose = verbose
         )
@@ -285,11 +288,29 @@ as.loom.Seurat <- function(
   )
   assays.write <- unlist(x = Filter(f = Negate(f = is.null), x = assays.write))
   assays.write <- setdiff(x = DefaultAssay(object = x), assays.write)
-  if (verbose) {
-    message("Saving data from ", DefaultAssay(object = x), " as /matrix")
+  # Get data layer, fall back to counts if data is empty
+  main_matrix <- tryCatch(
+    GetAssayData(object = x, layer = 'data'),
+    error = function(e) NULL
+  )
+  if (is.null(main_matrix) || IsMatrixEmpty(main_matrix)) {
+    main_matrix <- tryCatch(
+      GetAssayData(object = x, layer = 'counts'),
+      error = function(e) NULL
+    )
+    if (verbose && !is.null(main_matrix)) {
+      message("Data layer empty, using counts from ", DefaultAssay(object = x), " as /matrix")
+    }
+  } else {
+    if (verbose) {
+      message("Saving data from ", DefaultAssay(object = x), " as /matrix")
+    }
+  }
+  if (is.null(main_matrix) || IsMatrixEmpty(main_matrix)) {
+    stop("No data or counts layer found in default assay", call. = FALSE)
   }
   WriteMatrix(
-    x = GetAssayData(object = x, slot = 'data'),
+    x = main_matrix,
     name = 'matrix',
     lfile = lfile,
     verbose = verbose
@@ -300,7 +321,7 @@ as.loom.Seurat <- function(
       message("Adding data for ", assay)
     }
     lfile$add_layer(
-      x = GetAssayData(object = x, slot = data, assay = assay),
+      x = GetAssayData(object = x, layer = 'data', assay = assay),
       name = assay,
       verbose = verbose
     )
@@ -355,11 +376,13 @@ as.loom.Seurat <- function(
     })
   }
   # Add graphs
-  # Try to get graph names - Graphs may not be exported, so use alternative methods
+  # Get graph names using SeuratObject::Graphs if available
+
   graph_names <- tryCatch({
-    # Try using the Graphs function if available
-    if (exists("Graphs", where = asNamespace("Seurat"), mode = "function")) {
-      Seurat:::Graphs(object = x)
+    # Use SeuratObject::Graphs which is exported
+    if (requireNamespace("SeuratObject", quietly = TRUE) &&
+        exists("Graphs", where = asNamespace("SeuratObject"), mode = "function")) {
+      SeuratObject::Graphs(object = x)
     } else {
       # Fall back to checking slot names
       slot_names <- slotNames(x)

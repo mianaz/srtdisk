@@ -65,6 +65,8 @@ color <- c("experimental" = "orange", "maturing" = "blue", "stable" = "brightgre
 <!-- badges: start -->
 [![CRAN/METACRAN](https://img.shields.io/cran/v/`r pkg`)](`r paste0(cran.cannoncial, pkg)`)
 [![Lifecycle](https://img.shields.io/badge/lifecycle-`r stage`-`r color`.svg)](`r github.url`)
+[![R-CMD-check](https://github.com/mianaz/srtdisk/actions/workflows/r-cmd-check.yaml/badge.svg)](https://github.com/mianaz/srtdisk/actions/workflows/r-cmd-check.yaml)
+[![Codecov test coverage](https://codecov.io/gh/mianaz/srtdisk/graph/badge.svg)](https://codecov.io/gh/mianaz/srtdisk)
 <!-- badges: end -->
 
 <!-- Interfaces for HDF5-based Single Cell File Formats -->
@@ -73,13 +75,25 @@ color <- c("experimental" = "orange", "maturing" = "blue", "stable" = "brightgre
 cat(gsub(pattern = '\n', replacement = ' ', x = description[, "Description"]))
 ```
 
+## Installation
+
+`r pkg` is not currently available on CRAN.
+You can install it from [GitHub](`r github.url`) with:
+
+``` r
+if (!requireNamespace("remotes", quietly = TRUE)) {
+  install.packages("remotes")
+}
+remotes::install_github("mianaz/srtdisk")
+```
+
 ## What's New in srtdisk (vs SeuratDisk)
 
 | Feature | SeuratDisk | srtdisk |
 |---------|------------|---------|
 | Seurat v5 Assay5 | Not supported | Full support |
-| Spatial Technologies | Visium only | Visium, SlideSeq, FOV |
-| Metadata | Partial | Preserved |
+| Visium Spatial | Not supported | Full support |
+| Metadata | Partial | Numeric, categorical, boolean preserved |
 | Direct Conversion | Two-step only | `SeuratToH5AD()` wrapper |
 | h5ad Compatibility | Basic | Improved scanpy conventions |
 
@@ -129,13 +143,18 @@ SeuratToH5AD(cbmc, filename = "cbmc_rna.h5ad", assay = "RNA", overwrite = TRUE)
 SeuratToH5AD(cbmc, filename = "cbmc_adt.h5ad", assay = "ADT", overwrite = TRUE)
 ```
 
-### Spatial Data Conversion
+### Visium Spatial Data Conversion
 
 ```r
+# Seurat Visium to h5ad
 library(SeuratData)
 InstallData("stxBrain")
 brain <- UpdateSeuratObject(LoadData("stxBrain", type = "anterior1"))
 SeuratToH5AD(brain, filename = "brain_spatial.h5ad", overwrite = TRUE)
+
+# h5ad to Seurat (preserves spatial coordinates and images)
+Convert("brain_spatial.h5ad", dest = "h5seurat", overwrite = TRUE)
+brain_rt <- LoadH5Seurat("brain_spatial.h5seurat")
 ```
 
 ## Function Reference
@@ -168,18 +187,6 @@ For detailed documentation, see the vignettes:
 - [Conversions: h5Seurat and AnnData](https://mianaz.github.io/srtdisk/articles/convert-anndata.html)
 - [Saving and Loading h5Seurat Files](https://mianaz.github.io/srtdisk/articles/h5Seurat-load.html)
 - [h5Seurat File Format Specification](https://mianaz.github.io/srtdisk/articles/h5Seurat-spec.html)
-
-## Installation
-
-`r pkg` is not currently available on CRAN.
-You can install it from [GitHub](`r github.url`) with:
-
-``` r
-if (!requireNamespace("remotes", quietly = TRUE)) {
-  install.packages("remotes")
-}
-remotes::install_github("mianaz/srtdisk")
-```
 
 ## Dependencies
 

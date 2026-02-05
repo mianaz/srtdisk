@@ -1,6 +1,36 @@
+# srtdisk 0.2.1 (Development)
+
+## New Features
+
+### Native AnnData Preprocessing
+
+srtdisk now handles "messy" AnnData files natively without requiring Python preprocessing:
+
+- **Column Name Sanitization**: Automatically sanitizes obs/var column names during h5ad to h5Seurat conversion
+  - Replaces problematic characters (`/`, spaces, commas, semicolons, colons, backslashes) with underscores
+  - Handles duplicate names by appending `__dup1`, `__dup2`, etc.
+  - Ensures valid R names (prefixes with `X` if column starts with a number)
+  - Example: `cell/type` -> `cell_type`, `sample name` -> `sample_name`
+
+- **List/Dict Column Conversion**: Converts list and dict columns in compound datasets to R-compatible strings
+  - Simple lists converted to semicolon-delimited strings (e.g., `["A", "B", "C"]` -> `"A;B;C"`)
+  - Complex nested structures converted to JSON strings
+  - Dict columns converted to JSON strings
+
+- **Nullable Dtype Handling**: Properly handles pandas nullable extension dtypes stored as mask+values structures
+  - Automatically flattens mask+values groups to simple vectors with NA values
+  - Preserves missing value semantics during conversion
+
+## Bug Fixes
+
+- Fixed handling of obs/var column names containing special characters
+- Improved robustness of compound dataset reading with Python fallback
+
+---
+
 # srtdisk 0.2.0
 
-> **Release Date:** 2026-01-22
+> **Release Date:** 2026-01-29
 
 ## Highlights
 

@@ -7,6 +7,9 @@
 
 [![CRAN/METACRAN](https://img.shields.io/cran/v/srtdisk)](https://cran.r-project.org/package=srtdisk)
 [![Lifecycle](https://img.shields.io/badge/lifecycle-maturing-blue.svg)](https://github.com/mianaz/srtdisk)
+[![R-CMD-check](https://github.com/mianaz/srtdisk/actions/workflows/r-cmd-check.yaml/badge.svg)](https://github.com/mianaz/srtdisk/actions/workflows/r-cmd-check.yaml)
+[![Codecov test
+coverage](https://codecov.io/gh/mianaz/srtdisk/graph/badge.svg)](https://codecov.io/gh/mianaz/srtdisk)
 <!-- badges: end -->
 
 <!-- Interfaces for HDF5-based Single Cell File Formats -->
@@ -24,15 +27,27 @@ goal of enhancing interoperability between Seurat and Scanpy. This
 version includes Seurat v5 Assay5 compatibility and improved spatial
 data handling.
 
-## What's New in srtdisk (vs SeuratDisk)
+## Installation
 
-| Feature              | SeuratDisk    | srtdisk                     |
-|----------------------|---------------|-----------------------------|
-| Seurat v5 Assay5     | Not supported | Full support                |
-| Spatial Technologies | Visium only   | Visium, SlideSeq, FOV       |
-| Metadata             | Partial       | Preserved                   |
-| Direct Conversion    | Two-step only | `SeuratToH5AD()` wrapper    |
-| h5ad Compatibility   | Basic         | Improved scanpy conventions |
+srtdisk is not currently available on CRAN. You can install it from
+[GitHub](https://github.com/mianaz/srtdisk) with:
+
+``` r
+if (!requireNamespace("remotes", quietly = TRUE)) {
+  install.packages("remotes")
+}
+remotes::install_github("mianaz/srtdisk")
+```
+
+## What’s New in srtdisk (vs SeuratDisk)
+
+| Feature            | SeuratDisk    | srtdisk                                 |
+|--------------------|---------------|-----------------------------------------|
+| Seurat v5 Assay5   | Not supported | Full support                            |
+| Visium Spatial     | Not supported | Full support                            |
+| Metadata           | Partial       | Numeric, categorical, boolean preserved |
+| Direct Conversion  | Two-step only | `SeuratToH5AD()` wrapper                |
+| h5ad Compatibility | Basic         | Improved scanpy conventions             |
 
 ## Quick Start
 
@@ -69,7 +84,7 @@ Convert(h5ad_path, dest = "h5seurat", overwrite = TRUE)
 crc <- LoadH5Seurat("crc_sample.h5seurat")
 ```
 
-### Multi-assay (e.g. CITE-seq)
+### Multi-assay (e.g. CITE-seq)
 
 ``` r
 # Note: Converts one assay at a time
@@ -80,13 +95,18 @@ SeuratToH5AD(cbmc, filename = "cbmc_rna.h5ad", assay = "RNA", overwrite = TRUE)
 SeuratToH5AD(cbmc, filename = "cbmc_adt.h5ad", assay = "ADT", overwrite = TRUE)
 ```
 
-### Spatial Data Conversion
+### Visium Spatial Data Conversion
 
 ``` r
+# Seurat Visium to h5ad
 library(SeuratData)
 InstallData("stxBrain")
 brain <- UpdateSeuratObject(LoadData("stxBrain", type = "anterior1"))
 SeuratToH5AD(brain, filename = "brain_spatial.h5ad", overwrite = TRUE)
+
+# h5ad to Seurat (preserves spatial coordinates and images)
+Convert("brain_spatial.h5ad", dest = "h5seurat", overwrite = TRUE)
+brain_rt <- LoadH5Seurat("brain_spatial.h5seurat")
 ```
 
 ## Function Reference
@@ -122,18 +142,6 @@ AnnData](https://mianaz.github.io/srtdisk/articles/convert-anndata.html) -
 Files](https://mianaz.github.io/srtdisk/articles/h5Seurat-load.html) -
 [h5Seurat File Format
 Specification](https://mianaz.github.io/srtdisk/articles/h5Seurat-spec.html)
-
-## Installation
-
-srtdisk is not currently available on CRAN. You can install it from
-[GitHub](https://github.com/mianaz/srtdisk) with:
-
-``` r
-if (!requireNamespace("remotes", quietly = TRUE)) {
-  install.packages("remotes")
-}
-remotes::install_github("mianaz/srtdisk")
-```
 
 ## Dependencies
 
