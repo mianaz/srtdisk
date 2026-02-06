@@ -61,8 +61,6 @@ AppendData(
 )
 }
 \arguments{
-\item{file}{Path to an h5Seurat file or an open h5Seurat object}
-
 \item{object}{A \code{\link[Seurat]{Seurat}} object to append data to}
 
 \item{assays}{One of:
@@ -78,29 +76,27 @@ AppendData(
 
 \item{reductions}{One of:
 \itemize{
- \item A character vector with names of reductions
- \item \code{NULL} for all reductions
- \item \code{NA} for \link[Seurat:IsGlobal]{global} reductions
- \item \code{FALSE} for no reductions
+ \item \code{NULL} (default): Load all reductions (PCA, UMAP, etc.)
+ \item A character vector with names of specific reductions (e.g., \code{c("pca", "umap")})
+ \item \code{NA}: Load only global (assay-independent) reductions
+ \item \code{FALSE}: Skip loading all reductions
 }
-\strong{Note}: Only reductions associated with an assay loaded in
-\code{assays} or marked as \link[Seurat:IsGlobal]{global} will be loaded}
+\strong{Note}: Only reductions associated with a loaded assay or marked as global will be loaded.}
 
 \item{graphs}{One of:
 \itemize{
- \item A character vector with names of graphs
- \item \code{NULL} for all graphs
- \item \code{FALSE} for no graphs
+ \item \code{NULL} (default): Load all graphs
+ \item A character vector with specific graph names (e.g., \code{c("RNA_snn", "ADT_snn")})
+ \item \code{FALSE}: Skip loading graphs
 }
-\strong{Note}: Only graphs associated with an assay loaded in \code{assays}
-will be loaded}
+\strong{Note}: Only graphs associated with loaded assays will be available.}
 
 \item{images}{One of:
 \itemize{
- \item A character vector with names of images
- \item \code{NULL} for all images
- \item \code{NA} for \link[Seurat:IsGlobal]{global} images
- \item \code{FALSE} for no images
+ \item \code{NULL} (default): Load all images (for spatial experiments)
+ \item A character vector with image names
+ \item \code{NA}: Load only global images
+ \item \code{FALSE}: Skip images
 }}
 
 \item{extras}{Extra information to load; supports any combination of the
@@ -113,7 +109,7 @@ following values:
 \item{overwrite}{Overwrite existing data in \code{object} with data from
 \code{file}}
 
-\item{verbose}{Show progress updates}
+\item{verbose}{Logical; if \code{TRUE} (default), show progress messages}
 
 \item{...}{Arguments passed to other methods}
 }

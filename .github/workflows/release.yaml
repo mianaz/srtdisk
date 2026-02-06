@@ -1,0 +1,88 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  check-release:
+    runs-on: ubuntu-latest
+    outputs:
+      is_release: ${{ steps.check.outputs.is_release }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for release commit
+        id: check
+        run: |
+          MSG=$(git log -1 --pretty=%s)
+          if echo "$MSG" | grep -qE '^\[release\]'; then
+            VERSION=$(grep '^Version:' DESCRIPTION | sed 's/Version: //')
+            echo "is_release=true" >> "$GITHUB_OUTPUT"
+            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+            echo "Release detected: v$VERSION"
+          else
+            echo "is_release=false" >> "$GITHUB_OUTPUT"
+            echo "Not a release commit"
+          fi
+
+  r-cmd-check:
+    needs: check-release
+    if: needs.check-release.outputs.is_release == 'true'
+    runs-on: ${{ matrix.config.os }}
+    name: R-CMD-check (${{ matrix.config.os }}, ${{ matrix.config.r }})
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {os: macos-latest, r: 'release'}
+          - {os: ubuntu-latest, r: 'release'}
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ matrix.config.r }}
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-pandoc@v2
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::rcmdcheck
+          needs: check
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          upload-snapshots: true
+          error-on: '"error"'
+          build_args: 'c("--no-build-vignettes", "--no-manual")'
+          args: 'c("--no-manual", "--as-cran", "--no-vignettes")'
+
+  create-release:
+    needs: [check-release, r-cmd-check]
+    if: needs.check-release.outputs.is_release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract release notes
+        id: notes
+        run: |
+          # Extract the first version section from NEWS.md
+          VERSION="${{ needs.check-release.outputs.version }}"
+          # Get content between first and second version headers
+          awk '/^# srtdisk '"$VERSION"'/{found=1; next} found && /^# srtdisk [0-9]/{exit} found{print}' NEWS.md > release_notes.md
+          echo "Extracted release notes:"
+          cat release_notes.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.check-release.outputs.version }}
+          name: srtdisk v${{ needs.check-release.outputs.version }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: false

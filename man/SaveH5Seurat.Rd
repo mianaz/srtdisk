@@ -8,7 +8,7 @@
 \alias{as.h5Seurat.default}
 \alias{as.h5Seurat.H5File}
 \alias{as.h5Seurat.Seurat}
-\title{Save a \code{Seurat} object to an h5Seurat file}
+\title{Save a Seurat object to an h5Seurat file}
 \usage{
 SaveH5Seurat(object, filename, overwrite = FALSE, verbose = TRUE, ...)
 
@@ -37,21 +37,85 @@ as.h5Seurat(x, ...)
 )
 }
 \arguments{
-\item{object, x}{An object}
+\item{object, x}{An object (typically a Seurat object)}
 
-\item{filename}{Name of file to save the object to}
+\item{filename}{Name of file to save the object to. If not provided, defaults to
+\code{<ProjectName>.h5seurat}. The .h5seurat extension is added automatically
+if not present.}
 
-\item{overwrite}{Overwrite \code{filename} if present}
+\item{overwrite}{Logical; if \code{TRUE}, overwrite an existing file with the
+same name. Default is \code{FALSE}.}
 
-\item{verbose}{Show progress updates}
+\item{verbose}{Show progress updates during save. Default is \code{TRUE}.}
 
 \item{...}{Arguments passed to other methods}
 }
 \value{
-\code{SaveH5Seurat}: Invisbly returns \code{filename}
+\code{SaveH5Seurat}: Invisibly returns the filename of the saved file
 
 \code{as.h5Seurat}: An \code{\link{h5Seurat}} object
 }
 \description{
-Save a \code{Seurat} object to an h5Seurat file
+Save a Seurat object to the efficient HDF5-based h5Seurat format. This format
+is optimized for large, complex single-cell datasets including multi-modal and
+spatial data. h5Seurat files can be rapidly converted to other formats like h5ad
+(AnnData) or h5mu (MuData) for interoperability with Python tools.
+}
+\details{
+The h5Seurat format stores:
+\itemize{
+  \item All assays with their layers (counts, data, scale.data, etc.) for Seurat V5
+  \item Dimensional reductions (PCA, UMAP, etc.)
+  \item Nearest-neighbor graphs and similarity graphs
+  \item Spatial images and coordinates (for spatial experiments)
+  \item Cell metadata and feature annotations
+  \item Cell identity classes
+  \item Command history
+  \item Miscellaneous and tool-specific data
+}
+
+The h5Seurat format is particularly useful for:
+\itemize{
+  \item Storing large datasets efficiently with HDF5 compression
+  \item Rapid conversion to Python formats (h5ad, h5mu)
+  \item Multi-modal and spatial transcriptomics experiments
+  \item Preserving all Seurat V5 layer information
+}
+}
+\section{Seurat V5 Layer Support}{
+
+When saving Seurat V5 objects with multiple layers (e.g., counts, data, scale.data),
+all layers are preserved and can be selectively loaded using \code{\link{LoadH5Seurat}}.
+}
+
+\examples{
+\dontrun{
+library(Seurat)
+library(SeuratDisk)
+
+# Create a simple example Seurat object
+seurat_obj <- CreateSeuratObject(counts = GetAssayData(pbmc_small))
+
+# Save to h5Seurat format
+SaveH5Seurat(seurat_obj, filename = "my_data.h5seurat")
+
+# Save with overwrite if file already exists
+SaveH5Seurat(seurat_obj, filename = "my_data.h5seurat", overwrite = TRUE)
+
+# Load the saved file back
+seurat_obj <- LoadH5Seurat("my_data.h5seurat")
+
+# For multimodal data (e.g., CITE-seq)
+# SaveH5Seurat automatically saves all assays
+SaveH5Seurat(citeseq_obj, filename = "multimodal_data.h5seurat")
+
+# For spatial data (e.g., Visium)
+SaveH5Seurat(visium_obj, filename = "spatial_visium.h5seurat")
+}
+
+}
+\seealso{
+\code{\link{LoadH5Seurat}} to load a saved h5Seurat file
+\code{\link{as.h5Seurat}} for direct conversion without object assignment
+\code{\link{Convert}} for converting to other formats (h5ad, h5mu)
 }

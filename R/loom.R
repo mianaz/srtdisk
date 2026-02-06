@@ -314,6 +314,10 @@ LoomValidate3.0.0 <- function(lfile, verbose = TRUE) {
   return(invisible(x = TRUE))
 }
 
+#' Write a sized attribute to a loom file
+#'
+#' @keywords internal
+#' @noRd
 methods::setGeneric(
   name = 'SizedAttribute',
   def = function(x, name, lfile, type, stype, verbose = TRUE) {
@@ -347,6 +351,10 @@ methods::setMethod(
   }
 )
 
+#' Write an attribute to a loom file
+#'
+#' @keywords internal
+#' @noRd
 methods::setGeneric(
   name = 'WriteAttribute',
   def = function(x, name, lfile, stype, transpose = TRUE, verbose = TRUE) {
@@ -404,6 +412,10 @@ methods::setMethod(
   }
 )
 
+#' Write a graph to a loom file
+#'
+#' @keywords internal
+#' @noRd
 methods::setGeneric(
   name = 'WriteGraph',
   def = function(x, name, lfile, type, verbose = TRUE) {

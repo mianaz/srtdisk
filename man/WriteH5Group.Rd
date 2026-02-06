@@ -4,7 +4,6 @@
 \alias{WriteH5Group}
 \alias{WriteH5Group,ANY-method}
 \alias{WriteH5Group,array-method}
-\alias{WriteH5Group,Assay-method}
 \alias{WriteH5Group,Assay5-method}
 \alias{WriteH5Group,data.frame-method}
 \alias{WriteH5Group,dgCMatrix-method}
@@ -22,8 +21,6 @@ WriteH5Group(x, name, hgroup, verbose = TRUE)
 \S4method{WriteH5Group}{ANY}(x, name, hgroup, verbose = TRUE)
 
 \S4method{WriteH5Group}{array}(x, name, hgroup, verbose = TRUE)
-
-\S4method{WriteH5Group}{Assay}(x, name, hgroup, verbose = TRUE)
 
 \S4method{WriteH5Group}{Assay5}(x, name, hgroup, verbose = TRUE)
 
@@ -65,7 +62,7 @@ written out, the code constructs get complicated quickly. \code{WriteH5Group}
 provides a wrapper with sensible defaults over some of these complex code
 constructs to provide greater control over how data are written to disk.
 These defaults were chosen to fit best with \link{h5Seurat} files, see
-\href{../doc/h5Seurat-spec.html}{vignette("h5Seurat-spec")} for more
+\code{\href{../doc/h5Seurat-spec.html}{vignette("h5Seurat-spec")}} for more
 details
 }
 \examples{

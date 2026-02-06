@@ -1,3 +1,33 @@
+# srtdisk 0.2.2
+
+> **Release Date:** 2026-02-06
+
+## Highlights
+
+### Unified `Convert()` Interface for Seurat Objects
+
+`Convert()` now accepts Seurat objects directly as the `source` argument, enabling one-step conversion to any supported format:
+
+```r
+Convert(seurat_obj, dest = "output.h5ad")     # Seurat -> h5ad
+Convert(seurat_obj, dest = "output.loom")     # Seurat -> Loom
+Convert(seurat_obj, dest = "output.h5Seurat") # Seurat -> h5Seurat
+```
+
+This eliminates the need for the two-step `SaveH5Seurat()` + `Convert()` workflow when starting from a Seurat object.
+
+### Exported `SeuratToH5AD()`
+
+`SeuratToH5AD()` is now a fully exported convenience function (previously `@keywords internal`). It delegates to `Convert.Seurat` internally and remains the simplest way to convert a Seurat object to h5ad format.
+
+## Bug Fixes
+
+- Fixed `var`/`X` dimension mismatch in h5Seurat to h5ad conversion: `var` now uses the actual `X` matrix dimensions instead of metadata feature counts, which could differ when features were filtered from data layers but not from metadata
+- Fixed `raw/var` dimension mismatch with `raw/X` using the same approach
+- Fixed `roxygen2::roxygenize()` failure caused by a plain `IsFactor()` function in `ReadH5.R` overriding the S4 generic from `TestObject.R`
+
+---
+
 # srtdisk 0.2.1
 
 > **Release Date:** 2026-02-05

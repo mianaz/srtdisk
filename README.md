@@ -1,7 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# srtdisk v0.2.1
+# srtdisk v0.2.2
 
 <!-- badges: start -->
 
@@ -51,7 +51,7 @@ remotes::install_github("mianaz/srtdisk")
 
 ## Quick Start
 
-### Seurat to h5ad (Two-step)
+### Seurat to h5ad (Recommended)
 
 ``` r
 library(Seurat)
@@ -61,18 +61,24 @@ library(SeuratData)
 data("pbmc3k.final", package = "pbmc3k.SeuratData")
 pbmc <- UpdateSeuratObject(pbmc3k.final)
 
-# Step 1: Save as h5Seurat
-SaveH5Seurat(pbmc, filename = "pbmc3k.h5Seurat", overwrite = TRUE)
+# One-step conversion using Convert()
+Convert(pbmc, dest = "pbmc3k.h5ad", overwrite = TRUE)
 
-# Step 2: Convert to h5ad
-Convert("pbmc3k.h5Seurat", dest = "h5ad", overwrite = TRUE)
+# Or use the convenience wrapper
+SeuratToH5AD(pbmc, filename = "pbmc3k.h5ad", overwrite = TRUE)
 ```
 
-### Seurat to h5ad (One-step)
+### Seurat to Loom
 
 ``` r
-# Direct conversion using wrapper function
-SeuratToH5AD(pbmc, filename = "pbmc3k_direct.h5ad", overwrite = TRUE)
+Convert(pbmc, dest = "pbmc3k.loom", overwrite = TRUE)
+```
+
+### Seurat to h5Seurat
+
+``` r
+# Save as h5Seurat (can also use SaveH5Seurat() directly)
+Convert(pbmc, dest = "pbmc3k.h5Seurat", overwrite = TRUE)
 ```
 
 ### h5ad to Seurat
@@ -113,12 +119,12 @@ brain_rt <- LoadH5Seurat("brain_spatial.h5seurat")
 
 ### Core Conversion Functions
 
-| Function         | Description                               |
-|------------------|-------------------------------------------|
-| `SeuratToH5AD()` | Direct one-step Seurat to h5ad conversion |
-| `Convert()`      | Convert between h5Seurat and h5ad formats |
-| `SaveH5Seurat()` | Save Seurat object to h5Seurat file       |
-| `LoadH5Seurat()` | Load Seurat object from h5Seurat file     |
+| Function         | Description                                           |
+|------------------|-------------------------------------------------------|
+| `Convert()`      | Unified converter: Seurat/h5Seurat/h5ad/Loom          |
+| `SeuratToH5AD()` | Convenience wrapper for Seurat to h5ad                |
+| `SaveH5Seurat()` | Save Seurat object to h5Seurat file                   |
+| `LoadH5Seurat()` | Load Seurat object from h5Seurat file                 |
 
 ### h5Seurat File Operations
 

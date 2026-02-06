@@ -36,6 +36,6 @@ srtdisk:::BoolToInt(x = c(TRUE, FALSE, NA))
 }
 \seealso{
 \link[base]{integer} \link[base]{logical} \code{\link[base]{NA}}
-\code{\link{WriteH5Seurat}}
+\code{\link{SaveH5Seurat}}
 }
 \keyword{internal}

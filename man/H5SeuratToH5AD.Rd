@@ -14,20 +14,26 @@ H5SeuratToH5AD(
 )
 }
 \arguments{
-\item{source}{Source dataset}
+\item{source}{Source dataset: a Seurat object, filename path, or H5File connection}
 
-\item{dest}{Name of destination dataset}
+\item{dest}{Name/path of destination file. If only a file type is provided
+(e.g., "h5seurat", "h5ad", "loom"), the extension is appended to the source
+filename (for file sources) or the Seurat project name (for Seurat objects).
+Supported formats: h5seurat, h5ad, loom}
 
-\item{assay}{Converting from \code{\link{h5Seurat}}: name of assay to write
-out; converting to \code{\link{h5Seurat}}: name to store assay data as}
+\item{assay}{For h5Seurat -> other formats: name of assay to convert.
+For other formats -> h5Seurat: name to assign to the assay.
+Default is "RNA".}
 
-\item{overwrite}{Overwrite existing \code{dest}}
+\item{overwrite}{Logical; if \code{TRUE}, overwrite an existing destination file.
+Default is \code{FALSE}.}
 
-\item{verbose}{Show progress updates}
+\item{verbose}{Logical; if \code{TRUE} (default), show progress updates}
 
 \item{standardize}{Logical; if \code{TRUE}, convert Seurat-style metadata column names
-to scanpy/AnnData conventions. For example, \code{nCount_RNA} becomes \code{n_counts},
-\code{nFeature_RNA} becomes \code{n_genes}. Default is \code{FALSE}.}
+to scanpy/AnnData conventions when converting to h5ad format. For example,
+\code{nCount_RNA} becomes \code{n_counts}, \code{nFeature_RNA} becomes \code{n_genes}.
+Only applicable for conversions to h5ad format. Default is \code{FALSE}.}
 }
 \value{
 Returns a handle to \code{dest} as an \code{\link[hdf5r]{H5File}}

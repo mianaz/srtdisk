@@ -6,7 +6,8 @@
 \alias{LoadLoom.H5File}
 \alias{LoadLoom.loom}
 \alias{as.Seurat.loom}
-\title{Loom-file Loading}
+\alias{as.Seurat}
+\title{Load a Loom file as a Seurat object}
 \usage{
 LoadLoom(
   file,
@@ -39,41 +40,47 @@ LoadLoom(
 )
 }
 \arguments{
-\item{file, x}{Name of loom file or a \code{loom} object to load data from}
+\item{file, x}{Name of Loom file (character path) or a \code{loom} object connection to load data from}
 
-\item{assay}{Name of assay to store expression data as; if \code{NULL}, will
-search for an HDF5 attribute named \code{SEURAT_ASSAY} or an attribute
-dataset named \code{/attrs/SEURAT_ASSAY} for assay name. If not found,
-defaults to \dQuote{RNA}}
+\item{assay}{Name of assay to store expression data as. If \code{NULL}, will
+search for an HDF5 attribute named \code{SEURAT_ASSAY} or dataset at
+\code{/attrs/SEURAT_ASSAY} for the assay name. Defaults to \code{"RNA"} if not found.}
 
-\item{cells}{Name of dataset in \code{/col_attrs} with cell names}
+\item{cells}{Name of dataset in \code{/col_attrs} containing cell/sample names.
+If not found, uses column indices as cell names.}
 
-\item{features}{Name of dataset in \code{/row_attrs} with feature names}
+\item{features}{Name of dataset in \code{/row_attrs} containing feature/gene names.
+If not found, uses row indices as feature names.}
 
-\item{normalized}{Name of matrix in \code{/layers} to store normalized data
-as; pass \dQuote{/matrix} to store \code{/matrix} as normalized data instead
-of raw counts}
+\item{normalized}{Name of layer in \code{/layers} to load as normalized expression data;
+special value \code{"/matrix"} loads the main matrix as normalized data instead of counts}
 
-\item{scaled}{Name of dataset in \code{/layers} to store scaled data as}
+\item{scaled}{Name of layer in \code{/layers} to load as scaled data}
 
-\item{filter}{Keep only selected cells and/or features as specified by
-\code{/col_attrs/Valid} and \code{/row_attrs/Valid}, respectively}
+\item{filter}{Logical; if \code{TRUE}, keep only cells and features marked as valid
+using \code{/col_attrs/Valid} and \code{/row_attrs/Valid} attributes}
 
-\item{verbose}{Show progress updates}
+\item{verbose}{Logical; if \code{TRUE} (default), show progress updates}
 
 \item{...}{Arguments passed to other methods}
 }
 \value{
-A \code{\link[Seurat]{Seurat}} object
+A \code{Seurat} object containing the expression matrix and metadata from the Loom file
 }
 \description{
-Load data from a loom file into a \code{\link[Seurat]{Seurat}} object
+Load gene expression data from Loom files (HDF5-based file format for storing
+annotated matrices) into a Seurat object. Loom files are commonly created by
+Python-based analysis tools and offer an alternative to H5AD format for
+storing single-cell data.
 }
 \details{
-\code{LoadLoom} will try to automatically fill slots of a \code{Seurat}
-object based on data presence or absence in a given loom file. This method
-varies by loom specification version. For version-specific details, see
-sections below
+The Loom format stores data in a specific HDF5 structure:
+\itemize{
+  \item \code{/matrix}: Main expression matrix (features x cells)
+  \item \code{/row_attrs}: Feature-level metadata (gene names, coordinates, etc.)
+  \item \code{/col_attrs}: Cell/sample-level metadata
+  \item \code{/layers}: Additional expression layers (normalized, scaled, etc.)
+}
 }
 \section{Loom 0.1 Loading}{
 
@@ -83,10 +90,37 @@ currently supported
 
 \section{Loom 3.0.0 Loading}{
 
-blah
+For loom files version 3.0.0 and higher, \code{LoadLoom3.0} provides
+comprehensive loading with support for filtering, dimensional reductions,
+and cell graphs.
 }
 
+\examples{
+\dontrun{
+library(SeuratDisk)
+
+# Load a basic Loom file
+seurat_obj <- LoadLoom("data.loom")
+
+# Load with specific assay name
+seurat_obj <- LoadLoom("data.loom", assay = "RNA")
+
+# Load and filter to valid cells/features only
+seurat_obj <- LoadLoom("data.loom", filter = TRUE)
+
+# Load specific layers
+seurat_obj <- LoadLoom(
+  "data.loom",
+  normalized = "normalized",
+  scaled = "scaled"
+)
+}
+
+}
 \seealso{
-\href{http://linnarssonlab.org/loompy/conventions/index.html}{Loom
-file conventions}
+\code{\link{SaveLoom}} to save Seurat objects to Loom format
+\code{\link{LoadH5Seurat}} to load h5Seurat files
+\code{\link{LoadH5AD}} to load h5ad files
+\href{http://linnarssonlab.org/loompy/}{Loom documentation}
+\href{http://linnarssonlab.org/loompy/conventions/index.html}{Loom file conventions}
 }
