@@ -7,16 +7,21 @@
 H5ADToH5Seurat(source, dest, assay = "RNA", overwrite = FALSE, verbose = TRUE)
 }
 \arguments{
-\item{source}{Source dataset}
+\item{source}{Source dataset: a Seurat object, filename path, or H5File connection}
 
-\item{dest}{Name of destination dataset}
+\item{dest}{Name/path of destination file. If only a file type is provided
+(e.g., "h5seurat", "h5ad", "loom"), the extension is appended to the source
+filename (for file sources) or the Seurat project name (for Seurat objects).
+Supported formats: h5seurat, h5ad, loom}
 
-\item{assay}{Converting from \code{\link{h5Seurat}}: name of assay to write
-out; converting to \code{\link{h5Seurat}}: name to store assay data as}
+\item{assay}{For h5Seurat -> other formats: name of assay to convert.
+For other formats -> h5Seurat: name to assign to the assay.
+Default is "RNA".}
 
-\item{overwrite}{Overwrite existing \code{dest}}
+\item{overwrite}{Logical; if \code{TRUE}, overwrite an existing destination file.
+Default is \code{FALSE}.}
 
-\item{verbose}{Show progress updates}
+\item{verbose}{Logical; if \code{TRUE} (default), show progress updates}
 }
 \value{
 Returns a handle to \code{dest} as an \code{\link{h5Seurat}} object
@@ -63,7 +68,7 @@ added to the \dQuote{cell.names} dataset instead. If the
 \dQuote{__categories} dataset is present, each dataset within
 \dQuote{__categories} will be stored as a factor group. Cell-level metadata
 will be added as an HDF5 group unless factors are \strong{not} present and
-\code{\link[srtdisk]{srtdisk.dtype.dataframe_as_group}} is \code{FALSE}
+the \code{SeuratDisk.dtypes.dataframe_as_group} option is \code{FALSE}
 }
 \subsection{Dimensional reduction information:}{
  Cell embeddings are taken from \code{/obsm}; dimensional reductions are

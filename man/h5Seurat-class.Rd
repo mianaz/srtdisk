@@ -25,6 +25,8 @@ A class for connections to h5Seurat files
 \item \href{#method-h5Seurat-index}{\code{h5Seurat$index()}}
 \item \href{#method-h5Seurat-set.version}{\code{h5Seurat$set.version()}}
 \item \href{#method-h5Seurat-version}{\code{h5Seurat$version()}}
+\item \href{#method-h5Seurat-detect.version}{\code{h5Seurat$detect.version()}}
+\item \href{#method-h5Seurat-is.v5}{\code{h5Seurat$is.v5()}}
 }
 }
 \if{html}{\out{
@@ -143,5 +145,31 @@ Get the version attribute
 \if{html}{\out{<div class="r">}}\preformatted{h5Seurat$version()}\if{html}{\out{</div>}}
 }
 
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-h5Seurat-detect.version"></a>}}
+\if{latex}{\out{\hypertarget{method-h5Seurat-detect.version}{}}}
+\subsection{Method \code{detect.version()}}{
+Detect the Seurat version of the stored object
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{h5Seurat$detect.version()}\if{html}{\out{</div>}}
+}
+
+\subsection{Returns}{
+A string indicating the detected version ("V3", "V4", or "V5")
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-h5Seurat-is.v5"></a>}}
+\if{latex}{\out{\hypertarget{method-h5Seurat-is.v5}{}}}
+\subsection{Method \code{is.v5()}}{
+Check if this is a V5 format file
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{h5Seurat$is.v5()}\if{html}{\out{</div>}}
+}
+
+\subsection{Returns}{
+Logical indicating if file uses V5 format
+}
 }
 }

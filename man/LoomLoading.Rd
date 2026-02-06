@@ -29,28 +29,28 @@ LoadLoom3.0(
 )
 }
 \arguments{
-\item{assay}{Name of assay to store expression data as; if \code{NULL}, will
-search for an HDF5 attribute named \code{SEURAT_ASSAY} or an attribute
-dataset named \code{/attrs/SEURAT_ASSAY} for assay name. If not found,
-defaults to \dQuote{RNA}}
+\item{assay}{Name of assay to store expression data as. If \code{NULL}, will
+search for an HDF5 attribute named \code{SEURAT_ASSAY} or dataset at
+\code{/attrs/SEURAT_ASSAY} for the assay name. Defaults to \code{"RNA"} if not found.}
 
-\item{cells}{Name of dataset in \code{/col_attrs} with cell names}
+\item{cells}{Name of dataset in \code{/col_attrs} containing cell/sample names.
+If not found, uses column indices as cell names.}
 
-\item{features}{Name of dataset in \code{/row_attrs} with feature names}
+\item{features}{Name of dataset in \code{/row_attrs} containing feature/gene names.
+If not found, uses row indices as feature names.}
 
-\item{normalized}{Name of matrix in \code{/layers} to store normalized data
-as; pass \dQuote{/matrix} to store \code{/matrix} as normalized data instead
-of raw counts}
+\item{normalized}{Name of layer in \code{/layers} to load as normalized expression data;
+special value \code{"/matrix"} loads the main matrix as normalized data instead of counts}
 
-\item{scaled}{Name of dataset in \code{/layers} to store scaled data as}
+\item{scaled}{Name of layer in \code{/layers} to load as scaled data}
 
-\item{filter}{Keep only selected cells and/or features as specified by
-\code{/col_attrs/Valid} and \code{/row_attrs/Valid}, respectively}
+\item{filter}{Logical; if \code{TRUE}, keep only cells and features marked as valid
+using \code{/col_attrs/Valid} and \code{/row_attrs/Valid} attributes}
 
-\item{verbose}{Show progress updates}
+\item{verbose}{Logical; if \code{TRUE} (default), show progress updates}
 }
 \value{
-A \code{\link[Seurat]{Seurat}} object
+A \code{Seurat} object containing the expression matrix and metadata from the Loom file
 }
 \description{
 Version-specific loom-file loading functions
@@ -69,7 +69,9 @@ currently supported
 
 \section{Loom 3.0.0 Loading}{
 
-blah
+For loom files version 3.0.0 and higher, \code{LoadLoom3.0} provides
+comprehensive loading with support for filtering, dimensional reductions,
+and cell graphs.
 }
 
 \keyword{internal}

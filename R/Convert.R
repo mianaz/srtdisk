@@ -13,17 +13,18 @@ NULL
 # Generics
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-#' Convert HDF5-based single-cell datasets between formats
+#' Convert single-cell datasets between formats
 #'
-#' Rapidly convert between HDF5-based single-cell file formats (h5Seurat, h5ad, Loom)
+#' Rapidly convert between single-cell file formats (h5Seurat, h5ad, Loom)
 #' using minimal memory. This function enables seamless interoperability between
-#' R/Seurat and Python/scanpy/squidpy ecosystems. Conversions are performed on-disk
-#' without loading entire datasets into memory.
+#' R/Seurat and Python/scanpy/squidpy ecosystems. Accepts Seurat objects directly,
+#' filename paths, or H5File connections.
 #'
-#' @param source Source dataset (filename path or H5File connection)
+#' @param source Source dataset: a Seurat object, filename path, or H5File connection
 #' @param dest Name/path of destination file. If only a file type is provided
-#'   (e.g., "h5seurat", "h5ad"), the extension is appended to the source filename.
-#'   Supported formats: h5seurat, h5ad
+#'   (e.g., "h5seurat", "h5ad", "loom"), the extension is appended to the source
+#'   filename (for file sources) or the Seurat project name (for Seurat objects).
+#'   Supported formats: h5seurat, h5ad, loom
 #' @param assay For h5Seurat -> other formats: name of assay to convert.
 #'   For other formats -> h5Seurat: name to assign to the assay.
 #'   Default is "RNA".
@@ -33,12 +34,13 @@ NULL
 #' @param standardize Logical; if \code{TRUE}, convert Seurat-style metadata column names
 #'   to scanpy/AnnData conventions when converting to h5ad format. For example,
 #'   \code{nCount_RNA} becomes \code{n_counts}, \code{nFeature_RNA} becomes \code{n_genes}.
-#'   Only applicable for h5Seurat -> h5ad conversions. Default is \code{FALSE}.
+#'   Only applicable for conversions to h5ad format. Default is \code{FALSE}.
 #' @param ... Arguments passed to specific conversion methods
 #'
-#' @return If \code{source} is a character path, invisibly returns the destination
-#' filename. Otherwise returns an H5File object connection to the destination file
-#' (e.g., \code{\link{h5Seurat}} for h5Seurat format).
+#' @return If \code{source} is a character path or Seurat object, invisibly returns
+#' the destination filename. If \code{source} is an H5File connection, returns an
+#' H5File object connection to the destination file (e.g., \code{\link{h5Seurat}}
+#' for h5Seurat format).
 #'
 #' @inheritSection H5ADToH5Seurat AnnData/H5AD to h5Seurat
 #' @inheritSection H5SeuratToH5AD h5Seurat to AnnData/H5AD
@@ -46,6 +48,9 @@ NULL
 #' @details
 #' \strong{Supported Conversion Pathways:}
 #' \itemize{
+#'   \item \code{Seurat -> h5ad}: Direct conversion via temporary h5Seurat intermediate
+#'   \item \code{Seurat -> h5Seurat}: Save Seurat object to h5Seurat file
+#'   \item \code{Seurat -> Loom}: Save Seurat object to Loom file
 #'   \item \code{h5ad <-> h5Seurat}: Convert between Python AnnData and R Seurat formats
 #'   \item \code{Loom <-> h5Seurat}: Convert Loom files (limited support)
 #' }
@@ -60,6 +65,7 @@ NULL
 #' }
 #'
 #' @seealso
+#' \code{\link{SeuratToH5AD}} for direct Seurat to h5ad convenience function
 #' \code{\link{SaveH5Seurat}} to save Seurat objects
 #' \code{\link{LoadH5Seurat}} to load h5Seurat files
 #' \code{\link{LoadH5AD}} to directly load h5ad files
@@ -67,27 +73,32 @@ NULL
 #'
 #' @examples
 #' \dontrun{
-#' library(SeuratDisk)
+#' library(srtdisk)
+#' library(Seurat)
 #'
-#' # Convert h5ad (Python/scanpy) to h5Seurat (R/Seurat)
+#' # --- Convert from Seurat objects directly ---
+#' # Seurat to h5ad (for Python/scanpy)
+#' Convert(seurat_obj, dest = "output.h5ad")
+#'
+#' # Seurat to Loom
+#' Convert(seurat_obj, dest = "output.loom")
+#'
+#' # Seurat to h5Seurat
+#' Convert(seurat_obj, dest = "output.h5Seurat")
+#'
+#' # Quick format inference - uses Project name
+#' Convert(seurat_obj, dest = "h5ad")  # Creates <project>.h5ad
+#'
+#' # --- Convert between file formats ---
+#' # h5ad (Python/scanpy) to h5Seurat (R/Seurat)
 #' Convert("python_data.h5ad", dest = "seurat_data.h5seurat")
 #'
-#' # Convert Seurat to h5ad format for Python analysis
+#' # h5Seurat to h5ad
 #' Convert("seurat_data.h5seurat", dest = "python_data.h5ad")
 #'
-#' # Quick format inference - just specify file extension
-#' Convert("data.h5ad", dest = "h5seurat")  # Creates data.h5seurat
-#'
-#' # Work with file connections for advanced use
-#' h5_connection <- Convert("data.h5ad", dest = "h5seurat")
-#' # ... perform additional operations ...
-#' h5_connection$close_all()
-#'
-#' # Visium spatial data example
-#' # h5ad from scanpy preserves Visium images
+#' # Visium spatial data
 #' Convert("visium_scanpy.h5ad", dest = "visium_seurat.h5seurat")
 #' visium <- LoadH5Seurat("visium_seurat.h5seurat")
-#' SpatialFeaturePlot(visium, features = "GENE_NAME")
 #' }
 #'
 #' @name Convert
@@ -214,6 +225,54 @@ Convert.h5Seurat <- function(
     stop("Unable to convert h5Seurat files to ", type, " files", call. = FALSE)
   )
   return(dfile)
+}
+
+#' @rdname Convert
+#' @method Convert Seurat
+#' @export
+Convert.Seurat <- function(
+  source,
+  dest,
+  assay = DefaultAssay(object = source),
+  overwrite = FALSE,
+  verbose = TRUE,
+  standardize = FALSE,
+  ...
+) {
+  if (missing(x = dest)) {
+    stop("'dest' must be provided for Seurat object conversion", call. = FALSE)
+  }
+  type <- FileType(file = dest)
+  if (tolower(x = dest) == type) {
+    dest <- paste(Project(object = source), type, sep = '.')
+  }
+  result <- switch(
+    EXPR = type,
+    'h5ad' = {
+      if (file.exists(dest) && !overwrite) {
+        stop("Destination file '", dest, "' already exists. Use overwrite = TRUE to replace.", call. = FALSE)
+      }
+      temp_h5seurat <- tempfile(fileext = '.h5Seurat')
+      on.exit(expr = {
+        if (file.exists(temp_h5seurat)) {
+          if (verbose) message("Cleaning up intermediate h5Seurat file")
+          file.remove(temp_h5seurat)
+        }
+      }, add = TRUE)
+      if (verbose) message("Step 1/2: Saving Seurat object to temporary h5Seurat...")
+      SaveH5Seurat(object = source, filename = temp_h5seurat, overwrite = TRUE, verbose = verbose, ...)
+      if (verbose) message("Step 2/2: Converting to H5AD format...")
+      Convert(source = temp_h5seurat, dest = dest, assay = assay,
+              overwrite = overwrite, verbose = verbose, standardize = standardize)
+    },
+    'h5seurat' = SaveH5Seurat(object = source, filename = dest,
+                               overwrite = overwrite, verbose = verbose, ...),
+    'loom' = SaveLoom(object = source, filename = dest,
+                       overwrite = overwrite, verbose = verbose, ...),
+    stop("Cannot convert Seurat objects to '", type, "' format", call. = FALSE)
+  )
+  if (verbose) message("Successfully created: ", dest)
+  return(invisible(x = dest))
 }
 
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -2922,12 +2981,34 @@ H5SeuratToH5AD <- function(
   }
 
   AddEncoding(dname = 'X')
-  # Get number of features based on structure
-  if (has_layers && assay.group$exists(name = 'meta.data/_index')) {
-    # V5 structure: get count from meta.data/_index
+  # Get number of features from the ACTUAL X matrix dimensions (not metadata)
+  # This ensures var matches X even if metadata has stale feature counts
+  x_shape <- NULL
+  if (dfile[['X']]$attr_exists(attr_name = 'shape')) {
+    x_shape <- h5attr(x = dfile[['X']], which = 'shape')
+  } else if (dfile[['X']]$attr_exists(attr_name = 'dims')) {
+    x_shape <- rev(h5attr(x = dfile[['X']], which = 'dims'))
+  }
+  if (!is.null(x_shape) && length(x_shape) >= 2) {
+    # shape is (n_obs, n_vars) in anndata convention
+    n_features <- x_shape[2]
+    # Warn if metadata feature count differs from actual matrix dimensions
+    metadata_n <- if (has_layers && assay.group$exists(name = 'meta.data/_index')) {
+      length(SafeH5DRead(assay.group[['meta.data/_index']]))
+    } else if (assay.group$exists(name = 'features')) {
+      prod(assay.group[['features']]$dims)
+    } else {
+      n_features
+    }
+    if (n_features != metadata_n && verbose) {
+      message("Note: X has ", n_features, " features but metadata lists ", metadata_n,
+              "; using actual X dimensions for var")
+    }
+  } else if (has_layers && assay.group$exists(name = 'meta.data/_index')) {
+    # Fallback: V5 structure metadata
     n_features <- length(SafeH5DRead(assay.group[['meta.data/_index']]))
   } else {
-    # Legacy structure: use features dims
+    # Fallback: Legacy structure
     n_features <- prod(assay.group[['features']]$dims)
   }
 
@@ -3124,6 +3205,18 @@ H5SeuratToH5AD <- function(
     }
 
     AddEncoding(dname = 'raw/X')
+    # Get number of features from the ACTUAL raw/X matrix dimensions
+    raw_x_shape <- NULL
+    if (dfile[['raw/X']]$attr_exists(attr_name = 'shape')) {
+      raw_x_shape <- h5attr(x = dfile[['raw/X']], which = 'shape')
+    } else if (dfile[['raw/X']]$attr_exists(attr_name = 'dims')) {
+      raw_x_shape <- rev(h5attr(x = dfile[['raw/X']], which = 'dims'))
+    }
+    if (!is.null(raw_x_shape) && length(raw_x_shape) >= 2) {
+      n_raw_features <- raw_x_shape[2]
+    } else {
+      n_raw_features <- prod(assay.group[['features']]$dims)
+    }
     # Add meta.features with validation
     if (assay.group$exists(name = 'meta.features')) {
       meta.features.src <- assay.group[['meta.features']]
@@ -3131,7 +3224,7 @@ H5SeuratToH5AD <- function(
         TransferDF(
           src = meta.features.src,
           dname = 'raw/var',
-          index = seq.default(from = 1, to = prod(assay.group[['features']]$dims))
+          index = seq.default(from = 1, to = n_raw_features)
         )
       } else {
         warning("meta.features is not a valid H5D or H5Group in raw, creating empty var", immediate. = TRUE)
@@ -3152,6 +3245,8 @@ H5SeuratToH5AD <- function(
       # Legacy structure: feature names are in features dataset
       features_data_raw <- SafeH5DRead(assay.group[['features']])
     }
+    # Subset to match actual raw/X dimensions
+    features_data_raw <- as.character(features_data_raw[seq_len(n_raw_features)])
     dfile[['raw/var']]$create_dataset(
       name = rownames,
       robj = features_data_raw,
@@ -4144,7 +4239,7 @@ readH5AD_obsm <-  function(file) {
 #'
 #' @seealso \code{\link{SaveH5Seurat}}, \code{\link{Convert}}, \code{\link{LoadH5AD}}
 #'
-#' @keywords internal
+#' @export
 #'
 SeuratToH5AD <- function(
   object,
@@ -4155,67 +4250,15 @@ SeuratToH5AD <- function(
   standardize = FALSE,
   ...
 ) {
-  # Validate input
   if (!inherits(x = object, what = 'Seurat')) {
     stop("'object' must be a Seurat object", call. = FALSE)
   }
-
-  # Determine output filename
   if (is.null(x = filename)) {
     filename <- paste0(Project(object = object), '.h5ad')
   }
-
-  # Ensure .h5ad extension
   if (!grepl(pattern = '\\.h5ad$', x = filename, ignore.case = TRUE)) {
     filename <- paste0(filename, '.h5ad')
   }
-
-  # Check if output file exists
-  if (file.exists(filename) && !overwrite) {
-    stop("Destination file '", filename, "' already exists. Use overwrite = TRUE to replace.", call. = FALSE)
-  }
-
-  # Create temporary h5Seurat file
-  temp_h5seurat <- tempfile(fileext = '.h5Seurat')
-
-  # Use on.exit to ensure cleanup even if an error occurs
-  on.exit(expr = {
-    if (file.exists(temp_h5seurat)) {
-      if (verbose) {
-        message("Cleaning up intermediate h5Seurat file")
-      }
-      file.remove(temp_h5seurat)
-    }
-  }, add = TRUE)
-
-  # Step 1: Save Seurat object to temporary h5Seurat
-  if (verbose) {
-    message("Step 1/2: Saving Seurat object to temporary h5Seurat...")
-  }
-  SaveH5Seurat(
-    object = object,
-    filename = temp_h5seurat,
-    overwrite = TRUE,
-    verbose = verbose,
-    ...
-  )
-
-  # Step 2: Convert h5Seurat to H5AD
-  if (verbose) {
-    message("Step 2/2: Converting to H5AD format...")
-  }
-  Convert(
-    source = temp_h5seurat,
-    dest = filename,
-    assay = assay,
-    overwrite = overwrite,
-    verbose = verbose,
-    standardize = standardize
-  )
-
-  if (verbose) {
-    message("Successfully created: ", filename)
-  }
-
-  return(invisible(x = filename))
+  Convert(source = object, dest = filename, assay = assay,
+          overwrite = overwrite, verbose = verbose, standardize = standardize, ...)
 }

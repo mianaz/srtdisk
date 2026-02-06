@@ -87,6 +87,8 @@ as.loom <- function(x, ...) {
   UseMethod(generic = 'as.loom', object = x)
 }
 
+#' Write matrix data to a loom file
+#'
 #' @keywords internal
 #' @noRd
 setGeneric(

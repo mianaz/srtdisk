@@ -402,17 +402,6 @@ as.factor.H5D <- function(x) {
 
 #' Check if an HDF5 dataset is a factor
 #'
-#' @param x An HDF5 dataset
-#'
-#' @return TRUE if the dataset represents a factor
-#'
-#' @keywords internal
-#'
-IsFactor <- function(x) {
-  return(is(object = x, class2 = 'H5Group') &&
-         all(c('levels', 'values') %in% names(x = x)))
-}
-
 #' Get string type from HDF5 dataset
 #'
 #' @param stype An HDF5 dataset or type

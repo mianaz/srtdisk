@@ -11,7 +11,7 @@ GetMargin(dims, MARGIN = getOption(x = "SeuratDisk.chunking.MARGIN"))
 
 \item{MARGIN}{Either an integer value contained within
 \code{1:length(x = dims)} or one of the possible values of
-\code{\link[srtdisk]{SeuratDisk.chunking.MARGIN}}}
+the \code{SeuratDisk.chunking.MARGIN} option}
 }
 \value{
 An integer value with the \code{MARGIN}
@@ -26,6 +26,6 @@ srtdisk:::GetMargin(c(4, 10))
 
 }
 \seealso{
-\code{\link[srtdisk]{SeuratDisk.chunking.MARGIN}}
+\code{\link{srtdisk-package}} for package options
 }
 \keyword{internal}

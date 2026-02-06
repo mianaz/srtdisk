@@ -5,19 +5,13 @@
 \alias{as.array.H5D}
 \alias{as.array}
 \alias{as.data.frame.H5D}
-\alias{as.data.frame}
 \alias{as.data.frame.H5Group}
-\alias{as.factor,H5Group-method}
-\alias{as.factor}
-\alias{as.list,H5Group-method}
-\alias{as.list}
+\alias{as.list.H5D}
+\alias{as.list.H5Group}
 \alias{as.matrix.H5D}
 \alias{as.matrix}
 \alias{as.matrix.H5Group}
-\alias{as.sparse.H5D}
-\alias{as.sparse.H5Group}
-\alias{as.sparse}
-\title{Load data from an HDF5 File}
+\title{Read HDF5 Files}
 \usage{
 \method{as.array}{H5D}(x, ...)
 
@@ -25,24 +19,18 @@
 
 \method{as.data.frame}{H5Group}(x, row.names = NULL, optional = FALSE, ...)
 
-\S4method{as.factor}{H5Group}(x)
+\method{as.list}{H5D}(x, ...)
 
-\S4method{as.list}{H5Group}(x, which = NULL, ...)
+\method{as.list}{H5Group}(x, recursive = TRUE, ...)
 
 \method{as.matrix}{H5D}(x, transpose = FALSE, ...)
 
 \method{as.matrix}{H5Group}(x, ...)
-
-\method{as.sparse}{H5D}(x, ...)
-
-\method{as.sparse}{H5Group}(x, ...)
 }
 \arguments{
-\item{x}{An HDF5 dataset or group}
+\item{x}{An HDF5 dataset (H5D) object}
 
 \item{...}{Arguments passed to other methods}
-
-\item{which}{Optional character vector specifying which elements to read from the H5Group}
 
 \item{row.names}{\code{NULL} or a character vector giving the row
     names for the data frame.  Missing values are not allowed.}
@@ -55,41 +43,23 @@
     meaning of \code{\link[base]{data.frame}(*, check.names = !optional)}.
     See also the \code{make.names} argument of the \code{matrix} method.}
 
-\item{transpose}{Transpose the data upon reading it in, used when writing
-data in row-major order (eg. from C or Python)}
+\item{transpose}{Transpose the matrix before returning}
 }
 \value{
-\code{as.array}: returns an \code{\link[base]{array}} with the data
-from the HDF5 dataset
+Varies depending on the method being called
+
+\code{as.array}: an array with the data from the HDF5 dataset
 
 \code{as.data.frame}: returns a \code{\link[base]{data.frame}} with
-the data from the HDF5 dataset or group
+the data from the HDF5 dataset
 
-\code{as.factor}: returns a \code{\link[base]{factor}} with the data
-from the HDF5 group
+\code{as.list}: a list with the data from the HDF5 dataset
 
-\code{as.list}: returns a \code{\link[base]{list}} with the data from
-the HDF5 group
-
-\code{as.logical}: returns a \code{\link[base]{logical}} with the
-data from the HDF5 dataset
-
-\code{as.matrix}, \code{H5D} method: returns a
-\code{\link[base]{matrix}} with the data from the HDF5 dataset
-
-\code{as.sparse}, \code{H5D} method: returns a sparse matrix with the
-data from the HDF5 dataset
-
-\code{as.sparse}, \code{as.matrix}, \code{H5Group} method: returns a
-\code{\link[Matrix]{sparseMatrix}} with the data from the HDF5 group
-
-\code{dimnames}: returns a two-length list of character vectors for
-row and column names. Row names should be in a column named \code{index}
+\code{as.matrix}: a matrix with the data from the HDF5 dataset
 }
 \description{
-HDF5 allows storing data in an arbitrary fashion, which makes reading data
-into memory a hassle. The methods here serve as convenience functions for
-reading data stored in a certain format back into a certain R object. For
-details regarding how data should be stored on disk, please see the
-\href{../doc/h5Seurat-spec.html}{h5Seurat file specification}.
+Read data from HDF5 files
+}
+\seealso{
+\code{\link{as.sparse}}
 }
