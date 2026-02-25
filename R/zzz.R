@@ -985,5 +985,108 @@ SafeSetLayerData <- function(object, layer, value) {
   if (any(toset)) {
     options(default.options[toset])
   }
+
+  # Register file format loaders and savers for the hub conversion system.
+  # Any format pair without a direct path will go through:
+  #   Loader(source) -> Seurat object -> Saver(dest)
+  RegisterFormat(
+    ext = 'h5seurat',
+    loader = function(file, assay = 'RNA', verbose = TRUE, ...) {
+      LoadH5Seurat(file = file, verbose = verbose, ...)
+    },
+    saver = function(object, filename, overwrite = FALSE, verbose = TRUE, ...) {
+      SaveH5Seurat(object = object, filename = filename,
+                   overwrite = overwrite, verbose = verbose, ...)
+      invisible(filename)
+    }
+  )
+  RegisterFormat(
+    ext = 'h5ad',
+    loader = function(file, assay = 'RNA', verbose = TRUE, ...) {
+      # Load h5ad via proven path: h5ad -> temp h5seurat -> LoadH5Seurat
+      temp <- tempfile(fileext = '.h5seurat')
+      on.exit(unlink(temp), add = TRUE)
+      hfile <- Connect(filename = file, force = TRUE)
+      h5s <- H5ADToH5Seurat(source = hfile, dest = temp, assay = assay,
+                             overwrite = TRUE, verbose = verbose)
+      h5s$close_all()
+      hfile$close_all()
+      LoadH5Seurat(file = temp, verbose = verbose)
+    },
+    saver = function(object, filename, overwrite = FALSE, verbose = TRUE, ...) {
+      # h5ad save goes through temp h5seurat (matches existing Convert.Seurat path)
+      temp <- tempfile(fileext = '.h5Seurat')
+      on.exit(unlink(temp), add = TRUE)
+      SaveH5Seurat(object = object, filename = temp, overwrite = TRUE, verbose = FALSE)
+      h5s <- Connect(filename = temp, force = TRUE)
+      H5SeuratToH5AD(source = h5s, dest = filename, assay = DefaultAssay(object = object),
+                      overwrite = overwrite, verbose = verbose, ...)
+      h5s$close_all()
+      invisible(filename)
+    }
+  )
+  RegisterFormat(
+    ext = 'loom',
+    loader = function(file, assay = 'RNA', verbose = TRUE, ...) {
+      LoadLoom(file = file, verbose = verbose, ...)
+    },
+    saver = function(object, filename, overwrite = FALSE, verbose = TRUE, ...) {
+      SaveLoom(object = object, filename = filename,
+               overwrite = overwrite, verbose = verbose, ...)
+      invisible(filename)
+    }
+  )
+  RegisterFormat(
+    ext = 'h5mu',
+    loader = function(file, assay = 'RNA', verbose = TRUE, ...) {
+      LoadH5MU(file = file, verbose = verbose)
+    },
+    saver = function(object, filename, overwrite = FALSE, verbose = TRUE, ...) {
+      SaveH5MU(object = object, filename = filename,
+               overwrite = overwrite, verbose = verbose, ...)
+      invisible(filename)
+    }
+  )
+  RegisterFormat(
+    ext = 'rds',
+    loader = function(file, assay = 'RNA', verbose = TRUE, ...) {
+      obj <- readRDS(file = file)
+      if (!inherits(x = obj, what = 'Seurat')) {
+        obj <- tryCatch(
+          expr = as.Seurat(x = obj, verbose = verbose, ...),
+          error = function(e) {
+            stop("RDS file does not contain a Seurat-coercible object: ",
+                 conditionMessage(e), call. = FALSE)
+          }
+        )
+      }
+      obj
+    },
+    saver = function(object, filename, overwrite = FALSE, verbose = TRUE, ...) {
+      if (file.exists(filename) && !overwrite) {
+        stop("Destination RDS file exists", call. = FALSE)
+      }
+      saveRDS(object = object, file = filename)
+      if (verbose) message("Saved Seurat object to ", filename)
+      invisible(filename)
+    }
+  )
+
+  # Register direct HDF5-level conversion paths (bypass hub for efficiency).
+  # These are only for format pairs that can be converted via direct HDF5
+  # operations without loading the full dataset into memory.
+  RegisterDirectPath('h5ad', 'h5seurat', function(source, dest, assay = 'RNA',
+                                                    overwrite = FALSE, verbose = TRUE, ...) {
+    H5ADToH5Seurat(source = source, dest = dest, assay = assay,
+                   overwrite = overwrite, verbose = verbose)
+  })
+  RegisterDirectPath('h5seurat', 'h5ad', function(source, dest, assay = 'RNA',
+                                                    overwrite = FALSE, verbose = TRUE,
+                                                    standardize = FALSE, ...) {
+    H5SeuratToH5AD(source = source, dest = dest, assay = assay,
+                   overwrite = overwrite, verbose = verbose,
+                   standardize = standardize)
+  })
+
   invisible(x = NULL)
 }

@@ -7,12 +7,12 @@
 H5ADToH5Seurat(source, dest, assay = "RNA", overwrite = FALSE, verbose = TRUE)
 }
 \arguments{
-\item{source}{Source dataset: a Seurat object, filename path, or H5File connection}
+\item{source}{Source dataset: a Seurat object, SingleCellExperiment, loom
+connection, filename path, or H5File connection}
 
-\item{dest}{Name/path of destination file. If only a file type is provided
-(e.g., "h5seurat", "h5ad", "loom"), the extension is appended to the source
-filename (for file sources) or the Seurat project name (for Seurat objects).
-Supported formats: h5seurat, h5ad, loom}
+\item{dest}{Name/path of destination file or format. Supported formats:
+h5seurat, h5ad, h5mu, loom, rds. Also accepts \code{"sce"} to return
+a SingleCellExperiment object (in-memory, no file created).}
 
 \item{assay}{For h5Seurat -> other formats: name of assay to convert.
 For other formats -> h5Seurat: name to assign to the assay.

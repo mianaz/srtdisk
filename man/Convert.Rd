@@ -6,6 +6,8 @@
 \alias{Convert.H5File}
 \alias{Convert.h5Seurat}
 \alias{Convert.Seurat}
+\alias{Convert.loom}
+\alias{Convert.SingleCellExperiment}
 \title{Convert single-cell datasets between formats}
 \usage{
 Convert(
@@ -56,14 +58,34 @@ Convert(
   standardize = FALSE,
   ...
 )
+
+\method{Convert}{loom}(
+  source,
+  dest,
+  assay = "RNA",
+  overwrite = FALSE,
+  verbose = TRUE,
+  standardize = FALSE,
+  ...
+)
+
+\method{Convert}{SingleCellExperiment}(
+  source,
+  dest,
+  assay = NULL,
+  overwrite = FALSE,
+  verbose = TRUE,
+  standardize = FALSE,
+  ...
+)
 }
 \arguments{
-\item{source}{Source dataset: a Seurat object, filename path, or H5File connection}
+\item{source}{Source dataset: a Seurat object, SingleCellExperiment, loom
+connection, filename path, or H5File connection}
 
-\item{dest}{Name/path of destination file. If only a file type is provided
-(e.g., "h5seurat", "h5ad", "loom"), the extension is appended to the source
-filename (for file sources) or the Seurat project name (for Seurat objects).
-Supported formats: h5seurat, h5ad, loom}
+\item{dest}{Name/path of destination file or format. Supported formats:
+h5seurat, h5ad, h5mu, loom, rds. Also accepts \code{"sce"} to return
+a SingleCellExperiment object (in-memory, no file created).}
 
 \item{assay}{For h5Seurat -> other formats: name of assay to convert.
 For other formats -> h5Seurat: name to assign to the assay.
@@ -82,34 +104,37 @@ Only applicable for conversions to h5ad format. Default is \code{FALSE}.}
 \item{...}{Arguments passed to specific conversion methods}
 }
 \value{
-If \code{source} is a character path or Seurat object, invisibly returns
-the destination filename. If \code{source} is an H5File connection, returns an
-H5File object connection to the destination file (e.g., \code{\link{h5Seurat}}
-for h5Seurat format).
+For file destinations, invisibly returns the destination filename.
+  For \code{dest = "sce"}, returns a SingleCellExperiment object.
 }
 \description{
-Rapidly convert between single-cell file formats (h5Seurat, h5ad, Loom)
-using minimal memory. This function enables seamless interoperability between
-R/Seurat and Python/scanpy/squidpy ecosystems. Accepts Seurat objects directly,
-filename paths, or H5File connections.
+Universal converter between single-cell file formats and object types.
+Supports arbitrary source/destination pairs by routing through Seurat as
+a hub format. Direct HDF5-level paths (h5ad <-> h5seurat) are used when
+available for memory efficiency.
 }
 \details{
-\strong{Supported Conversion Pathways:}
+\strong{Supported Formats:}
 \itemize{
-  \item \code{Seurat -> h5ad}: Direct conversion via temporary h5Seurat intermediate
-  \item \code{Seurat -> h5Seurat}: Save Seurat object to h5Seurat file
-  \item \code{Seurat -> Loom}: Save Seurat object to Loom file
-  \item \code{h5ad <-> h5Seurat}: Convert between Python AnnData and R Seurat formats
-  \item \code{Loom <-> h5Seurat}: Convert Loom files (limited support)
+  \item \strong{R objects}: Seurat, SingleCellExperiment (requires
+    \pkg{SingleCellExperiment}), loom (R6 connection)
+  \item \strong{File formats}: h5seurat, h5ad, h5mu, loom, rds
+}
+
+Any source format can be converted to any destination format. Conversions
+without a direct path go through Seurat as a universal hub:
+\code{Source -> Seurat -> Destination}.
+
+\strong{Direct Paths} (memory-efficient, no full dataset loading):
+\itemize{
+  \item \code{h5ad <-> h5seurat}: Direct HDF5-level copy
 }
 
 \strong{Key Features:}
 \itemize{
-  \item Memory-efficient on-disk conversion (no full dataset loading)
   \item Preserves expression matrices, metadata, and dimensional reductions
   \item For Visium/spatial data: reconstructs images with scale factors
   \item Handles multiple data layers (V5 compatibility)
-  \item Rapid conversion of large datasets (>100K cells)
 }
 }
 \section{AnnData/H5AD to h5Seurat}{
@@ -269,29 +294,20 @@ index (\code{source$index()}). It works in the following manner:
 library(srtdisk)
 library(Seurat)
 
-# --- Convert from Seurat objects directly ---
-# Seurat to h5ad (for Python/scanpy)
-Convert(seurat_obj, dest = "output.h5ad")
+# --- Any format to any format ---
+Convert("data.h5ad", dest = "data.h5seurat")     # h5ad -> h5seurat
+Convert("data.h5ad", dest = "data.rds")           # h5ad -> RDS
+Convert("data.h5ad", dest = "data.loom")           # h5ad -> loom
+Convert("data.h5mu", dest = "data.h5ad")           # h5mu -> h5ad
+Convert("data.loom", dest = "data.h5seurat")       # loom -> h5seurat
+Convert("data.rds",  dest = "data.h5ad")           # RDS -> h5ad
 
-# Seurat to Loom
-Convert(seurat_obj, dest = "output.loom")
-
-# Seurat to h5Seurat
-Convert(seurat_obj, dest = "output.h5Seurat")
-
-# Quick format inference - uses Project name
-Convert(seurat_obj, dest = "h5ad")  # Creates <project>.h5ad
-
-# --- Convert between file formats ---
-# h5ad (Python/scanpy) to h5Seurat (R/Seurat)
-Convert("python_data.h5ad", dest = "seurat_data.h5seurat")
-
-# h5Seurat to h5ad
-Convert("seurat_data.h5seurat", dest = "python_data.h5ad")
-
-# Visium spatial data
-Convert("visium_scanpy.h5ad", dest = "visium_seurat.h5seurat")
-visium <- LoadH5Seurat("visium_seurat.h5seurat")
+# --- From R objects ---
+Convert(seurat_obj, dest = "output.h5ad")          # Seurat -> h5ad
+Convert(seurat_obj, dest = "output.loom")           # Seurat -> loom
+Convert(seurat_obj, dest = "output.rds")            # Seurat -> RDS
+Convert(sce_obj, dest = "output.h5ad")              # SCE -> h5ad
+sce <- Convert(seurat_obj, dest = "sce")            # Seurat -> SCE
 }
 
 }
@@ -300,5 +316,6 @@ visium <- LoadH5Seurat("visium_seurat.h5seurat")
 \code{\link{SaveH5Seurat}} to save Seurat objects
 \code{\link{LoadH5Seurat}} to load h5Seurat files
 \code{\link{LoadH5AD}} to directly load h5ad files
+\code{\link{LoadH5MU}} to load h5mu files
 \code{\link{Connect}} to establish file connections
 }

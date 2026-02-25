@@ -1,4 +1,5 @@
 #' @include zzz.R
+#' @include FormatRegistry.R
 #' @include Connect.R
 #' @include TestObject.R
 #' @include Transpose.R
@@ -15,16 +16,16 @@ NULL
 
 #' Convert single-cell datasets between formats
 #'
-#' Rapidly convert between single-cell file formats (h5Seurat, h5ad, Loom)
-#' using minimal memory. This function enables seamless interoperability between
-#' R/Seurat and Python/scanpy/squidpy ecosystems. Accepts Seurat objects directly,
-#' filename paths, or H5File connections.
+#' Universal converter between single-cell file formats and object types.
+#' Supports arbitrary source/destination pairs by routing through Seurat as
+#' a hub format. Direct HDF5-level paths (h5ad <-> h5seurat) are used when
+#' available for memory efficiency.
 #'
-#' @param source Source dataset: a Seurat object, filename path, or H5File connection
-#' @param dest Name/path of destination file. If only a file type is provided
-#'   (e.g., "h5seurat", "h5ad", "loom"), the extension is appended to the source
-#'   filename (for file sources) or the Seurat project name (for Seurat objects).
-#'   Supported formats: h5seurat, h5ad, loom
+#' @param source Source dataset: a Seurat object, SingleCellExperiment, loom
+#'   connection, filename path, or H5File connection
+#' @param dest Name/path of destination file or format. Supported formats:
+#'   h5seurat, h5ad, h5mu, loom, rds. Also accepts \code{"sce"} to return
+#'   a SingleCellExperiment object (in-memory, no file created).
 #' @param assay For h5Seurat -> other formats: name of assay to convert.
 #'   For other formats -> h5Seurat: name to assign to the assay.
 #'   Default is "RNA".
@@ -37,31 +38,34 @@ NULL
 #'   Only applicable for conversions to h5ad format. Default is \code{FALSE}.
 #' @param ... Arguments passed to specific conversion methods
 #'
-#' @return If \code{source} is a character path or Seurat object, invisibly returns
-#' the destination filename. If \code{source} is an H5File connection, returns an
-#' H5File object connection to the destination file (e.g., \code{\link{h5Seurat}}
-#' for h5Seurat format).
+#' @return For file destinations, invisibly returns the destination filename.
+#'   For \code{dest = "sce"}, returns a SingleCellExperiment object.
 #'
 #' @inheritSection H5ADToH5Seurat AnnData/H5AD to h5Seurat
 #' @inheritSection H5SeuratToH5AD h5Seurat to AnnData/H5AD
 #'
 #' @details
-#' \strong{Supported Conversion Pathways:}
+#' \strong{Supported Formats:}
 #' \itemize{
-#'   \item \code{Seurat -> h5ad}: Direct conversion via temporary h5Seurat intermediate
-#'   \item \code{Seurat -> h5Seurat}: Save Seurat object to h5Seurat file
-#'   \item \code{Seurat -> Loom}: Save Seurat object to Loom file
-#'   \item \code{h5ad <-> h5Seurat}: Convert between Python AnnData and R Seurat formats
-#'   \item \code{Loom <-> h5Seurat}: Convert Loom files (limited support)
+#'   \item \strong{R objects}: Seurat, SingleCellExperiment (requires
+#'     \pkg{SingleCellExperiment}), loom (R6 connection)
+#'   \item \strong{File formats}: h5seurat, h5ad, h5mu, loom, rds
+#' }
+#'
+#' Any source format can be converted to any destination format. Conversions
+#' without a direct path go through Seurat as a universal hub:
+#' \code{Source -> Seurat -> Destination}.
+#'
+#' \strong{Direct Paths} (memory-efficient, no full dataset loading):
+#' \itemize{
+#'   \item \code{h5ad <-> h5seurat}: Direct HDF5-level copy
 #' }
 #'
 #' \strong{Key Features:}
 #' \itemize{
-#'   \item Memory-efficient on-disk conversion (no full dataset loading)
 #'   \item Preserves expression matrices, metadata, and dimensional reductions
 #'   \item For Visium/spatial data: reconstructs images with scale factors
 #'   \item Handles multiple data layers (V5 compatibility)
-#'   \item Rapid conversion of large datasets (>100K cells)
 #' }
 #'
 #' @seealso
@@ -69,6 +73,7 @@ NULL
 #' \code{\link{SaveH5Seurat}} to save Seurat objects
 #' \code{\link{LoadH5Seurat}} to load h5Seurat files
 #' \code{\link{LoadH5AD}} to directly load h5ad files
+#' \code{\link{LoadH5MU}} to load h5mu files
 #' \code{\link{Connect}} to establish file connections
 #'
 #' @examples
@@ -76,29 +81,20 @@ NULL
 #' library(srtdisk)
 #' library(Seurat)
 #'
-#' # --- Convert from Seurat objects directly ---
-#' # Seurat to h5ad (for Python/scanpy)
-#' Convert(seurat_obj, dest = "output.h5ad")
+#' # --- Any format to any format ---
+#' Convert("data.h5ad", dest = "data.h5seurat")     # h5ad -> h5seurat
+#' Convert("data.h5ad", dest = "data.rds")           # h5ad -> RDS
+#' Convert("data.h5ad", dest = "data.loom")           # h5ad -> loom
+#' Convert("data.h5mu", dest = "data.h5ad")           # h5mu -> h5ad
+#' Convert("data.loom", dest = "data.h5seurat")       # loom -> h5seurat
+#' Convert("data.rds",  dest = "data.h5ad")           # RDS -> h5ad
 #'
-#' # Seurat to Loom
-#' Convert(seurat_obj, dest = "output.loom")
-#'
-#' # Seurat to h5Seurat
-#' Convert(seurat_obj, dest = "output.h5Seurat")
-#'
-#' # Quick format inference - uses Project name
-#' Convert(seurat_obj, dest = "h5ad")  # Creates <project>.h5ad
-#'
-#' # --- Convert between file formats ---
-#' # h5ad (Python/scanpy) to h5Seurat (R/Seurat)
-#' Convert("python_data.h5ad", dest = "seurat_data.h5seurat")
-#'
-#' # h5Seurat to h5ad
-#' Convert("seurat_data.h5seurat", dest = "python_data.h5ad")
-#'
-#' # Visium spatial data
-#' Convert("visium_scanpy.h5ad", dest = "visium_seurat.h5seurat")
-#' visium <- LoadH5Seurat("visium_seurat.h5seurat")
+#' # --- From R objects ---
+#' Convert(seurat_obj, dest = "output.h5ad")          # Seurat -> h5ad
+#' Convert(seurat_obj, dest = "output.loom")           # Seurat -> loom
+#' Convert(seurat_obj, dest = "output.rds")            # Seurat -> RDS
+#' Convert(sce_obj, dest = "output.h5ad")              # SCE -> h5ad
+#' sce <- Convert(seurat_obj, dest = "sce")            # Seurat -> SCE
 #' }
 #'
 #' @name Convert
@@ -132,32 +128,102 @@ Convert.character <- function(
   standardize = FALSE,
   ...
 ) {
-  hfile <- Connect(filename = source, force = TRUE)
-  if (missing(x = assay)) {
-    assay <- tryCatch(
-      expr = DefaultAssay(object = hfile),
-      error = function(...) {
-        warning(
-          "'assay' not set, setting to 'RNA'",
-          call. = FALSE,
-          immediate. = TRUE
-        )
-        "RNA"
-      }
-    )
+  if (!file.exists(source)) {
+    stop("Source file not found: ", source, call. = FALSE)
   }
-  on.exit(expr = hfile$close_all())
-  dfile <- Convert(
-    source = hfile,
-    dest = dest,
+  stype <- FileType(file = source)
+
+  # RDS: read the object and dispatch on its class
+  if (stype == 'rds') {
+    obj <- readRDS(file = source)
+    if (!inherits(x = obj, what = 'Seurat')) {
+      obj <- tryCatch(
+        expr = as.Seurat(x = obj, verbose = verbose),
+        error = function(e) {
+          stop("RDS file does not contain a Seurat-coercible object: ",
+               conditionMessage(e), call. = FALSE)
+        }
+      )
+    }
+    if (missing(x = assay)) assay <- DefaultAssay(object = obj)
+    return(Convert(
+      source = obj, dest = dest, assay = assay,
+      overwrite = overwrite, verbose = verbose, standardize = standardize, ...
+    ))
+  }
+
+  # Loom: open as loom R6 object and dispatch to Convert.loom
+  if (stype == 'loom') {
+    lfile <- Connect(filename = source, type = 'loom', mode = 'r')
+    on.exit(expr = lfile$close_all(), add = TRUE)
+    if (missing(x = assay)) {
+      assay <- tryCatch(
+        expr = DefaultAssay(object = lfile),
+        error = function(...) 'RNA'
+      )
+    }
+    return(Convert(
+      source = lfile, dest = dest, assay = assay,
+      overwrite = overwrite, verbose = verbose, standardize = standardize, ...
+    ))
+  }
+
+  # HDF5-based formats: check for direct path first, otherwise use hub
+  dtype <- FileType(file = dest)
+  if (missing(x = assay)) {
+    # Try to read default assay from the source file
+    hfile_tmp <- tryCatch(
+      expr = Connect(filename = source, force = TRUE),
+      error = function(...) NULL
+    )
+    if (!is.null(x = hfile_tmp)) {
+      assay <- tryCatch(
+        expr = DefaultAssay(object = hfile_tmp),
+        error = function(...) {
+          warning("'assay' not set, setting to 'RNA'", call. = FALSE, immediate. = TRUE)
+          "RNA"
+        }
+      )
+      hfile_tmp$close_all()
+    } else {
+      assay <- 'RNA'
+    }
+  }
+
+  # Check for a registered direct HDF5 path (memory-efficient)
+  direct_fn <- GetDirectPath(stype = stype, dtype = dtype)
+  if (!is.null(x = direct_fn)) {
+    if (tolower(x = dest) == dtype) {
+      dest <- paste(file_path_sans_ext(x = source), dtype, sep = '.')
+    }
+    hfile <- Connect(filename = source, force = TRUE)
+    on.exit(expr = hfile$close_all())
+    dfile <- direct_fn(
+      source = hfile, dest = dest, assay = assay,
+      overwrite = overwrite, verbose = verbose,
+      standardize = standardize, ...
+    )
+    if (is.character(x = dfile)) {
+      return(invisible(x = dfile))
+    }
+    dfile$close_all()
+    return(invisible(x = dfile$filename))
+  }
+
+  # No direct path: use hub conversion (loader handles its own file I/O)
+  if (tolower(x = dest) == dtype) {
+    dest <- paste(file_path_sans_ext(x = source), dtype, sep = '.')
+  }
+  return(HubConvert(
+    source_file = source,
+    dest_file = dest,
+    stype = stype,
+    dtype = dtype,
     assay = assay,
     overwrite = overwrite,
     verbose = verbose,
-    standardize = standardize,
     ...
-  )
-  dfile$close_all()
-  return(invisible(x = dfile$filename))
+  ))
 }
 
 #' @rdname Convert
@@ -177,73 +243,31 @@ Convert.H5File <- function(
   if (tolower(x = dest) == dtype) {
     dest <- paste(file_path_sans_ext(x = source$filename), dtype, sep = '.')
   }
-  dfile <- switch(
-    EXPR = stype,
-    'h5ad' = switch(
-      EXPR = dtype,
-      'h5seurat' = H5ADToH5Seurat(
-        source = source,
-        dest = dest,
-        assay = assay,
-        overwrite = overwrite,
-        verbose = verbose
-      ),
-      'rds' = {
-        # Two-step conversion: h5ad -> temp h5seurat -> Seurat -> RDS
-        temp_h5seurat <- tempfile(fileext = '.h5seurat')
-        on.exit(unlink(temp_h5seurat), add = TRUE)
-        h5seurat_file <- H5ADToH5Seurat(
-          source = source,
-          dest = temp_h5seurat,
-          assay = assay,
-          overwrite = TRUE,
-          verbose = verbose
-        )
-        h5seurat_file$close_all()
-        seurat_obj <- LoadH5Seurat(file = temp_h5seurat, verbose = verbose)
-        if (file.exists(dest) && !overwrite) {
-          stop("Destination RDS file exists", call. = FALSE)
-        }
-        saveRDS(object = seurat_obj, file = dest)
-        if (verbose) {
-          message("Saved Seurat object to ", dest)
-        }
-        dest
-      },
-      stop("Unable to convert H5AD files to ", dtype, " files", call. = FALSE)
-    ),
-    'h5mu' = switch(
-      EXPR = dtype,
-      'h5seurat' = H5MUToH5Seurat(
-        source = source,
-        dest = dest,
-        assay = assay,
-        overwrite = overwrite,
-        verbose = verbose
-      ),
-      'h5ad' = H5MUToH5AD(
-        source = source,
-        dest = dest,
-        modality = assay,
-        overwrite = overwrite,
-        verbose = verbose
-      ),
-      stop("Unable to convert H5MU files to ", dtype, " files", call. = FALSE)
-    ),
-    'h5seurat' = switch(
-      EXPR = dtype,
-      'h5mu' = H5SeuratToH5MU(
-        source = source,
-        dest = dest,
-        assay = assay,
-        overwrite = overwrite,
-        verbose = verbose
-      ),
-      stop("Unable to convert h5Seurat files to ", dtype, " files", call. = FALSE)
-    ),
-    stop("Unknown file type: ", stype, call. = FALSE)
-  )
-  return(dfile)
+
+  # 1. Try registered direct HDF5-level path (memory-efficient)
+  direct_fn <- GetDirectPath(stype = stype, dtype = dtype)
+  if (!is.null(x = direct_fn)) {
+    if (verbose) {
+      message("Using direct ", toupper(x = stype), " -> ", toupper(x = dtype), " conversion")
+    }
+    dfile <- direct_fn(
+      source = source, dest = dest, assay = assay,
+      overwrite = overwrite, verbose = verbose, ...
+    )
+    return(dfile)
+  }
+
+  # 2. Hub conversion: load source -> Seurat -> save dest
+  return(HubConvert(
+    source_file = source$filename,
+    dest_file = dest,
+    stype = stype,
+    dtype = dtype,
+    assay = assay,
+    overwrite = overwrite,
+    verbose = verbose,
+    ...
+  ))
 }
 
 #' @rdname Convert
@@ -259,30 +283,32 @@ Convert.h5Seurat <- function(
   standardize = FALSE,
   ...
 ) {
-  type <- FileType(file = dest)
-  if (tolower(x = dest) == type) {
-    dest <- paste(file_path_sans_ext(x = source$filename), type, sep = '.')
+  dtype <- FileType(file = dest)
+  if (tolower(x = dest) == dtype) {
+    dest <- paste(file_path_sans_ext(x = source$filename), dtype, sep = '.')
   }
-  dfile <- switch(
-    EXPR = type,
-    'h5ad' = H5SeuratToH5AD(
-      source = source,
-      dest = dest,
-      assay = assay,
-      overwrite = overwrite,
-      verbose = verbose,
-      standardize = standardize
-    ),
-    'h5mu' = H5SeuratToH5MU(
-      source = source,
-      dest = dest,
-      assay = assay,
-      overwrite = overwrite,
-      verbose = verbose
-    ),
-    stop("Unable to convert h5Seurat files to ", type, " files", call. = FALSE)
-  )
-  return(dfile)
+
+  # Try direct path first (h5seurat -> h5ad is registered)
+  direct_fn <- GetDirectPath(stype = 'h5seurat', dtype = dtype)
+  if (!is.null(x = direct_fn)) {
+    return(direct_fn(
+      source = source, dest = dest, assay = assay,
+      overwrite = overwrite, verbose = verbose,
+      standardize = standardize, ...
+    ))
+  }
+
+  # Hub: load h5seurat -> Seurat -> save dest
+  return(HubConvert(
+    source_file = source$filename,
+    dest_file = dest,
+    stype = 'h5seurat',
+    dtype = dtype,
+    assay = assay,
+    overwrite = overwrite,
+    verbose = verbose,
+    ...
+  ))
 }
 
 #' @rdname Convert
@@ -301,38 +327,141 @@ Convert.Seurat <- function(
     stop("'dest' must be provided for Seurat object conversion", call. = FALSE)
   }
   type <- FileType(file = dest)
+
+  # Handle in-memory SCE destination (no file created)
+  if (type == 'sce') {
+    if (!requireNamespace("SingleCellExperiment", quietly = TRUE)) {
+      stop("Package 'SingleCellExperiment' is required to convert to SCE", call. = FALSE)
+    }
+    if (verbose) message("Converting Seurat to SingleCellExperiment...")
+    return(Seurat::as.SingleCellExperiment(x = source, assay = assay))
+  }
+
   if (tolower(x = dest) == type) {
     dest <- paste(Project(object = source), type, sep = '.')
   }
-  result <- switch(
-    EXPR = type,
-    'h5ad' = {
-      if (file.exists(dest) && !overwrite) {
-        stop("Destination file '", dest, "' already exists. Use overwrite = TRUE to replace.", call. = FALSE)
-      }
-      temp_h5seurat <- tempfile(fileext = '.h5Seurat')
-      on.exit(expr = {
-        if (file.exists(temp_h5seurat)) {
-          if (verbose) message("Cleaning up intermediate h5Seurat file")
-          file.remove(temp_h5seurat)
-        }
-      }, add = TRUE)
-      if (verbose) message("Step 1/2: Saving Seurat object to temporary h5Seurat...")
-      SaveH5Seurat(object = source, filename = temp_h5seurat, overwrite = TRUE, verbose = verbose, ...)
-      if (verbose) message("Step 2/2: Converting to H5AD format...")
-      Convert(source = temp_h5seurat, dest = dest, assay = assay,
-              overwrite = overwrite, verbose = verbose, standardize = standardize)
-    },
-    'h5seurat' = SaveH5Seurat(object = source, filename = dest,
-                               overwrite = overwrite, verbose = verbose, ...),
-    'loom' = SaveLoom(object = source, filename = dest,
-                       overwrite = overwrite, verbose = verbose, ...),
-    'h5mu' = SaveH5MU(object = source, filename = dest,
-                       overwrite = overwrite, verbose = verbose, ...),
-    stop("Cannot convert Seurat objects to '", type, "' format", call. = FALSE)
-  )
-  if (verbose) message("Successfully created: ", dest)
-  return(invisible(x = dest))
+
+  # Use registered saver if available
+  saver <- GetSaver(ext = type)
+  if (!is.null(x = saver)) {
+    saver(object = source, filename = dest, overwrite = overwrite, verbose = verbose, ...)
+    if (verbose) message("Successfully created: ", dest)
+    return(invisible(x = dest))
+  }
+
+  stop("Cannot convert Seurat objects to '", type, "' format", call. = FALSE)
+}
+
+#' @rdname Convert
+#' @method Convert loom
+#' @export
+#'
+Convert.loom <- function(
+  source,
+  dest,
+  assay = 'RNA',
+  overwrite = FALSE,
+  verbose = TRUE,
+  standardize = FALSE,
+  ...
+) {
+  if (missing(x = dest)) {
+    stop("'dest' must be provided for loom conversion", call. = FALSE)
+  }
+  if (verbose) message("Loading loom file as Seurat object...")
+  seurat_obj <- as.Seurat(x = source, verbose = verbose)
+  return(Convert(
+    source = seurat_obj, dest = dest, assay = assay,
+    overwrite = overwrite, verbose = verbose, standardize = standardize, ...
+  ))
+}
+
+#' @rdname Convert
+#' @method Convert SingleCellExperiment
+#' @export
+#'
+Convert.SingleCellExperiment <- function(
+  source,
+  dest,
+  assay = NULL,
+  overwrite = FALSE,
+  verbose = TRUE,
+  standardize = FALSE,
+  ...
+) {
+  if (!requireNamespace("SingleCellExperiment", quietly = TRUE)) {
+    stop("Package 'SingleCellExperiment' is required", call. = FALSE)
+  }
+  if (missing(x = dest)) {
+    stop("'dest' must be provided for SingleCellExperiment conversion", call. = FALSE)
+  }
+  if (verbose) message("Converting SingleCellExperiment to Seurat...")
+  # Detect available SCE assays and set conversion params accordingly.
+  # as.Seurat defaults to data="logcounts" which may not exist.
+  sce_assays <- SummarizedExperiment::assayNames(source)
+  sce_args <- list(x = source)
+  if ("counts" %in% sce_assays) sce_args$counts <- "counts"
+  if ("logcounts" %in% sce_assays) {
+    sce_args$data <- "logcounts"
+  } else {
+    # Use alist to preserve NULL (list$key <- NULL removes the key in R)
+    sce_args <- c(sce_args, alist(data = NULL))
+  }
+  extra_args <- list(...)
+  sce_args <- c(sce_args, extra_args[!names(extra_args) %in% names(sce_args)])
+  seurat_obj <- do.call(Seurat::as.Seurat, sce_args)
+  effective_assay <- assay %||% DefaultAssay(object = seurat_obj)
+  return(Convert(
+    source = seurat_obj, dest = dest, assay = effective_assay,
+    overwrite = overwrite, verbose = verbose, standardize = standardize
+  ))
+}
+
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+# Hub Conversion Helper
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+# Internal hub converter: load any format -> Seurat -> save to any format.
+# Used when no direct HDF5-level path exists between (stype, dtype).
+#
+# @param source_file Path to source file
+# @param dest_file Path to destination file
+# @param stype Source format extension (lowercase)
+# @param dtype Destination format extension (lowercase)
+# @param assay Assay name
+# @param overwrite Whether to overwrite existing dest
+# @param verbose Show progress messages
+# @param ... Additional arguments passed to saver
+#
+# @return Invisible destination filepath
+#
+# @keywords internal
+#
+HubConvert <- function(source_file, dest_file, stype, dtype,
+                       assay = 'RNA', overwrite = FALSE, verbose = TRUE, ...) {
+  loader <- GetLoader(ext = stype)
+  saver <- GetSaver(ext = dtype)
+
+  if (is.null(x = loader)) {
+    stop("No loader registered for source format '", stype,
+         "'. Supported: ", paste(ListFormats()$loaders, collapse = ", "),
+         call. = FALSE)
+  }
+  if (is.null(x = saver)) {
+    stop("No saver registered for destination format '", dtype,
+         "'. Supported: ", paste(ListFormats()$savers, collapse = ", "),
+         call. = FALSE)
+  }
+
+  if (verbose) {
+    message("Converting ", toupper(x = stype), " -> Seurat -> ", toupper(x = dtype))
+  }
+
+  seurat_obj <- loader(file = source_file, assay = assay, verbose = verbose)
+  saver(object = seurat_obj, filename = dest_file,
+        overwrite = overwrite, verbose = verbose, ...)
+
+  return(invisible(x = dest_file))
 }
 
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -2902,6 +3031,8 @@ H5SeuratToH5AD <- function(
         if (dfile[[dname]]$attr_exists(attr_name = attr.name)) {
           dfile[[dname]]$attr_delete(attr_name = attr.name)
         }
+        # Flush to clear hdf5r's attribute cache after delete
+        dfile$flush()
         dfile[[dname]]$create_attr(
           attr_name = attr.name,
           robj = attr.value,
@@ -2910,14 +3041,14 @@ H5SeuratToH5AD <- function(
         )
       }
 
-      # Add shape attribute for sparse matrices (required by anndata)
+      # Recompute shape for AnnData convention (n_obs, n_vars).
+      # Seurat stores CSC matrices (indptr = column pointers for cells),
+      # which we reinterpret as CSR for h5ad (indptr = row pointers for obs).
       if (dfile[[dname]]$exists(name = 'indptr') &&
           dfile[[dname]]$exists(name = 'indices')) {
-        # For CSR matrix: nrows = length(indptr) - 1
         indptr_len <- prod(dfile[[dname]][['indptr']]$dims)
         nrows <- as.integer(indptr_len - 1L)
 
-        # Get ncols from max index + 1 (most reliable for sparse matrices)
         all_indices <- dfile[[dname]][['indices']][]
         ncols <- if (length(all_indices) > 0) {
           as.integer(max(all_indices) + 1L)
@@ -2929,6 +3060,8 @@ H5SeuratToH5AD <- function(
         if (dfile[[dname]]$attr_exists(attr_name = 'shape')) {
           dfile[[dname]]$attr_delete(attr_name = 'shape')
         }
+        # Flush to clear hdf5r's attribute cache after delete
+        dfile$flush()
         dfile[[dname]]$create_attr(
           attr_name = 'shape',
           robj = shape,
@@ -3041,35 +3174,19 @@ H5SeuratToH5AD <- function(
   }
 
   AddEncoding(dname = 'X')
-  # Get number of features from the ACTUAL X matrix dimensions (not metadata)
-  # This ensures var matches X even if metadata has stale feature counts
-  x_shape <- NULL
-  if (dfile[['X']]$attr_exists(attr_name = 'shape')) {
-    x_shape <- h5attr(x = dfile[['X']], which = 'shape')
-  } else if (dfile[['X']]$attr_exists(attr_name = 'dims')) {
-    x_shape <- rev(h5attr(x = dfile[['X']], which = 'dims'))
-  }
-  if (!is.null(x_shape) && length(x_shape) >= 2) {
-    # shape is (n_obs, n_vars) in anndata convention
-    n_features <- x_shape[2]
-    # Warn if metadata feature count differs from actual matrix dimensions
-    metadata_n <- if (has_layers && assay.group$exists(name = 'meta.data/_index')) {
-      length(SafeH5DRead(assay.group[['meta.data/_index']]))
-    } else if (assay.group$exists(name = 'features')) {
-      prod(assay.group[['features']]$dims)
-    } else {
-      n_features
-    }
-    if (n_features != metadata_n && verbose) {
-      message("Note: X has ", n_features, " features but metadata lists ", metadata_n,
-              "; using actual X dimensions for var")
-    }
-  } else if (has_layers && assay.group$exists(name = 'meta.data/_index')) {
-    # Fallback: V5 structure metadata
+  # Determine n_features from the SOURCE metadata (reliable).
+  # Note: reading shape from dfile[['X']] after AddEncoding is unreliable
+  # due to hdf5r attribute caching after attr_delete + create_attr.
+  if (has_layers && assay.group$exists(name = 'meta.data/_index')) {
     n_features <- length(SafeH5DRead(assay.group[['meta.data/_index']]))
-  } else {
-    # Fallback: Legacy structure
+  } else if (assay.group$exists(name = 'features')) {
     n_features <- prod(assay.group[['features']]$dims)
+  } else {
+    # Last resort: close and reopen dfile to clear cache, then read shape
+    dfile$close_all()
+    dfile <- H5File$new(filename = dest, mode = 'r+')
+    x_shape <- h5attr(x = dfile[['X']], which = 'shape')
+    n_features <- x_shape[2]
   }
 
   x.features <- switch(
