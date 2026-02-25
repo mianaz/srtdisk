@@ -10,7 +10,7 @@ GetScaleFactors(visium_obj)
 \item{visium_obj}{Visium image object}
 }
 \value{
-List of scale factors
+List of scale factors, or NULL if unavailable
 }
 \description{
 Get scale factors from Visium object

@@ -130,8 +130,6 @@ LoadLoom.loom <- function(file, ...) {
 
 #' @importFrom stringi stri_count_fixed
 #'
-#' @aliases as.Seurat
-#'
 #' @rdname LoadLoom
 #' @method as.Seurat loom
 #' @export

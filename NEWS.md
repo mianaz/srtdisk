@@ -1,3 +1,72 @@
+# srtdisk 0.3.1
+
+> **Release Date:** 2026-02-25
+
+## Bug Fixes
+
+- Fixed CSR sparse matrix loading failure in `ReadSparseMatrix()` that caused `'dims' must contain all (i,j) pairs` errors when loading large h5ad-converted h5Seurat files. The `dims` argument to `Matrix::sparseMatrix()` was incorrectly swapped as `(ncols, nrows)` instead of `(nrows, ncols)`, and the unnecessary transpose has been removed.
+- Added direct h5ad-to-RDS conversion path in `Convert()` so that `Convert("file.h5ad", dest = "file.rds")` works without a manual intermediate h5Seurat step.
+
+Validated on mouse atlas (356K cells, 16.8K genes) and human atlas (1.04M cells, 17.1K genes).
+
+---
+
+# srtdisk 0.3.0
+
+> **Release Date:** 2026-02-09
+
+## Highlights
+
+### MuData (h5mu) Multimodal Support
+
+srtdisk now supports the MuData/h5mu format for multimodal single-cell data:
+
+- **`LoadH5MU()`**: Load h5mu files as multimodal Seurat objects with automatic modality-to-assay name mapping (rna->RNA, prot->ADT, atac->ATAC, etc.)
+- **`SaveH5MU()`**: Export multimodal Seurat objects to h5mu format with spatial data preservation and conflict-free modality naming
+- **`as.h5mu()`**: Convenience alias for SaveH5MU
+- **H5MU conversion pathways**: `Convert()` now supports h5mu as both source and destination format (h5mu<->h5Seurat, h5mu->h5ad)
+- Requires `MuDataSeurat` package (optional dependency)
+
+### Direct h5ad Loading with `LoadH5AD()`
+
+New `LoadH5AD()` function provides direct h5ad-to-Seurat conversion without the intermediate h5Seurat step:
+
+- Reads sparse (CSR) and dense expression matrices
+- Preserves categorical metadata as R factors
+- Restores dimensional reductions (PCA, UMAP, tSNE)
+- Handles feature metadata, neighbor graphs, and spatial data
+- Supports raw counts from `raw/X` and additional layers
+
+### New Vignettes
+
+- **Direct H5AD Loading** (`direct-h5ad-loading`): Showcases `LoadH5AD()` with real data from CellxGene and SeuratData
+- **Multimodal H5MU** (`multimodal-h5mu`): Demonstrates `LoadH5MU()`/`SaveH5MU()` round-trip with CITE-seq data
+
+## New Internal Utilities
+
+- `SafeSetLayerData()`: Safe V5-compatible layer data assignment with fallback
+- `load_spatial_demo_data()`, `create_synthetic_spatial()`, `test_spatial_roundtrip()`: Spatial demo/testing utilities (internal)
+
+## Code Simplification
+
+- Removed unused `UtilsSparseMatrix.R` (`ReadSparseMatrixDims`, `ValidateSparseMatrixDims`, `CreateSparseMatrixSafe`)
+- Removed unused `GetSeuratSlotMapping()` and `ValidateSlotMapping()` from V5Compatibility.R
+- Removed fragile `PatchH5DMethods()` monkey-patching of hdf5r's H5D `[` method
+- Fixed `GetScaleFactors()` to extract actual Visium scale factors via `scalefactors()` instead of returning hardcoded values
+
+## Preserved from v0.2.2
+
+All v0.2.2 improvements are preserved in this release:
+- Unified `Convert()` interface accepting Seurat objects directly
+- Exported `SeuratToH5AD()` convenience function
+- Column name sanitization (`SanitizeColumnName`/`SanitizeColumnNames`)
+- Correct categorical encoding (no +1L regression)
+- Nullable dtype handling (`FlattenNullable`)
+- Variable features writing in V5 compatibility layer
+- `standardize` parameter for scanpy-compatible naming
+
+---
+
 # srtdisk 0.2.2
 
 > **Release Date:** 2026-02-06

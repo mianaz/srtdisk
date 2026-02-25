@@ -6,7 +6,6 @@
 \alias{LoadLoom.H5File}
 \alias{LoadLoom.loom}
 \alias{as.Seurat.loom}
-\alias{as.Seurat}
 \title{Load a Loom file as a Seurat object}
 \usage{
 LoadLoom(

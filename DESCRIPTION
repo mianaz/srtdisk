@@ -1,8 +1,8 @@
 Package: srtdisk
 Type: Package
 Title: Extended HDF5-Based Single Cell File Format Support
-Version: 0.2.2
-Date: 2026-02-06
+Version: 0.3.1
+Date: 2026-02-25
 Authors@R: c(
   person(given = 'Miana', family = 'Z', email = 'zzeng4@nd.edu', role = c('aut', 'cre')),
   person(given = 'Paul', family = 'Hoffman', email = 'phoffman@nygenome.org', role = 'aut', comment = c(ORCID = '0000-0002-7693-8957')),
@@ -19,8 +19,9 @@ Description: Extended implementation of SeuratDisk for Seurat v5 with enhanced
   reduction information, spatial coordinates and image data, and cluster labels.
   We also support rapid and on-disk conversion between h5Seurat and AnnData
   objects, with the goal of enhancing interoperability between Seurat and Scanpy.
-  This version includes Seurat v5 Assay5 compatibility and improved spatial data
-  handling.
+  This version adds MuData (h5mu) multimodal support, direct h5ad loading via
+  LoadH5AD, and includes Seurat v5 Assay5 compatibility with improved spatial
+  data handling.
 URL: https://mianaz.github.io/srtdisk/, https://github.com/mianaz/srtdisk
 BugReports: https://github.com/mianaz/srtdisk/issues
 License: GPL-3 | file LICENSE
@@ -60,11 +61,15 @@ Collate:
     'Transpose.R'
     'Convert.R'
     'H5DAccess.R'
+    'LoadH5AD.R'
+    'LoadH5MU.R'
     'LoadH5Seurat.R'
     'loom.R'
     'loom_bindings.R'
     'LoadLoom.R'
+    'LoadSpatialDemoData.R'
     'ReadH5.R'
+    'SaveH5MU.R'
     'UtilsAssayCompat.R'
     'WriteH5Group.R'
     'SaveH5Seurat.R'
@@ -79,8 +84,10 @@ Suggests:
     formatR,
     httr,
     knitr,
+    MuDataSeurat,
     reticulate,
     rmarkdown,
+    SeuratData,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 VignetteBuilder: knitr

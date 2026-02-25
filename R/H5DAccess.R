@@ -1,6 +1,4 @@
-#' @title Safe H5D Dataset Access
-#' @description Functions for safely accessing HDF5 datasets regardless of dimensionality
-#' @keywords internal
+#' @importFrom hdf5r h5attr h5attr_names
 #'
 NULL
 
