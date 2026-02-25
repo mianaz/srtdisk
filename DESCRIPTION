@@ -59,6 +59,7 @@ Collate:
     'PadMatrix.R'
     'sparse_matrix.R'
     'Transpose.R'
+    'FormatRegistry.R'
     'Convert.R'
     'H5DAccess.R'
     'LoadH5AD.R'
@@ -81,11 +82,13 @@ Collate:
     'V5LayerSupport.R'
     'h5Seurat_bindings.R'
 Suggests:
+    BiocGenerics,
     formatR,
     httr,
     knitr,
     reticulate,
     rmarkdown,
+    SingleCellExperiment,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 VignetteBuilder: knitr

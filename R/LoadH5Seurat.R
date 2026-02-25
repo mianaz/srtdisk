@@ -436,8 +436,13 @@ as.Seurat.h5Seurat <- function(
     try({
       if (x$exists('assays') && x[['assays']]$exists(assay)) {
         assay_group <- x[['assays']][[assay]]
-        # Use child names as available "slots"; this covers common names like 'counts','data','scale.data', etc.
+        # Use child names as available "slots"
         available_slots <- names(assay_group)
+        # V5 format stores data inside 'layers/' sub-group; include those as slots
+        if ('layers' %in% available_slots && inherits(assay_group[['layers']], 'H5Group')) {
+          layer_names <- names(assay_group[['layers']])
+          available_slots <- unique(c(available_slots, layer_names))
+        }
       }
     }, silent = TRUE)
 
