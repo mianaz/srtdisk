@@ -1,10 +1,7 @@
 #' @include UtilsAssayCompat.R
-#' @title Seurat V5 Compatibility Functions
-#' @description Functions for handling Seurat V5 object structures
-#' @keywords internal
-#'
 #' @importFrom Seurat Assays Reductions Images scalefactors
-#' @importFrom methods slot
+#' @importFrom SeuratObject Graphs
+#' @importFrom methods slot slotNames
 #'
 NULL
 
@@ -127,103 +124,6 @@ TransferMetadataV5 <- function(source, dfile, dname = "obs", index = NULL, verbo
   return(invisible(x = NULL))
 }
 
-#' Write an Assay5 object to an HDF5 group
-#'
-#' @inheritParams WriteH5Group
-#' @return Invisibly returns NULL
-#' @keywords internal
-#'
-WriteH5GroupAssay5 <- function(x, name, hgroup, verbose = TRUE) {
-  xgroup <- hgroup$create_group(name = name)
-
-  layers <- GetAssayLayersCompat(object = x, verbose = verbose)
-
-  # Write each layer
-  for (layer in layers) {
-    dat <- tryCatch({
-      GetAssayData(object = x, layer = layer)
-    }, error = function(e) {
-      NULL
-    })
-
-    if (!is.null(dat) && !IsMatrixEmpty(x = dat)) {
-      if (verbose) {
-        message("Adding layer '", layer, "' for ", name)
-      }
-      WriteH5Group(x = dat, name = layer, hgroup = xgroup, verbose = verbose)
-
-      # For scale.data, add scaled features
-      if (layer == "scale.data" && !is.null(rownames(x = dat))) {
-        WriteH5Group(
-          x = rownames(x = dat),
-          name = 'scaled.features',
-          hgroup = xgroup,
-          verbose = verbose
-        )
-      }
-    }
-  }
-
-  # Write features
-  features <- rownames(x = x)
-  if (!is.null(features)) {
-    WriteH5Group(
-      x = features,
-      name = 'features',
-      hgroup = xgroup,
-      verbose = verbose
-    )
-  }
-
-  # Write key
-  xgroup$create_attr(
-    attr_name = 'key',
-    robj = Key(object = x),
-    dtype = GuessDType(x = Key(object = x))
-  )
-
-  # Write variable features
-  if (length(x = VariableFeatures(object = x))) {
-    if (verbose) {
-      message("Adding variable features for ", name)
-    }
-    WriteH5Group(
-      x = VariableFeatures(object = x),
-      name = 'variable.features',
-      hgroup = xgroup,
-      verbose = verbose
-    )
-  }
-
-  # Write meta.features
-  if (ncol(x = x[[]])) {
-    if (verbose) {
-      message("Adding feature-level metadata for ", name)
-    }
-    WriteH5Group(
-      x = x[[]],
-      name = 'meta.features',
-      hgroup = xgroup,
-      verbose = verbose
-    )
-  }
-
-  # Mark as Assay5
-  xgroup$create_attr(
-    attr_name = 's4class',
-    robj = 'SeuratObject::Assay5',
-    dtype = GuessDType(x = 'SeuratObject::Assay5')
-  )
-
-  xgroup$create_attr(
-    attr_name = 'assay.version',
-    robj = '5.0.0',
-    dtype = GuessDType(x = '5.0.0')
-  )
-
-  return(invisible(x = NULL))
-}
-
 #' Handle spatial data for V5 objects
 #'
 #' @param object A Seurat object
@@ -287,4 +187,5 @@ WriteH5SpatialV5 <- function(object, hgroup, verbose = TRUE) {
 
   return(invisible(x = NULL))
 }
+
 

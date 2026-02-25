@@ -11,6 +11,7 @@ NULL
 #' \code{\link[Seurat]{Seurat}} object
 #'
 #' @inheritParams LoadH5Seurat
+#' @param file Name of an h5Seurat file path (character) or connected h5Seurat file
 #' @param object A \code{\link[Seurat]{Seurat}} object to append data to
 #' @param assays One of:
 #' \itemize{

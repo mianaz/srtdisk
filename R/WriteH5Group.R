@@ -203,7 +203,10 @@ setMethod(
   f = 'WriteH5Group',
   signature = c(x = 'ANY'),
   definition = function(x, name, hgroup, verbose = TRUE) {
-    if (inherits(x = x, what = 'SpatialImage')) {
+    if (inherits(x = x, what = 'Assay5')) {
+      # Handle Assay5 when S4 dispatch fails (e.g. Seurat not attached)
+      return(WriteH5GroupAssay5(x = x, name = name, hgroup = hgroup, verbose = verbose))
+    } else if (inherits(x = x, what = 'SpatialImage')) {
       ImageWrite(x = x, name = name, hgroup = hgroup, verbose = verbose)
     } else if (isS4(x)) {
       xgroup <- hgroup$create_group(name = name)

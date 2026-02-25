@@ -2,7 +2,7 @@
 #' @importFrom hdf5r H5T_COMPOUND
 #' @importFrom methods setOldClass is
 #' @importFrom stats na.omit
-#' @importFrom utils data read.csv
+#' @importFrom utils data read.csv getFromNamespace
 #'
 NULL
 
@@ -925,14 +925,60 @@ WriteMode <- function(overwrite = FALSE) {
 }
 
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+# V5 Safe Helper Functions
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+#' Safely set layer data in a V5 Assay
+#'
+#' Handles the case where LayerData<- might not be exported from SeuratObject
+#'
+#' @param object An Assay or Assay5 object
+#' @param layer Layer name
+#' @param value Data to set
+#' @return Modified assay object
+#' @keywords internal
+#'
+SafeSetLayerData <- function(object, layer, value) {
+  # Try using the LayerData<- function if it exists
+  if (exists("LayerData<-", where = asNamespace("SeuratObject"), mode = "function")) {
+    `LayerData<-` <- getFromNamespace("LayerData<-", "SeuratObject")
+    tryCatch({
+      return(`LayerData<-`(object = object, layer = layer, value = value))
+    }, error = function(e) {
+      # Fall back to slot assignment if LayerData<- exists but fails
+    })
+  }
+
+  # Fall back to direct slot assignment
+  tryCatch({
+    if (inherits(object, "Assay5")) {
+      # For Assay5, try to directly modify the layers slot
+      if (is.null(object@layers)) {
+        object@layers <- list()
+      }
+      object@layers[[layer]] <- value
+    } else {
+      # For standard Assay, use standard slots
+      slot(object, layer) <- value
+    }
+    return(object)
+  }, error = function(e) {
+    warning("Could not set layer data: ", e$message)
+    return(object)  # Return unchanged object as last resort
+  })
+}
+
+
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 # Loading handler
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 .onLoad <- function(libname, pkgname) {
-  # Make the classes defined in SeuratDisk compatible with S4 generics/methods
+  # Make the classes defined in srtdisk compatible with S4 generics/methods
   setOldClass(Classes = c('scdisk', 'h5Seurat'))
   RegisterSCDisk(r6class = h5Seurat)
   RegisterSCDisk(r6class = loom)
+
   # Set some default options
   op <- options()
   toset <- !names(x = default.options) %in% names(x = op)

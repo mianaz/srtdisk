@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">srtdisk</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -19,8 +19,11 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/convert-anndata.html">Conversions: h5Seurat and AnnData</a></li>
+    <li><a class="dropdown-item" href="../articles/convert-loom.html">Conversions: Seurat and Loom</a></li>
+    <li><a class="dropdown-item" href="../articles/direct-h5ad-loading.html">Direct H5AD Loading with LoadH5AD</a></li>
     <li><a class="dropdown-item" href="../articles/h5Seurat-load.html">Saving and Loading Data from an h5Seurat File</a></li>
     <li><a class="dropdown-item" href="../articles/h5Seurat-spec.html">h5Seurat File Format Specification</a></li>
+    <li><a class="dropdown-item" href="../articles/multimodal-h5mu.html">Multimodal Data with MuData (h5mu)</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -49,10 +52,10 @@
 
       <dl><dt>
 
-          <code><a href="SeuratDisk-package.html">srtdisk-package</a></code> <code><a href="SeuratDisk-package.html">_PACKAGE</a></code> <code><a href="SeuratDisk-package.html">srtdisk</a></code>
+          <code><a href="srtdisk-package.html">srtdisk-package</a></code> <code><a href="srtdisk-package.html">srtdisk</a></code> <code><a href="srtdisk-package.html">SeuratDisk</a></code>
 
         </dt>
-        <dd>srtdisk: Interfaces for HDF5-Based Single Cell File Formats</dd>
+        <dd>srtdisk: Extended HDF5-Based Single Cell File Format Support</dd>
 
         <dt>
 
@@ -89,14 +92,14 @@
           <code><a href="SaveH5Seurat.html">SaveH5Seurat()</a></code> <code><a href="SaveH5Seurat.html">as.h5Seurat()</a></code>
 
         </dt>
-        <dd>Save a <code>Seurat</code> object to an h5Seurat file</dd>
+        <dd>Save a Seurat object to an h5Seurat file</dd>
 
         <dt>
 
           <code><a href="LoadH5Seurat.html">LoadH5Seurat()</a></code> <code><a href="LoadH5Seurat.html">as.Seurat(<i>&lt;h5Seurat&gt;</i>)</a></code>
 
         </dt>
-        <dd>Load a saved <code>Seurat</code> object from an h5Seurat file</dd>
+        <dd>Load a Seurat object from an h5Seurat file</dd>
 
         <dt>
 
@@ -148,6 +151,57 @@
 
         </dt>
         <dd>Convert h5Seurat files to H5AD files</dd>
+
+        <dt>
+
+          <code><a href="SeuratToH5AD.html">SeuratToH5AD()</a></code>
+
+        </dt>
+        <dd>Direct Seurat to H5AD Conversion</dd>
+
+        <dt>
+
+          <code><a href="LoadH5AD.html">LoadH5AD()</a></code>
+
+        </dt>
+        <dd>Load an AnnData H5AD file as a Seurat object</dd>
+
+        <dt>
+
+          <code><a href="readH5AD_obs.html">readH5AD_obs()</a></code>
+
+        </dt>
+        <dd>Read observation metadata from an H5AD file</dd>
+
+        <dt>
+
+          <code><a href="readH5AD_obsm.html">readH5AD_obsm()</a></code>
+
+        </dt>
+        <dd>Read observation embeddings from an H5AD file</dd>
+      </dl></div><div class="section level2">
+      <h2 id="mudata-h-mu-format">MuData (h5mu) Format<a class="anchor" aria-label="anchor" href="#mudata-h-mu-format"></a></h2>
+
+      <div class="section-desc"><p>Working with MuData multimodal HDF5 files</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="LoadH5MU.html">LoadH5MU()</a></code>
+
+        </dt>
+        <dd>Load a MuData H5MU file as a Seurat object</dd>
+
+        <dt>
+
+          <code><a href="SaveH5MU.html">SaveH5MU()</a></code> <code><a href="SaveH5MU.html">as.h5mu()</a></code>
+
+        </dt>
+        <dd>Save a Seurat object to an H5MU file</dd>
       </dl></div><div class="section level2">
       <h2 id="loom-format">Loom Format<a class="anchor" aria-label="anchor" href="#loom-format"></a></h2>
 
@@ -163,14 +217,14 @@
           <code><a href="LoadLoom.html">LoadLoom()</a></code> <code><a href="LoadLoom.html">as.Seurat(<i>&lt;loom&gt;</i>)</a></code>
 
         </dt>
-        <dd>Loom-file Loading</dd>
+        <dd>Load a Loom file as a Seurat object</dd>
 
         <dt>
 
           <code><a href="SaveLoom.html">SaveLoom()</a></code> <code><a href="SaveLoom.html">as.loom()</a></code>
 
         </dt>
-        <dd>Save a <code><a href="https://satijalab.org/seurat/reference/Seurat-package.html" class="external-link">Seurat</a></code> object to a loom file</dd>
+        <dd>Save a Seurat object to a Loom file</dd>
 
         <dt>
 
@@ -200,6 +254,29 @@
         </dt>
         <dd>Validate Loom Files</dd>
       </dl></div><div class="section level2">
+      <h2 id="spatial-data-conversion">Spatial Data Conversion<a class="anchor" aria-label="anchor" href="#spatial-data-conversion"></a></h2>
+
+      <div class="section-desc"><p>Converting spatial data between Seurat and AnnData formats</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="ConvertH5ADSpatialToSeurat.html">ConvertH5ADSpatialToSeurat()</a></code>
+
+        </dt>
+        <dd>Convert spatial coordinates from h5ad to Seurat format</dd>
+
+        <dt>
+
+          <code><a href="ConvertSeuratSpatialToH5AD.html">ConvertSeuratSpatialToH5AD()</a></code>
+
+        </dt>
+        <dd>Convert Seurat spatial data to h5ad format</dd>
+      </dl></div><div class="section level2">
       <h2 id="format-conversion">Format Conversion<a class="anchor" aria-label="anchor" href="#format-conversion"></a></h2>
 
       <div class="section-desc"><p>General conversion utilities between all supported formats</p></div>
@@ -214,7 +291,7 @@
           <code><a href="Convert.html">Convert()</a></code>
 
         </dt>
-        <dd>Convert an on-disk single-cell dataset to another format</dd>
+        <dd>Convert single-cell datasets between formats</dd>
 
         <dt>
 
@@ -234,10 +311,17 @@
 
       <dl><dt>
 
-          <code><a href="ReadH5.html">as.array(<i>&lt;H5D&gt;</i>)</a></code> <code><a href="ReadH5.html">as.data.frame(<i>&lt;H5D&gt;</i>)</a></code> <code><a href="ReadH5.html">as.data.frame(<i>&lt;H5Group&gt;</i>)</a></code> <code><a href="ReadH5.html">as.factor(<i>&lt;H5Group&gt;</i>)</a></code> <code><a href="ReadH5.html">as.list(<i>&lt;H5Group&gt;</i>)</a></code> <code><a href="ReadH5.html">as.matrix(<i>&lt;H5D&gt;</i>)</a></code> <code><a href="ReadH5.html">as.matrix(<i>&lt;H5Group&gt;</i>)</a></code> <code><a href="ReadH5.html">as.sparse(<i>&lt;H5D&gt;</i>)</a></code> <code><a href="ReadH5.html">as.sparse(<i>&lt;H5Group&gt;</i>)</a></code>
+          <code><a href="ReadH5.html">as.array(<i>&lt;H5D&gt;</i>)</a></code> <code><a href="ReadH5.html">as.data.frame(<i>&lt;H5D&gt;</i>)</a></code> <code><a href="ReadH5.html">as.data.frame(<i>&lt;H5Group&gt;</i>)</a></code> <code><a href="ReadH5.html">as.list(<i>&lt;H5D&gt;</i>)</a></code> <code><a href="ReadH5.html">as.list(<i>&lt;H5Group&gt;</i>)</a></code> <code><a href="ReadH5.html">as.matrix(<i>&lt;H5D&gt;</i>)</a></code> <code><a href="ReadH5.html">as.matrix(<i>&lt;H5Group&gt;</i>)</a></code>
 
         </dt>
-        <dd>Load data from an HDF5 File</dd>
+        <dd>Read HDF5 Files</dd>
+
+        <dt>
+
+          <code><a href="as.sparse.html">as.sparse(<i>&lt;H5D&gt;</i>)</a></code> <code><a href="as.sparse.html">as.sparse(<i>&lt;H5Group&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Convert an HDF5 dataset to a sparse matrix</dd>
 
         <dt>
 

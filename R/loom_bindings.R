@@ -14,8 +14,6 @@ NULL
 #' @importFrom Seurat DefaultAssay
 #' @inheritParams Seurat::DefaultAssay
 #'
-#' @aliases DefaultAssay
-#'
 #' @rdname loom-bindings
 #' @method DefaultAssay loom
 #' @export

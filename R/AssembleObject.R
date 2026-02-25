@@ -83,16 +83,15 @@ ReadSparseMatrix <- function(h5_group, verbose = FALSE) {
         )
       } else if (length(indptr) - 1 == nrows) {
         if (verbose) {
-          message("Detected CSR format, will transpose")
+          message("Detected CSR format (indptr matches nrows)")
         }
         sparse_mat <- Matrix::sparseMatrix(
           j = indices + 1L,
           p = indptr,
           x = data_vals,
-          dims = c(ncols, nrows),
+          dims = c(nrows, ncols),
           index1 = TRUE
         )
-        sparse_mat <- Matrix::t(sparse_mat)
       } else {
         if (verbose) {
           message("Error: Cannot determine sparse matrix format. indptr length: ",

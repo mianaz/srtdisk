@@ -541,19 +541,18 @@ AddGenericSpatialData <- function(seurat_obj, coords,
 #'
 #' @param visium_obj Visium image object
 #'
-#' @return List of scale factors
+#' @return List of scale factors, or NULL if unavailable
 #' @keywords internal
+#'
+#' @importFrom Seurat scalefactors
+#'
 GetScaleFactors <- function(visium_obj) {
+  tryCatch({
+    sf <- scalefactors(visium_obj)
+    if (!is.null(sf)) {
+      return(as.list(sf))
+    }
+  }, error = function(e) NULL)
 
-  # This would extract scale factors from actual Visium objects
-  # For now, return example values
-
-  scale_factors <- list(
-    tissue_hires_scalef = 0.17,
-    tissue_lowres_scalef = 0.05,
-    spot_diameter_fullres = 89.0,
-    fiducial_diameter_fullres = 144.0
-  )
-
-  return(scale_factors)
+  NULL
 }

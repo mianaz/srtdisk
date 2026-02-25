@@ -234,7 +234,7 @@ index (\code{source$index()}). It works in the following manner:
 }
 \subsection{Dimensional reduction information}{
  Only dimensional reductions associated with \code{assay} or marked as
- \link[Seurat:IsGlobal]{global} will be transfered to the H5AD file. For
+ \link[SeuratObject:IsGlobal]{global} will be transfered to the H5AD file. For
  every reduction \code{reduc}:
  \itemize{
   \item cell embeddings are placed in \code{obsm} and renamed to
