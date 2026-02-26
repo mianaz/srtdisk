@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">srtdisk</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -20,8 +20,10 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/convert-anndata.html">Conversions: h5Seurat and AnnData</a></li>
     <li><a class="dropdown-item" href="../articles/convert-loom.html">Conversions: Seurat and Loom</a></li>
+    <li><a class="dropdown-item" href="../articles/direct-h5ad-loading.html">Direct H5AD Loading with LoadH5AD</a></li>
     <li><a class="dropdown-item" href="../articles/h5Seurat-load.html">Saving and Loading Data from an h5Seurat File</a></li>
     <li><a class="dropdown-item" href="../articles/h5Seurat-spec.html">h5Seurat File Format Specification</a></li>
+    <li><a class="dropdown-item" href="../articles/multimodal-h5mu.html">Multimodal Data with MuData (h5mu)</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -36,7 +38,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Figure out which objects to load from an h5Seurat file</h1>
-      <small class="dont-index">Source: <a href="https://github.com/mianaz/srtdisk/blob/0.2.1/R/GetObject.R" class="external-link"><code>R/GetObject.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/mianaz/srtdisk/blob/main/R/GetObject.R" class="external-link"><code>R/GetObject.R</code></a></small>
       <div class="d-none name"><code>GetObject.Rd</code></div>
     </div>
 
@@ -46,7 +48,7 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">GetAssays</span><span class="op">(</span><span class="va">assays</span>, <span class="va">index</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">GetAssays</span><span class="op">(</span>assays <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">index</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">GetCommands</span><span class="op">(</span><span class="va">index</span>, assays <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span></span>
@@ -64,12 +66,11 @@
 
 
 <dl><dt id="arg-assays">assays<a class="anchor" aria-label="anchor" href="#arg-assays"></a></dt>
-<dd><p>One of:</p><ul><li><p>A character vector with names of assays</p></li>
-<li><p>A character vector with one or more of <code>counts</code>, <code>data</code>,
- <code>scale.data</code> describing which slots of <strong>all assays</strong> to load</p></li>
-<li><p>A named list where each entry is either the name of an assay or a vector
- describing which slots (described above) to take from which assay</p></li>
-<li><p><code>NULL</code> for all assays</p></li>
+<dd><p>One of:</p><ul><li><p><code>NULL</code> (default): Load all assays</p></li>
+<li><p>A character vector with names of assays to load (e.g., <code>c("RNA", "ADT")</code>)</p></li>
+<li><p>A character vector specifying which data layers to load for all assays:
+   <code>c("counts", "data")</code> loads only the counts and data layers, skipping scale.data</p></li>
+<li><p>A named list for fine-grained control, e.g., <code>list(RNA = "data", ADT = c("data", "scale.data"))</code></p></li>
 </ul></dd>
 
 
@@ -78,34 +79,32 @@
 
 
 <dt id="arg-reductions">reductions<a class="anchor" aria-label="anchor" href="#arg-reductions"></a></dt>
-<dd><p>One of:</p><ul><li><p>A character vector with names of reductions</p></li>
-<li><p><code>NULL</code> for all reductions</p></li>
-<li><p><code>NA</code> for <a href="https://satijalab.github.io/seurat-object/reference/IsGlobal.html" class="external-link">global</a> reductions</p></li>
-<li><p><code>FALSE</code> for no reductions</p></li>
-</ul><p><strong>Note</strong>: Only reductions associated with an assay loaded in
-<code>assays</code> or marked as <a href="https://satijalab.github.io/seurat-object/reference/IsGlobal.html" class="external-link">global</a> will be loaded</p></dd>
+<dd><p>One of:</p><ul><li><p><code>NULL</code> (default): Load all reductions (PCA, UMAP, etc.)</p></li>
+<li><p>A character vector with names of specific reductions (e.g., <code>c("pca", "umap")</code>)</p></li>
+<li><p><code>NA</code>: Load only global (assay-independent) reductions</p></li>
+<li><p><code>FALSE</code>: Skip loading all reductions</p></li>
+</ul><p><strong>Note</strong>: Only reductions associated with a loaded assay or marked as global will be loaded.</p></dd>
 
 
 <dt id="arg-graphs">graphs<a class="anchor" aria-label="anchor" href="#arg-graphs"></a></dt>
-<dd><p>One of:</p><ul><li><p>A character vector with names of graphs</p></li>
-<li><p><code>NULL</code> for all graphs</p></li>
-<li><p><code>FALSE</code> for no graphs</p></li>
-</ul><p><strong>Note</strong>: Only graphs associated with an assay loaded in <code>assays</code>
-will be loaded</p></dd>
+<dd><p>One of:</p><ul><li><p><code>NULL</code> (default): Load all graphs</p></li>
+<li><p>A character vector with specific graph names (e.g., <code>c("RNA_snn", "ADT_snn")</code>)</p></li>
+<li><p><code>FALSE</code>: Skip loading graphs</p></li>
+</ul><p><strong>Note</strong>: Only graphs associated with loaded assays will be available.</p></dd>
 
 
 <dt id="arg-images">images<a class="anchor" aria-label="anchor" href="#arg-images"></a></dt>
-<dd><p>One of:</p><ul><li><p>A character vector with names of images</p></li>
-<li><p><code>NULL</code> for all images</p></li>
-<li><p><code>NA</code> for <a href="https://satijalab.github.io/seurat-object/reference/IsGlobal.html" class="external-link">global</a> images</p></li>
-<li><p><code>FALSE</code> for no images</p></li>
+<dd><p>One of:</p><ul><li><p><code>NULL</code> (default): Load all images (for spatial experiments)</p></li>
+<li><p>A character vector with image names</p></li>
+<li><p><code>NA</code>: Load only global images</p></li>
+<li><p><code>FALSE</code>: Skip images</p></li>
 </ul></dd>
 
 
 <dt id="arg-neighbors">neighbors<a class="anchor" aria-label="anchor" href="#arg-neighbors"></a></dt>
-<dd><p>One of:</p><ul><li><p>A character vector with the names of neighbors</p></li>
-<li><p><code>NULL</code> for all neighbors</p></li>
-<li><p><code>FALSE</code> for no neighbors</p></li>
+<dd><p>One of:</p><ul><li><p><code>NULL</code> (default): Load all neighbor information</p></li>
+<li><p>A character vector with neighbor names</p></li>
+<li><p><code>FALSE</code>: Skip neighbors</p></li>
 </ul></dd>
 
 </dl></div>

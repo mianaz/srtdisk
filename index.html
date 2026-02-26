@@ -11,8 +11,8 @@
 <script src="deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Extended HDF5-Based Single Cell File Format Support">
-<meta name="description" content="Extended implementation of SeuratDisk for Seurat v5 with enhanced support for HDF5-based single cell file formats. The h5Seurat file format is specifically designed for the storage and analysis of multi-modal single-cell and spatially-resolved expression experiments, for example, from CITE-seq or 10X Visium technologies. It holds all molecular information and associated metadata, including (for example) nearest-neighbor graphs, dimensional reduction information, spatial coordinates and image data, and cluster labels. We also support rapid and on-disk conversion between h5Seurat and AnnData objects, with the goal of enhancing interoperability between Seurat and Scanpy. This version includes Seurat v5 Assay5 compatibility and improved spatial data handling.">
-<meta property="og:description" content="Extended implementation of SeuratDisk for Seurat v5 with enhanced support for HDF5-based single cell file formats. The h5Seurat file format is specifically designed for the storage and analysis of multi-modal single-cell and spatially-resolved expression experiments, for example, from CITE-seq or 10X Visium technologies. It holds all molecular information and associated metadata, including (for example) nearest-neighbor graphs, dimensional reduction information, spatial coordinates and image data, and cluster labels. We also support rapid and on-disk conversion between h5Seurat and AnnData objects, with the goal of enhancing interoperability between Seurat and Scanpy. This version includes Seurat v5 Assay5 compatibility and improved spatial data handling.">
+<meta name="description" content="Extended implementation of SeuratDisk for Seurat v5 with enhanced support for HDF5-based single cell file formats. The h5Seurat file format is specifically designed for the storage and analysis of multi-modal single-cell and spatially-resolved expression experiments, for example, from CITE-seq or 10X Visium technologies. It holds all molecular information and associated metadata, including (for example) nearest-neighbor graphs, dimensional reduction information, spatial coordinates and image data, and cluster labels. We also support rapid and on-disk conversion between h5Seurat and AnnData objects, with the goal of enhancing interoperability between Seurat and Scanpy. This version adds MuData (h5mu) multimodal support, direct h5ad loading via LoadH5AD, and includes Seurat v5 Assay5 compatibility with improved spatial data handling.">
+<meta property="og:description" content="Extended implementation of SeuratDisk for Seurat v5 with enhanced support for HDF5-based single cell file formats. The h5Seurat file format is specifically designed for the storage and analysis of multi-modal single-cell and spatially-resolved expression experiments, for example, from CITE-seq or 10X Visium technologies. It holds all molecular information and associated metadata, including (for example) nearest-neighbor graphs, dimensional reduction information, spatial coordinates and image data, and cluster labels. We also support rapid and on-disk conversion between h5Seurat and AnnData objects, with the goal of enhancing interoperability between Seurat and Scanpy. This version adds MuData (h5mu) multimodal support, direct h5ad loading via LoadH5AD, and includes Seurat v5 Assay5 compatibility with improved spatial data handling.">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="index.html">srtdisk</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -37,8 +37,10 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="articles/convert-anndata.html">Conversions: h5Seurat and AnnData</a></li>
     <li><a class="dropdown-item" href="articles/convert-loom.html">Conversions: Seurat and Loom</a></li>
+    <li><a class="dropdown-item" href="articles/direct-h5ad-loading.html">Direct H5AD Loading with LoadH5AD</a></li>
     <li><a class="dropdown-item" href="articles/h5Seurat-load.html">Saving and Loading Data from an h5Seurat File</a></li>
     <li><a class="dropdown-item" href="articles/h5Seurat-spec.html">h5Seurat File Format Specification</a></li>
+    <li><a class="dropdown-item" href="articles/multimodal-h5mu.html">Multimodal Data with MuData (h5mu)</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
@@ -56,7 +58,7 @@
 </nav><div class="container template-home">
 <div class="row">
   <main id="main" class="col-md-9"><div class="section level1">
-<div class="page-header"><h1 id="srtdisk-v021">srtdisk v0.2.1<a class="anchor" aria-label="anchor" href="#srtdisk-v021"></a>
+<div class="page-header"><h1 id="srtdisk-v031">srtdisk v0.3.1<a class="anchor" aria-label="anchor" href="#srtdisk-v031"></a>
 </h1></div>
 <!-- badges: start -->
 
@@ -106,7 +108,7 @@
 <td>Direct Conversion</td>
 <td>Two-step only</td>
 <td>
-<code>SeuratToH5AD()</code> wrapper</td>
+<code><a href="reference/SeuratToH5AD.html">SeuratToH5AD()</a></code> wrapper</td>
 </tr>
 <tr class="odd">
 <td>h5ad Compatibility</td>
@@ -120,7 +122,7 @@
 <h2 id="quick-start">Quick Start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
 </h2>
 <div class="section level3">
-<h3 id="seurat-to-h5ad-two-step">Seurat to h5ad (Two-step)<a class="anchor" aria-label="anchor" href="#seurat-to-h5ad-two-step"></a>
+<h3 id="seurat-to-h5ad-recommended">Seurat to h5ad (Recommended)<a class="anchor" aria-label="anchor" href="#seurat-to-h5ad-recommended"></a>
 </h3>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://satijalab.org/seurat" class="external-link">Seurat</a></span><span class="op">)</span></span>
@@ -130,23 +132,29 @@
 <span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">"pbmc3k.final"</span>, package <span class="op">=</span> <span class="st">"pbmc3k.SeuratData"</span><span class="op">)</span></span>
 <span><span class="va">pbmc</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://satijalab.github.io/seurat-object/reference/UpdateSeuratObject.html" class="external-link">UpdateSeuratObject</a></span><span class="op">(</span><span class="va">pbmc3k.final</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Step 1: Save as h5Seurat</span></span>
-<span><span class="fu"><a href="reference/SaveH5Seurat.html">SaveH5Seurat</a></span><span class="op">(</span><span class="va">pbmc</span>, filename <span class="op">=</span> <span class="st">"pbmc3k.h5Seurat"</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="co"># One-step conversion using Convert()</span></span>
+<span><span class="fu"><a href="reference/Convert.html">Convert</a></span><span class="op">(</span><span class="va">pbmc</span>, dest <span class="op">=</span> <span class="st">"pbmc3k.h5ad"</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Step 2: Convert to h5ad</span></span>
-<span><span class="fu"><a href="reference/Convert.html">Convert</a></span><span class="op">(</span><span class="st">"pbmc3k.h5Seurat"</span>, dest <span class="op">=</span> <span class="st">"h5ad"</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<span><span class="co"># Or use the convenience wrapper</span></span>
+<span><span class="fu"><a href="reference/SeuratToH5AD.html">SeuratToH5AD</a></span><span class="op">(</span><span class="va">pbmc</span>, filename <span class="op">=</span> <span class="st">"pbmc3k.h5ad"</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
-<h3 id="seurat-to-h5ad-one-step">Seurat to h5ad (One-step)<a class="anchor" aria-label="anchor" href="#seurat-to-h5ad-one-step"></a>
+<h3 id="seurat-to-loom">Seurat to Loom<a class="anchor" aria-label="anchor" href="#seurat-to-loom"></a>
 </h3>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Direct conversion using wrapper function</span></span>
-<span><span class="fu">SeuratToH5AD</span><span class="op">(</span><span class="va">pbmc</span>, filename <span class="op">=</span> <span class="st">"pbmc3k_direct.h5ad"</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="reference/Convert.html">Convert</a></span><span class="op">(</span><span class="va">pbmc</span>, dest <span class="op">=</span> <span class="st">"pbmc3k.loom"</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="seurat-to-h5seurat">Seurat to h5Seurat<a class="anchor" aria-label="anchor" href="#seurat-to-h5seurat"></a>
+</h3>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Save as h5Seurat (can also use SaveH5Seurat() directly)</span></span>
+<span><span class="fu"><a href="reference/Convert.html">Convert</a></span><span class="op">(</span><span class="va">pbmc</span>, dest <span class="op">=</span> <span class="st">"pbmc3k.h5Seurat"</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="h5ad-to-seurat">h5ad to Seurat<a class="anchor" aria-label="anchor" href="#h5ad-to-seurat"></a>
 </h3>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Using bundled CRC sample</span></span>
 <span><span class="va">h5ad_path</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"testdata"</span>, <span class="st">"crc_sample.h5ad"</span>, package <span class="op">=</span> <span class="st">"srtdisk"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/Convert.html">Convert</a></span><span class="op">(</span><span class="va">h5ad_path</span>, dest <span class="op">=</span> <span class="st">"h5seurat"</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
@@ -155,23 +163,23 @@
 <div class="section level3">
 <h3 id="multi-assay-eg-cite-seq">Multi-assay (e.g. CITE-seq)<a class="anchor" aria-label="anchor" href="#multi-assay-eg-cite-seq"></a>
 </h3>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Note: Converts one assay at a time</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">SeuratData</span><span class="op">)</span></span>
 <span><span class="fu">InstallData</span><span class="op">(</span><span class="st">"cbmc"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">"cbmc"</span>, package <span class="op">=</span> <span class="st">"cbmc.SeuratData"</span><span class="op">)</span></span>
-<span><span class="fu">SeuratToH5AD</span><span class="op">(</span><span class="va">cbmc</span>, filename <span class="op">=</span> <span class="st">"cbmc_rna.h5ad"</span>, assay <span class="op">=</span> <span class="st">"RNA"</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="fu">SeuratToH5AD</span><span class="op">(</span><span class="va">cbmc</span>, filename <span class="op">=</span> <span class="st">"cbmc_adt.h5ad"</span>, assay <span class="op">=</span> <span class="st">"ADT"</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="reference/SeuratToH5AD.html">SeuratToH5AD</a></span><span class="op">(</span><span class="va">cbmc</span>, filename <span class="op">=</span> <span class="st">"cbmc_rna.h5ad"</span>, assay <span class="op">=</span> <span class="st">"RNA"</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/SeuratToH5AD.html">SeuratToH5AD</a></span><span class="op">(</span><span class="va">cbmc</span>, filename <span class="op">=</span> <span class="st">"cbmc_adt.h5ad"</span>, assay <span class="op">=</span> <span class="st">"ADT"</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="visium-spatial-data-conversion">Visium Spatial Data Conversion<a class="anchor" aria-label="anchor" href="#visium-spatial-data-conversion"></a>
 </h3>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Seurat Visium to h5ad</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">SeuratData</span><span class="op">)</span></span>
 <span><span class="fu">InstallData</span><span class="op">(</span><span class="st">"stxBrain"</span><span class="op">)</span></span>
 <span><span class="va">brain</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://satijalab.github.io/seurat-object/reference/UpdateSeuratObject.html" class="external-link">UpdateSeuratObject</a></span><span class="op">(</span><span class="fu">LoadData</span><span class="op">(</span><span class="st">"stxBrain"</span>, type <span class="op">=</span> <span class="st">"anterior1"</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu">SeuratToH5AD</span><span class="op">(</span><span class="va">brain</span>, filename <span class="op">=</span> <span class="st">"brain_spatial.h5ad"</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/SeuratToH5AD.html">SeuratToH5AD</a></span><span class="op">(</span><span class="va">brain</span>, filename <span class="op">=</span> <span class="st">"brain_spatial.h5ad"</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># h5ad to Seurat (preserves spatial coordinates and images)</span></span>
 <span><span class="fu"><a href="reference/Convert.html">Convert</a></span><span class="op">(</span><span class="st">"brain_spatial.h5ad"</span>, dest <span class="op">=</span> <span class="st">"h5seurat"</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
@@ -185,18 +193,22 @@
 <h3 id="core-conversion-functions">Core Conversion Functions<a class="anchor" aria-label="anchor" href="#core-conversion-functions"></a>
 </h3>
 <table class="table">
+<colgroup>
+<col width="24%">
+<col width="75%">
+</colgroup>
 <thead><tr class="header">
 <th>Function</th>
 <th>Description</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td><code>SeuratToH5AD()</code></td>
-<td>Direct one-step Seurat to h5ad conversion</td>
+<td><code><a href="reference/Convert.html">Convert()</a></code></td>
+<td>Unified converter: Seurat/h5Seurat/h5ad/Loom</td>
 </tr>
 <tr class="even">
-<td><code><a href="reference/Convert.html">Convert()</a></code></td>
-<td>Convert between h5Seurat and h5ad formats</td>
+<td><code><a href="reference/SeuratToH5AD.html">SeuratToH5AD()</a></code></td>
+<td>Convenience wrapper for Seurat to h5ad</td>
 </tr>
 <tr class="odd">
 <td><code><a href="reference/SaveH5Seurat.html">SaveH5Seurat()</a></code></td>

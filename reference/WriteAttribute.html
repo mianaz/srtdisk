@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">srtdisk</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -20,8 +20,10 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/convert-anndata.html">Conversions: h5Seurat and AnnData</a></li>
     <li><a class="dropdown-item" href="../articles/convert-loom.html">Conversions: Seurat and Loom</a></li>
+    <li><a class="dropdown-item" href="../articles/direct-h5ad-loading.html">Direct H5AD Loading with LoadH5AD</a></li>
     <li><a class="dropdown-item" href="../articles/h5Seurat-load.html">Saving and Loading Data from an h5Seurat File</a></li>
     <li><a class="dropdown-item" href="../articles/h5Seurat-spec.html">h5Seurat File Format Specification</a></li>
+    <li><a class="dropdown-item" href="../articles/multimodal-h5mu.html">Multimodal Data with MuData (h5mu)</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -36,7 +38,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Write an attribute to an HDF5 file, group, or dataset</h1>
-      <small class="dont-index">Source: <a href="https://github.com/mianaz/srtdisk/blob/0.2.1/R/zzz.R" class="external-link"><code>R/zzz.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/mianaz/srtdisk/blob/main/R/zzz.R" class="external-link"><code>R/zzz.R</code></a></small>
       <div class="d-none name"><code>WriteAttribute.Rd</code></div>
     </div>
 
@@ -53,29 +55,33 @@
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
-<dd><p>An object to write out</p></dd>
-
-
-<dt id="arg-name">name<a class="anchor" aria-label="anchor" href="#arg-name"></a></dt>
+<dl><dt id="arg-name">name<a class="anchor" aria-label="anchor" href="#arg-name"></a></dt>
 <dd><p>Name to store attribute as</p></dd>
 
 
-<dt id="arg-lfile">lfile<a class="anchor" aria-label="anchor" href="#arg-lfile"></a></dt>
+<dt id="arg-h-">h5<a class="anchor" aria-label="anchor" href="#arg-h-"></a></dt>
 <dd><p>An HDF5 <a href="http://hhoeflin.github.io/hdf5r/reference/H5File-class.html" class="external-link">file</a>, <a href="http://hhoeflin.github.io/hdf5r/reference/H5Group-class.html" class="external-link">group</a>, or
 <a href="http://hhoeflin.github.io/hdf5r/reference/H5D-class.html" class="external-link">dataset</a></p></dd>
 
 
-<dt id="arg-stype">stype<a class="anchor" aria-label="anchor" href="#arg-stype"></a></dt>
+<dt id="arg-robj">robj<a class="anchor" aria-label="anchor" href="#arg-robj"></a></dt>
+<dd><p>An object to write out</p></dd>
+
+
+<dt id="arg-dtype">dtype<a class="anchor" aria-label="anchor" href="#arg-dtype"></a></dt>
 <dd><p>Data type of attribute</p></dd>
 
 
-<dt id="arg-transpose">transpose<a class="anchor" aria-label="anchor" href="#arg-transpose"></a></dt>
-<dd><p>Whether to transpose the data</p></dd>
+<dt id="arg-scalar">scalar<a class="anchor" aria-label="anchor" href="#arg-scalar"></a></dt>
+<dd><p>Is this a scalar or simple (vectorized) attribute?</p></dd>
 
 
-<dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
-<dd><p>Whether to print messages</p></dd>
+<dt id="arg-overwrite">overwrite<a class="anchor" aria-label="anchor" href="#arg-overwrite"></a></dt>
+<dd><p>Overwrite the attribute if it already exists</p></dd>
+
+
+<dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
+<dd><p>Extra paramters passed to <code><a href="http://hhoeflin.github.io/hdf5r/reference/H5S-class.html" class="external-link">H5S$new</a></code></p></dd>
 
 </dl></div>
     <div class="section level2">
