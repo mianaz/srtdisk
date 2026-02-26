@@ -84,13 +84,8 @@ Suggests:
     formatR,
     httr,
     knitr,
-    MuDataSeurat,
     reticulate,
     rmarkdown,
-    SeuratData,
     testthat (>= 3.0.0)
-Remotes:
-    pmbio/MuDataSeurat,
-    satijalab/seurat-data
 Config/testthat/edition: 3
 VignetteBuilder: knitr
