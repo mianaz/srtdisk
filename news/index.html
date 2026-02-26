@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">srtdisk</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -20,8 +20,10 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/convert-anndata.html">Conversions: h5Seurat and AnnData</a></li>
     <li><a class="dropdown-item" href="../articles/convert-loom.html">Conversions: Seurat and Loom</a></li>
+    <li><a class="dropdown-item" href="../articles/direct-h5ad-loading.html">Direct H5AD Loading with LoadH5AD</a></li>
     <li><a class="dropdown-item" href="../articles/h5Seurat-load.html">Saving and Loading Data from an h5Seurat File</a></li>
     <li><a class="dropdown-item" href="../articles/h5Seurat-spec.html">h5Seurat File Format Specification</a></li>
+    <li><a class="dropdown-item" href="../articles/multimodal-h5mu.html">Multimodal Data with MuData (h5mu)</a></li>
   </ul></li>
 <li class="active nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -36,9 +38,108 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/mianaz/srtdisk/blob/0.2.1/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/mianaz/srtdisk/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.3.1" id="srtdisk-031">srtdisk 0.3.1<a class="anchor" aria-label="anchor" href="#srtdisk-031"></a></h2>
+<blockquote>
+<p><strong>Release Date:</strong> 2026-02-25</p>
+</blockquote>
+<div class="section level3">
+<h3 id="bug-fixes-0-3-1">Bug Fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-3-1"></a></h3>
+<ul><li>Fixed CSR sparse matrix loading failure in <code><a href="../reference/ReadSparseMatrix.html">ReadSparseMatrix()</a></code> that caused <code>'dims' must contain all (i,j) pairs</code> errors when loading large h5ad-converted h5Seurat files. The <code>dims</code> argument to <code><a href="https://rdrr.io/pkg/Matrix/man/sparseMatrix.html" class="external-link">Matrix::sparseMatrix()</a></code> was incorrectly swapped as <code>(ncols, nrows)</code> instead of <code>(nrows, ncols)</code>, and the unnecessary transpose has been removed.</li>
+<li>Added direct h5ad-to-RDS conversion path in <code><a href="../reference/Convert.html">Convert()</a></code> so that <code>Convert("file.h5ad", dest = "file.rds")</code> works without a manual intermediate h5Seurat step.</li>
+</ul><p>Validated on mouse atlas (356K cells, 16.8K genes) and human atlas (1.04M cells, 17.1K genes).</p>
+<hr></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.3.0" id="srtdisk-030">srtdisk 0.3.0<a class="anchor" aria-label="anchor" href="#srtdisk-030"></a></h2>
+<blockquote>
+<p><strong>Release Date:</strong> 2026-02-09</p>
+</blockquote>
+<div class="section level3">
+<h3 id="highlights-0-3-0">Highlights<a class="anchor" aria-label="anchor" href="#highlights-0-3-0"></a></h3>
+<div class="section level4">
+<h4 id="mudata-h5mu-multimodal-support-0-3-0">MuData (h5mu) Multimodal Support<a class="anchor" aria-label="anchor" href="#mudata-h5mu-multimodal-support-0-3-0"></a></h4>
+<p>srtdisk now supports the MuData/h5mu format for multimodal single-cell data:</p>
+<ul><li>
+<strong><code><a href="../reference/LoadH5MU.html">LoadH5MU()</a></code></strong>: Load h5mu files as multimodal Seurat objects with automatic modality-to-assay name mapping (rna-&gt;RNA, prot-&gt;ADT, atac-&gt;ATAC, etc.)</li>
+<li>
+<strong><code><a href="../reference/SaveH5MU.html">SaveH5MU()</a></code></strong>: Export multimodal Seurat objects to h5mu format with spatial data preservation and conflict-free modality naming</li>
+<li>
+<strong><code><a href="../reference/SaveH5MU.html">as.h5mu()</a></code></strong>: Convenience alias for SaveH5MU</li>
+<li>
+<strong>H5MU conversion pathways</strong>: <code><a href="../reference/Convert.html">Convert()</a></code> now supports h5mu as both source and destination format (h5mu&lt;-&gt;h5Seurat, h5mu-&gt;h5ad)</li>
+<li>Requires <code>MuDataSeurat</code> package (optional dependency)</li>
+</ul></div>
+<div class="section level4">
+<h4 id="direct-h5ad-loading-with-loadh5ad-0-3-0">Direct h5ad Loading with <code>LoadH5AD()</code>
+<a class="anchor" aria-label="anchor" href="#direct-h5ad-loading-with-loadh5ad-0-3-0"></a></h4>
+<p>New <code><a href="../reference/LoadH5AD.html">LoadH5AD()</a></code> function provides direct h5ad-to-Seurat conversion without the intermediate h5Seurat step:</p>
+<ul><li>Reads sparse (CSR) and dense expression matrices</li>
+<li>Preserves categorical metadata as R factors</li>
+<li>Restores dimensional reductions (PCA, UMAP, tSNE)</li>
+<li>Handles feature metadata, neighbor graphs, and spatial data</li>
+<li>Supports raw counts from <code>raw/X</code> and additional layers</li>
+</ul></div>
+<div class="section level4">
+<h4 id="new-vignettes-0-3-0">New Vignettes<a class="anchor" aria-label="anchor" href="#new-vignettes-0-3-0"></a></h4>
+<ul><li>
+<strong>Direct H5AD Loading</strong> (<code>direct-h5ad-loading</code>): Showcases <code><a href="../reference/LoadH5AD.html">LoadH5AD()</a></code> with real data from CellxGene and SeuratData</li>
+<li>
+<strong>Multimodal H5MU</strong> (<code>multimodal-h5mu</code>): Demonstrates <code><a href="../reference/LoadH5MU.html">LoadH5MU()</a></code>/<code><a href="../reference/SaveH5MU.html">SaveH5MU()</a></code> round-trip with CITE-seq data</li>
+</ul></div>
+</div>
+<div class="section level3">
+<h3 id="new-internal-utilities-0-3-0">New Internal Utilities<a class="anchor" aria-label="anchor" href="#new-internal-utilities-0-3-0"></a></h3>
+<ul><li>
+<code><a href="../reference/SafeSetLayerData.html">SafeSetLayerData()</a></code>: Safe V5-compatible layer data assignment with fallback</li>
+<li>
+<code><a href="../reference/load_spatial_demo_data.html">load_spatial_demo_data()</a></code>, <code><a href="../reference/create_synthetic_spatial.html">create_synthetic_spatial()</a></code>, <code><a href="../reference/test_spatial_roundtrip.html">test_spatial_roundtrip()</a></code>: Spatial demo/testing utilities (internal)</li>
+</ul></div>
+<div class="section level3">
+<h3 id="code-simplification-0-3-0">Code Simplification<a class="anchor" aria-label="anchor" href="#code-simplification-0-3-0"></a></h3>
+<ul><li>Removed unused <code>UtilsSparseMatrix.R</code> (<code>ReadSparseMatrixDims</code>, <code>ValidateSparseMatrixDims</code>, <code>CreateSparseMatrixSafe</code>)</li>
+<li>Removed unused <code>GetSeuratSlotMapping()</code> and <code>ValidateSlotMapping()</code> from V5Compatibility.R</li>
+<li>Removed fragile <code>PatchH5DMethods()</code> monkey-patching of hdf5r’s H5D <code>[</code> method</li>
+<li>Fixed <code><a href="../reference/GetScaleFactors.html">GetScaleFactors()</a></code> to extract actual Visium scale factors via <code><a href="https://satijalab.org/seurat/reference/ScaleFactors.html" class="external-link">scalefactors()</a></code> instead of returning hardcoded values</li>
+</ul></div>
+<div class="section level3">
+<h3 id="preserved-from-v022-0-3-0">Preserved from v0.2.2<a class="anchor" aria-label="anchor" href="#preserved-from-v022-0-3-0"></a></h3>
+<p>All v0.2.2 improvements are preserved in this release: - Unified <code><a href="../reference/Convert.html">Convert()</a></code> interface accepting Seurat objects directly - Exported <code><a href="../reference/SeuratToH5AD.html">SeuratToH5AD()</a></code> convenience function - Column name sanitization (<code>SanitizeColumnName</code>/<code>SanitizeColumnNames</code>) - Correct categorical encoding (no +1L regression) - Nullable dtype handling (<code>FlattenNullable</code>) - Variable features writing in V5 compatibility layer - <code>standardize</code> parameter for scanpy-compatible naming</p>
+<hr></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.2.2" id="srtdisk-022">srtdisk 0.2.2<a class="anchor" aria-label="anchor" href="#srtdisk-022"></a></h2>
+<blockquote>
+<p><strong>Release Date:</strong> 2026-02-06</p>
+</blockquote>
+<div class="section level3">
+<h3 id="highlights-0-2-2">Highlights<a class="anchor" aria-label="anchor" href="#highlights-0-2-2"></a></h3>
+<div class="section level4">
+<h4 id="unified-convert-interface-for-seurat-objects-0-2-2">Unified <code>Convert()</code> Interface for Seurat Objects<a class="anchor" aria-label="anchor" href="#unified-convert-interface-for-seurat-objects-0-2-2"></a></h4>
+<p><code><a href="../reference/Convert.html">Convert()</a></code> now accepts Seurat objects directly as the <code>source</code> argument, enabling one-step conversion to any supported format:</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/Convert.html">Convert</a></span><span class="op">(</span><span class="va">seurat_obj</span>, dest <span class="op">=</span> <span class="st">"output.h5ad"</span><span class="op">)</span>     <span class="co"># Seurat -&gt; h5ad</span></span>
+<span><span class="fu"><a href="../reference/Convert.html">Convert</a></span><span class="op">(</span><span class="va">seurat_obj</span>, dest <span class="op">=</span> <span class="st">"output.loom"</span><span class="op">)</span>     <span class="co"># Seurat -&gt; Loom</span></span>
+<span><span class="fu"><a href="../reference/Convert.html">Convert</a></span><span class="op">(</span><span class="va">seurat_obj</span>, dest <span class="op">=</span> <span class="st">"output.h5Seurat"</span><span class="op">)</span> <span class="co"># Seurat -&gt; h5Seurat</span></span></code></pre></div>
+<p>This eliminates the need for the two-step <code><a href="../reference/SaveH5Seurat.html">SaveH5Seurat()</a></code> + <code><a href="../reference/Convert.html">Convert()</a></code> workflow when starting from a Seurat object.</p>
+</div>
+<div class="section level4">
+<h4 id="exported-seurattoh5ad-0-2-2">Exported <code>SeuratToH5AD()</code>
+<a class="anchor" aria-label="anchor" href="#exported-seurattoh5ad-0-2-2"></a></h4>
+<p><code><a href="../reference/SeuratToH5AD.html">SeuratToH5AD()</a></code> is now a fully exported convenience function (previously <code>@keywords internal</code>). It delegates to <code>Convert.Seurat</code> internally and remains the simplest way to convert a Seurat object to h5ad format.</p>
+</div>
+</div>
+<div class="section level3">
+<h3 id="bug-fixes-0-2-2">Bug Fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-2-2"></a></h3>
+<ul><li>Fixed <code>var</code>/<code>X</code> dimension mismatch in h5Seurat to h5ad conversion: <code>var</code> now uses the actual <code>X</code> matrix dimensions instead of metadata feature counts, which could differ when features were filtered from data layers but not from metadata</li>
+<li>Fixed <code>raw/var</code> dimension mismatch with <code>raw/X</code> using the same approach</li>
+<li>Fixed <code>roxygen2::roxygenize()</code> failure caused by a plain <code><a href="../reference/TestObject.html">IsFactor()</a></code> function in <code>ReadH5.R</code> overriding the S4 generic from <code>TestObject.R</code>
+</li>
+</ul><hr></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.2.1" id="srtdisk-021">srtdisk 0.2.1<a class="anchor" aria-label="anchor" href="#srtdisk-021"></a></h2>
 <blockquote>
@@ -110,7 +211,7 @@
 <h4 id="full-scrna-seq-conversion-support-with-seurat-v5-0-2-0">Full scRNA-seq Conversion Support with Seurat v5<a class="anchor" aria-label="anchor" href="#full-scrna-seq-conversion-support-with-seurat-v5-0-2-0"></a></h4>
 <p>srtdisk now provides complete bidirectional conversion between Seurat objects and h5ad format, with full compatibility for Seurat v5’s new Assay5 architecture:</p>
 <ul><li>
-<strong>Seurat to h5ad</strong>: Use <code>SeuratToH5AD()</code> for direct one-step conversion or the traditional two-step <code><a href="../reference/SaveH5Seurat.html">SaveH5Seurat()</a></code> + <code><a href="../reference/Convert.html">Convert()</a></code> workflow</li>
+<strong>Seurat to h5ad</strong>: Use <code><a href="../reference/SeuratToH5AD.html">SeuratToH5AD()</a></code> for direct one-step conversion or the traditional two-step <code><a href="../reference/SaveH5Seurat.html">SaveH5Seurat()</a></code> + <code><a href="../reference/Convert.html">Convert()</a></code> workflow</li>
 <li>
 <strong>h5ad to Seurat</strong>: Use <code><a href="../reference/Convert.html">Convert()</a></code> + <code><a href="../reference/LoadH5Seurat.html">LoadH5Seurat()</a></code> to import scanpy/AnnData objects</li>
 <li>Properly handles V5 layered data structure (counts, data, scale.data layers)</li>
@@ -137,7 +238,7 @@
 <div class="section level3">
 <h3 id="new-features-0-2-0">New Features<a class="anchor" aria-label="anchor" href="#new-features-0-2-0"></a></h3>
 <ul><li>
-<code>SeuratToH5AD()</code> wrapper function for convenient direct conversion</li>
+<code><a href="../reference/SeuratToH5AD.html">SeuratToH5AD()</a></code> wrapper function for convenient direct conversion</li>
 <li>Enhanced Visium spatial data conversion with proper coordinate handling</li>
 <li>Support for SlideSeq and FOV-based spatial technologies (experimental)</li>
 <li>Improved scanpy-compatible naming conventions with <code>standardize = TRUE</code>
@@ -147,7 +248,7 @@
 <h3 id="bug-fixes-0-2-0">Bug Fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-2-0"></a></h3>
 <ul><li>Fixed categorical metadata loss during h5ad conversion</li>
 <li>Fixed “attribute already exists” error when converting h5ad graphs to h5seurat</li>
-<li>Fixed <code>GetAssayDataCompat()</code> and <code>SetAssayDataCompat()</code> to use <code>layer</code> parameter (SeuratObject 5.0+ requirement)</li>
+<li>Fixed <code><a href="../reference/GetAssayDataCompat.html">GetAssayDataCompat()</a></code> and <code><a href="../reference/SetAssayDataCompat.html">SetAssayDataCompat()</a></code> to use <code>layer</code> parameter (SeuratObject 5.0+ requirement)</li>
 <li>Fixed spatial coordinate X/Y flip in h5Seurat to h5ad conversion</li>
 <li>Improved UMAP display in h5ad to Seurat tutorial</li>
 </ul></div>
@@ -170,7 +271,7 @@
 <h3 id="new-features-0-1-0">New Features<a class="anchor" aria-label="anchor" href="#new-features-0-1-0"></a></h3>
 <div class="section level4">
 <h4 id="direct-seurat-to-h5ad-conversion-0-1-0">Direct Seurat to H5AD Conversion<a class="anchor" aria-label="anchor" href="#direct-seurat-to-h5ad-conversion-0-1-0"></a></h4>
-<ul><li>Added <code>SeuratToH5AD()</code> function for direct conversion from Seurat objects to H5AD format</li>
+<ul><li>Added <code><a href="../reference/SeuratToH5AD.html">SeuratToH5AD()</a></code> function for direct conversion from Seurat objects to H5AD format</li>
 <li>Automatically handles intermediate h5Seurat file creation and cleanup</li>
 <li>Supports all <code><a href="../reference/Convert.html">Convert()</a></code> parameters including <code>standardize</code> for scanpy-compatible naming</li>
 </ul></div>
@@ -191,7 +292,7 @@
 <h3 id="bug-fixes-0-1-0">Bug Fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-1-0"></a></h3>
 <ul><li>Fixed spatial coordinate X/Y flip in h5Seurat to h5ad conversion (coordinates are now correctly stored as [X, Y] for scanpy/squidpy)</li>
 <li>Fixed “attribute already exists” error when converting h5ad graphs to h5seurat</li>
-<li>Fixed <code>GetAssayDataCompat()</code> and <code>SetAssayDataCompat()</code> to use <code>layer</code> parameter (SeuratObject 5.0+ requirement)</li>
+<li>Fixed <code><a href="../reference/GetAssayDataCompat.html">GetAssayDataCompat()</a></code> and <code><a href="../reference/SetAssayDataCompat.html">SetAssayDataCompat()</a></code> to use <code>layer</code> parameter (SeuratObject 5.0+ requirement)</li>
 <li>Fixed vignette assay references (using correct RNA assay instead of non-existent SCT/Spatial)</li>
 </ul></div>
 <div class="section level3">
