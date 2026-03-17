@@ -42,6 +42,12 @@ NULL
 #'  \item{\code{SeuratDisk.dimreducs.allglobal}}{
 #'   Treat all DimReducs as global, regardless of actual global status
 #'  }
+#'  \item{\code{SeuratDisk.compression.level}}{
+#'   Gzip compression level for HDF5 dataset writes (0-9). Level 0 means
+#'   no compression, level 4 (default) is a good balance of speed vs size.
+#'   Only applies to newly created datasets, not to data copied via
+#'   \code{obj_copy_from}.
+#'  }
 #' }
 #'
 #' @aliases srtdisk SeuratDisk
@@ -56,7 +62,8 @@ default.options <- list(
   "SeuratDisk.dtypes.logical_to_int" = TRUE,
   "SeuratDisk.dtypes.dataframe_as_group" = TRUE,
   "SeuratDisk.chunking.MARGIN" = c("largest", "smallest", "first", "last"),
-  "SeuratDisk.dimreducs.allglobal" = FALSE
+  "SeuratDisk.dimreducs.allglobal" = FALSE,
+  "SeuratDisk.compression.level" = 4L
 )
 
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -352,14 +359,8 @@ FileType <- function(file) {
 #' @keywords internal
 #'
 FixFeatures <- function(features) {
-  if (anyDuplicated(x = features)) {
-    warning(
-      "Non-unique features (rownames) present, making unique",
-      call. = FALSE,
-      immediate. = TRUE
-    )
-    features <- make.unique(names = features)
-  }
+  # Replace underscores FIRST (before dedup, to avoid creating new duplicates
+  # after make.unique — e.g. "a_b" and "a-b" would both become "a-b")
   if (any(grepl(pattern = '_', x = features))) {
     warning(
       "Feature names cannot have underscores ('_'), replacing with dashes ('-')",
@@ -367,6 +368,14 @@ FixFeatures <- function(features) {
       immediate. = TRUE
     )
     features <- gsub(pattern = '_', replacement = '-', x = features)
+  }
+  if (anyDuplicated(x = features)) {
+    warning(
+      "Non-unique features (rownames) present, making unique",
+      call. = FALSE,
+      immediate. = TRUE
+    )
+    features <- make.unique(names = features)
   }
   return(features)
 }
@@ -924,6 +933,22 @@ WriteMode <- function(overwrite = FALSE) {
   return(ifelse(test = overwrite, yes = 'w', no = 'w-'))
 }
 
+#' Get compression level for HDF5 dataset creation
+#'
+#' @return Integer gzip compression level (0-9)
+#'
+#' @keywords internal
+#'
+GetCompressionLevel <- function() {
+  level <- getOption("SeuratDisk.compression.level", default = 4L)
+  level <- as.integer(level)
+  if (is.na(level) || level < 0L || level > 9L) {
+    warning("Invalid compression level, using default (4)", immediate. = TRUE)
+    level <- 4L
+  }
+  return(level)
+}
+
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 # V5 Safe Helper Functions
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1014,14 +1039,123 @@ SafeSetLayerData <- function(object, layer, value) {
       LoadH5Seurat(file = temp, verbose = verbose)
     },
     saver = function(object, filename, overwrite = FALSE, verbose = TRUE, ...) {
-      # h5ad save goes through temp h5seurat (matches existing Convert.Seurat path)
-      temp <- tempfile(fileext = '.h5Seurat')
-      on.exit(unlink(temp), add = TRUE)
-      SaveH5Seurat(object = object, filename = temp, overwrite = TRUE, verbose = FALSE)
-      h5s <- Connect(filename = temp, force = TRUE)
-      H5SeuratToH5AD(source = h5s, dest = filename, assay = DefaultAssay(object = object),
-                      overwrite = overwrite, verbose = verbose, ...)
-      h5s$close_all()
+      assay_name <- DefaultAssay(object = object)
+
+      # Detect BPCells on-disk layers to avoid materializing them in RAM
+      bpcells_layers <- list()
+      if (requireNamespace("BPCells", quietly = TRUE)) {
+        for (ln in SeuratObject::Layers(object[[assay_name]])) {
+          dat <- tryCatch(
+            SeuratObject::GetAssayData(object, assay = assay_name, layer = ln),
+            error = function(e) NULL
+          )
+          if (!is.null(dat) && inherits(dat, c("IterableMatrix", "RenameDims"))) {
+            bpcells_layers[[ln]] <- dat
+          }
+        }
+      }
+
+      if (length(bpcells_layers) > 0) {
+        if (verbose) message("BPCells on-disk matrices detected: streaming to h5ad (no full materialization)")
+
+        # Replace BPCells layers with zero-entry placeholders (correct dims, ~zero RAM)
+        # so SaveH5Seurat writes metadata correctly without materializing the matrix
+        obj_write <- object
+        for (ln in names(bpcells_layers)) {
+          bp_mat <- bpcells_layers[[ln]]
+          nr <- nrow(bp_mat); nc <- ncol(bp_mat)
+          placeholder <- new("dgCMatrix",
+                             i = integer(0), p = rep(0L, nc + 1L), x = numeric(0),
+                             Dim = c(as.integer(nr), as.integer(nc)),
+                             Dimnames = list(rownames(bp_mat), colnames(bp_mat)))
+          obj_write <- SeuratObject::SetAssayData(
+            obj_write, assay = assay_name, layer = ln, new.data = placeholder
+          )
+        }
+
+        # Standard pipeline with placeholders: Seurat -> h5seurat -> h5ad
+        temp <- tempfile(fileext = '.h5Seurat')
+        on.exit(unlink(temp), add = TRUE)
+        SaveH5Seurat(object = obj_write, filename = temp, overwrite = TRUE, verbose = FALSE)
+        h5s <- Connect(filename = temp, force = TRUE)
+        H5SeuratToH5AD(source = h5s, dest = filename, assay = assay_name,
+                        overwrite = overwrite, verbose = verbose, ...)
+        h5s$close_all()
+        rm(obj_write)  # free placeholder copy
+
+        # Overwrite placeholder X/layers with BPCells streaming writes.
+        # Must match H5SeuratToH5AD mapping:
+        #   - If both counts+data: data → X, counts → raw/X
+        #   - If only counts: counts → X
+        #   - Other layers → layers/{name}
+        gzip <- GetCompressionLevel()
+        has_data_layer <- "data" %in% names(bpcells_layers)
+        for (ln in names(bpcells_layers)) {
+          if (ln == "data") {
+            group_name <- "X"
+          } else if (ln == "counts" && has_data_layer) {
+            group_name <- "raw/X"
+          } else if (ln == "counts") {
+            group_name <- "X"
+          } else {
+            group_name <- paste0("layers/", ln)
+          }
+
+          # Delete placeholder group from h5ad
+          h5 <- hdf5r::H5File$new(filename, mode = "r+")
+          if (h5$exists(group_name)) h5$link_delete(group_name)
+          h5$close_all()
+
+          # Stream BPCells matrix directly to h5ad (CSR format, no materialization)
+          BPCells::write_matrix_anndata_hdf5(
+            mat = bpcells_layers[[ln]],
+            path = filename,
+            group = group_name,
+            gzip_level = gzip
+          )
+
+          # Fix raw/var/_index: the placeholder had 0 nonzeros so H5SeuratToH5AD
+          # computed wrong dimensions for raw/var. Overwrite with correct gene names.
+          if (group_name == "raw/X") {
+            h5 <- hdf5r::H5File$new(filename, mode = "r+")
+            if (h5$exists("raw/var")) {
+              h5$link_delete("raw/var")
+            }
+            h5$create_group("raw/var")
+            gene_names <- rownames(bpcells_layers[[ln]])
+            h5[["raw/var"]]$create_dataset(
+              name = "_index",
+              robj = gene_names,
+              dtype = StringType('utf8')
+            )
+            # Add dataframe encoding
+            h5[["raw/var"]]$create_attr(
+              attr_name = "encoding-type", robj = "dataframe",
+              dtype = GuessDType("dataframe"), space = hdf5r::H5S$new(type = "scalar")
+            )
+            h5[["raw/var"]]$create_attr(
+              attr_name = "encoding-version", robj = "0.2.0",
+              dtype = GuessDType("0.2.0"), space = hdf5r::H5S$new(type = "scalar")
+            )
+            h5[["raw/var"]]$create_attr(
+              attr_name = "_index", robj = "_index",
+              dtype = GuessDType("_index"), space = hdf5r::H5S$new(type = "scalar")
+            )
+            h5$close_all()
+          }
+
+          if (verbose) message("  Streamed '", ln, "' -> ", group_name, " via BPCells (no materialization)")
+        }
+      } else {
+        # Standard path (no BPCells): Seurat -> temp h5seurat -> h5ad
+        temp <- tempfile(fileext = '.h5Seurat')
+        on.exit(unlink(temp), add = TRUE)
+        SaveH5Seurat(object = object, filename = temp, overwrite = TRUE, verbose = FALSE)
+        h5s <- Connect(filename = temp, force = TRUE)
+        H5SeuratToH5AD(source = h5s, dest = filename, assay = assay_name,
+                        overwrite = overwrite, verbose = verbose, ...)
+        h5s$close_all()
+      }
       invisible(filename)
     }
   )
@@ -1068,6 +1202,20 @@ SafeSetLayerData <- function(object, layer, value) {
       }
       saveRDS(object = object, file = filename)
       if (verbose) message("Saved Seurat object to ", filename)
+      invisible(filename)
+    }
+  )
+
+  # Register zarr format (AnnData Zarr stores)
+  # Requires jsonlite (for zarr v2 metadata); zarr R package optional
+  RegisterFormat(
+    ext = 'zarr',
+    loader = function(file, assay = 'RNA', verbose = TRUE, ...) {
+      LoadZarr(file = file, assay.name = assay, verbose = verbose, ...)
+    },
+    saver = function(object, filename, overwrite = FALSE, verbose = TRUE, ...) {
+      SaveZarr(object = object, filename = filename,
+               overwrite = overwrite, verbose = verbose, ...)
       invisible(filename)
     }
   )

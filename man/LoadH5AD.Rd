@@ -4,18 +4,26 @@
 \alias{LoadH5AD}
 \title{Load an AnnData H5AD file as a Seurat object}
 \usage{
-LoadH5AD(file, assay.name = "RNA", verbose = TRUE)
+LoadH5AD(file, assay.name = "RNA", use.bpcells = NULL, verbose = TRUE)
 }
 \arguments{
 \item{file}{Path to H5AD file}
 
 \item{assay.name}{Name for the primary assay (default: "RNA")}
 
+\item{use.bpcells}{If not NULL, a directory path where BPCells will store the
+expression matrix on disk. Requires the BPCells package. The resulting Seurat
+object will reference the on-disk matrix instead of loading it into memory,
+enabling analysis of datasets larger than available RAM.}
+
 \item{verbose}{Show progress messages}
 }
 \value{
-A \code{Seurat} object
+A \code{Seurat} object. If \code{use.bpcells} is set, the count matrix
+  is stored on disk in BPCells format and the object uses minimal memory.
 }
 \description{
-Direct conversion from H5AD format to Seurat object without intermediate h5Seurat
+Direct conversion from H5AD format to Seurat object without intermediate h5Seurat.
+Supports optional BPCells on-disk matrix loading for large datasets that exceed
+available memory.
 }

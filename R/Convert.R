@@ -705,31 +705,45 @@ H5ADToH5Seurat <- function(
   #
   # @return Returns feature names (gene symbols) if categorical encoding exists, NULL otherwise
   #
+  # Cache for ReadCategoricalFeatures results to avoid redundant HDF5 reads
+  .categorical_cache <- new.env(parent = emptyenv())
+
   ReadCategoricalFeatures <- function(dset) {
+    # Return cached result if available
+    cache_key <- dset
+    if (exists(cache_key, envir = .categorical_cache)) {
+      return(get(cache_key, envir = .categorical_cache))
+    }
+
     # Check if feature_name exists and is a categorical group
     feature_name_path <- paste0(dset, '/feature_name')
     if (!source$exists(name = feature_name_path)) {
+      assign(cache_key, NULL, envir = .categorical_cache)
       return(NULL)
     }
 
     feature_name_group <- source[[feature_name_path]]
     if (!inherits(x = feature_name_group, what = 'H5Group')) {
+      assign(cache_key, NULL, envir = .categorical_cache)
       return(NULL)
     }
 
-    # Check for categorical encoding
-    if (!isTRUE(x = AttrExists(x = feature_name_group, name = 'encoding-type'))) {
+    # Check for categorical encoding using simple attr_exists (skip space check)
+    if (!feature_name_group$attr_exists(attr_name = 'encoding-type')) {
+      assign(cache_key, NULL, envir = .categorical_cache)
       return(NULL)
     }
 
     encoding_type <- h5attr(x = feature_name_group, which = 'encoding-type')
     if (encoding_type != 'categorical') {
+      assign(cache_key, NULL, envir = .categorical_cache)
       return(NULL)
     }
 
     # Read categories and codes
     if (!feature_name_group$exists(name = 'categories') ||
         !feature_name_group$exists(name = 'codes')) {
+      assign(cache_key, NULL, envir = .categorical_cache)
       return(NULL)
     }
 
@@ -737,9 +751,11 @@ H5ADToH5Seurat <- function(
     codes <- feature_name_group[['codes']]$read()
 
     # Decode: categories[codes] (R uses 1-based indexing, codes are 0-based)
-    feature_names <- categories[codes + 1]
+    feature_names <- as.character(categories[codes + 1])
 
-    return(as.character(feature_names))
+    # Cache and return
+    assign(cache_key, feature_names, envir = .categorical_cache)
+    return(feature_names)
   }
   # Read compound HDF5 dataset using Python h5py
   #
@@ -1048,6 +1064,8 @@ except Exception as e:
     # Skip internal names
     col_names <- col_names[!col_names %in% c('__categories', '_index')]
     col_name_map <- SanitizeColumnNames(col_names)
+    # Only process columns that need renaming or are nullable groups
+    needs_rename <- vapply(names(col_name_map), function(n) n != col_name_map[[n]], logical(1))
     for (old_name in names(col_name_map)) {
       new_name <- col_name_map[[old_name]]
       col_obj <- dfgroup[[old_name]]
@@ -1065,6 +1083,8 @@ except Exception as e:
           )
           next
         }
+        # Skip groups that don't need renaming (categorical groups handled elsewhere)
+        if (old_name == new_name) next
       }
 
       # Rename if needed
@@ -1165,15 +1185,15 @@ except Exception as e:
       )
     }
 
-    # if (assay.group[[dst]]$attr_exists(attr_name = 'shape')) {
-    if (isTRUE(x = AttrExists(x = assay.group[[dst]], name = 'shape'))) {
-      dims <- rev(x = h5attr(x = assay.group[[dst]], which = 'shape'))
-      assay.group[[dst]]$create_attr(
+    dst_obj <- assay.group[[dst]]
+    if (dst_obj$attr_exists(attr_name = 'shape')) {
+      dims <- rev(x = h5attr(x = dst_obj, which = 'shape'))
+      dst_obj$create_attr(
         attr_name = 'dims',
         robj = dims,
         dtype = GuessDType(x = dims)
       )
-      assay.group[[dst]]$attr_delete(attr_name = 'shape')
+      dst_obj$attr_delete(attr_name = 'shape')
     }
   }
   features.source <- ifelse(
@@ -1493,15 +1513,12 @@ except Exception as e:
   if (assay.group$exists(name = 'meta.features')) {
     SanitizeH5DFColumns(dfgroup = assay.group[['meta.features']])
   }
-  # if (assay.group[['meta.features']]$attr_exists(attr_name = 'column-order')) {
-  if (isTRUE(x = AttrExists(x = assay.group[['meta.features']], name = 'column-order'))) {
-    colnames <- h5attr(
-      x = assay.group[['meta.features']],
-      which = 'column-order'
-    )
+  mf_group <- assay.group[['meta.features']]
+  if (mf_group$attr_exists(attr_name = 'column-order')) {
+    colnames <- h5attr(x = mf_group, which = 'column-order')
     # Sanitize column names in the column-order attribute
     colnames <- vapply(colnames, SanitizeColumnName, character(1), USE.NAMES = FALSE)
-    assay.group[['meta.features']]$create_attr(
+    mf_group$create_attr(
       attr_name = 'colnames',
       robj = colnames,
       dtype = GuessDType(x = if (length(colnames) > 0) colnames[1] else colnames)
@@ -1620,44 +1637,46 @@ except Exception as e:
     # Normalize h5ad categorical format (categories/codes) to SeuratDisk format (levels/values)
     # h5ad uses 0-based indexing for codes, while R factors use 1-based indexing
     NormalizeH5ADCategorical <- function(dfgroup) {
-      for (col_name in names(dfgroup)) {
+      col_names <- names(dfgroup)
+      # Skip internal/non-column entries
+      col_names <- col_names[!col_names %in% c('__categories', '_index', 'index')]
+      for (col_name in col_names) {
         col_obj <- dfgroup[[col_name]]
         # Check if this is an h5ad categorical group (has 'categories' and 'codes')
-        if (inherits(col_obj, 'H5Group') &&
-            all(c('categories', 'codes') %in% names(col_obj))) {
-          # Rename 'categories' to 'levels'
-          if (!col_obj$exists('levels')) {
-            col_obj$obj_copy_from(
-              src_loc = col_obj,
-              src_name = 'categories',
-              dst_name = 'levels'
-            )
-            col_obj$link_delete(name = 'categories')
-          }
-          # Convert 'codes' to 'values' with 0-based to 1-based indexing conversion
-          if (!col_obj$exists('values')) {
-            # Read 0-based codes from h5ad and convert to 1-based for R
-            codes_0based <- col_obj[['codes']]$read()
-            codes_dtype <- col_obj[['codes']]$get_type()
-            col_obj$create_dataset(
-              name = 'values',
-              robj = codes_0based + 1L,
-              dtype = codes_dtype
-            )
-            col_obj$link_delete(name = 'codes')
-          }
+        if (!inherits(col_obj, 'H5Group')) next
+        sub_names <- names(col_obj)
+        if (!all(c('categories', 'codes') %in% sub_names)) next
+        # Rename 'categories' to 'levels'
+        if (!'levels' %in% sub_names) {
+          col_obj$obj_copy_from(
+            src_loc = col_obj,
+            src_name = 'categories',
+            dst_name = 'levels'
+          )
+          col_obj$link_delete(name = 'categories')
+        }
+        # Convert 'codes' to 'values' with 0-based to 1-based indexing conversion
+        if (!'values' %in% sub_names) {
+          codes_0based <- col_obj[['codes']]$read()
+          codes_dtype <- col_obj[['codes']]$get_type()
+          col_obj$create_dataset(
+            name = 'values',
+            robj = codes_0based + 1L,
+            dtype = codes_dtype
+          )
+          col_obj$link_delete(name = 'codes')
         }
       }
     }
     NormalizeH5ADCategorical(dfgroup = dfile[['meta.data']])
     ColToFactor(dfgroup = dfile[['meta.data']])
     SanitizeH5DFColumns(dfgroup = dfile[['meta.data']])
-    # if (dfile[['meta.data']]$attr_exists(attr_name = 'column-order')) {
-    if (isTRUE(x = AttrExists(x = dfile[['meta.data']], name = 'column-order'))) {
-      colnames <- h5attr(x = dfile[['meta.data']], which = 'column-order')
+    md_group <- dfile[['meta.data']]
+    if (md_group$attr_exists(attr_name = 'column-order')) {
+      colnames <- h5attr(x = md_group, which = 'column-order')
       # Sanitize column names in the column-order attribute
       colnames <- vapply(colnames, SanitizeColumnName, character(1), USE.NAMES = FALSE)
-      dfile[['meta.data']]$create_attr(
+      md_group$create_attr(
         attr_name = 'colnames',
         robj = colnames,
         dtype = GuessDType(x = if (length(colnames) > 0) colnames[1] else colnames)
@@ -4310,6 +4329,7 @@ H5SeuratToH5AD <- function(
 #'
 readH5AD_obs <- function(file) {
   suppressWarnings(expr = hfile <- Connect(filename = file, force = TRUE))
+  on.exit(hfile$close_all())
   hfile_obs <- hfile[['obs']]
   obs_groups <- setdiff(names(hfile_obs), c('__categories', '_index'))
   matrix <- as.data.frame(
@@ -4320,37 +4340,38 @@ readH5AD_obs <- function(file) {
   colnames(matrix) <- obs_groups
   rownames(matrix) <- hfile_obs[['_index']][]
   if ('__categories' %in% names(x = hfile_obs)) {
+    # Legacy h5ad format: __categories group with per-column category lists
     hfile_cate <- hfile_obs[['__categories']]
     for (i in seq_along(obs_groups)) {
       obs.i <- obs_groups[i]
       obs_value_i <- hfile_obs[[obs.i]][]
-      if (obs.i %in% names(x = hfile_cate)){
-        obs_value_i <- factor(x = obs_value_i, labels =  hfile_cate[[obs.i]][])
+      if (obs.i %in% names(x = hfile_cate)) {
+        categories <- as.character(hfile_cate[[obs.i]][])
+        codes <- obs_value_i
+        codes[codes == -1L] <- NA_integer_
+        obs_value_i <- factor(categories[codes + 1L], levels = categories)
       }
-      matrix[,i] <- obs_value_i
+      matrix[, i] <- obs_value_i
     }
   } else {
+    # Modern h5ad format: categorical groups with categories/codes sub-datasets
     for (i in seq_along(obs_groups)) {
       obs.i <- obs_groups[i]
-      if (all(names(hfile_obs[[obs.i]]) == c("categories", "codes"))) {
-        if (
-          length(unique(hfile_obs[[obs.i]][['codes']][])) == length(hfile_obs[[obs.i]][['categories']][])
-          ) {
-          obs_value_i <- factor(
-            x = hfile_obs[[obs.i]][['codes']][],
-            labels =  hfile_obs[[obs.i]][['categories']][]
-            )
-        } else {
-          obs_value_i <- hfile_obs[[obs.i]][['codes']][]
-        }
-      
+      col_obj <- hfile_obs[[obs.i]]
+      if (inherits(col_obj, 'H5Group') &&
+          all(c("categories", "codes") %in% names(col_obj))) {
+        categories <- as.character(col_obj[['categories']]$read())
+        codes <- col_obj[['codes']]$read()
+        codes[codes == -1L] <- NA_integer_
+        obs_value_i <- factor(categories[codes + 1L], levels = categories)
+      } else if (inherits(col_obj, 'H5D')) {
+        obs_value_i <- col_obj$read()
       } else {
-        obs_value_i <- hfile_obs[[obs.i]][]
+        obs_value_i <- NA
       }
-      matrix[,i] <- obs_value_i
+      matrix[, i] <- obs_value_i
     }
   }
-  hfile$close_all()
   return(matrix)
 }
 
@@ -4369,23 +4390,28 @@ readH5AD_obs <- function(file) {
 #' @export
 #'
 readH5AD_obsm <- function(file) {
-  hfile <- Connect(filename = file, force = TRUE)
+  suppressWarnings(hfile <- Connect(filename = file, force = TRUE))
+  on.exit(hfile$close_all())
   hfile_obsm <- hfile[['obsm']]
   if (length(names(hfile_obsm)) == 0) {
-    message('No obsm if found in this object')
-    return (list())
+    message('No obsm found in this object')
+    return(list())
   }
   obsm_set <- names(hfile_obsm)
   cells.name <- hfile[['obs']][['_index']][]
+  n_cells <- length(cells.name)
   obsm.list <- lapply(obsm_set, function(x) {
-    emb <- t(hfile_obsm[[x]][,])
+    emb <- hfile_obsm[[x]][,]
+    # hdf5r may return transposed (n_dims x n_cells) due to row/column major difference
+    if (nrow(emb) != n_cells && ncol(emb) == n_cells) {
+      emb <- t(emb)
+    }
     rownames(emb) <- cells.name
     key.name <- gsub('X_', '', x)
-    colnames(emb) <- paste0(key.name, "_", 1:ncol(emb))
+    colnames(emb) <- paste0(key.name, "_", seq_len(ncol(emb)))
     return(emb)
   })
-  names(obsm.list) <- gsub('X_', '',obsm_set)
-  hfile$close_all()
+  names(obsm.list) <- gsub('X_', '', obsm_set)
   return(obsm.list)
 }
 

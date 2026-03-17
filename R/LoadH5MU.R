@@ -64,16 +64,16 @@ LoadH5MU <- function(file,
                      restore.spatial = TRUE,
                      verbose = TRUE) {
 
+  if (!file.exists(file)) {
+    stop("File not found: ", file, call. = FALSE)
+  }
+
   if (!requireNamespace("MuDataSeurat", quietly = TRUE)) {
     stop(
       "Package 'MuDataSeurat' is required for h5mu file support.\n",
       "Install it with: remotes::install_github('PMBio/MuDataSeurat')",
       call. = FALSE
     )
-  }
-
-  if (!file.exists(file)) {
-    stop("File not found: ", file, call. = FALSE)
   }
 
   if (verbose) {
@@ -288,20 +288,34 @@ ReadGlobalObs <- function(h5mu, verbose = FALSE) {
   # Read metadata columns
   obs_data <- data.frame(row.names = cell_names, stringsAsFactors = FALSE)
 
-  for (col in obs_cols) {
-    # Skip H5Groups (only read H5D datasets)
-    if (!inherits(obs_group[[col]], "H5D")) next
+  # Cache __categories group reference if it exists (legacy format)
+  has_legacy_cats <- obs_group$exists("__categories")
+  legacy_cats <- if (has_legacy_cats) obs_group[["__categories"]] else NULL
+  legacy_cat_names <- if (has_legacy_cats) names(legacy_cats) else character(0)
 
+  for (col in obs_cols) {
     tryCatch({
-      # Check if categorical
-      if (obs_group$exists("__categories") && col %in% names(obs_group[["__categories"]])) {
-        codes <- obs_group[[col]][]
-        categories <- as.character(obs_group[["__categories"]][[col]][])
-        codes[codes == -1] <- NA
-        obs_data[[col]] <- factor(categories[codes + 1], levels = categories)
-      } else {
-        # Numeric or string
-        obs_data[[col]] <- obs_group[[col]][]
+      col_obj <- obs_group[[col]]
+
+      if (inherits(col_obj, "H5Group")) {
+        # Modern h5ad categorical format: group with categories/codes
+        encoding_type <- tryCatch(h5attr(col_obj, "encoding-type"), error = function(e) "")
+        if (encoding_type == "categorical" && col_obj$exists("categories") && col_obj$exists("codes")) {
+          codes <- col_obj[["codes"]]$read()
+          categories <- as.character(col_obj[["categories"]]$read())
+          codes[codes == -1L] <- NA_integer_
+          obs_data[[col]] <- factor(categories[codes + 1L], levels = categories)
+        }
+      } else if (inherits(col_obj, "H5D")) {
+        # Legacy categorical or plain dataset
+        if (has_legacy_cats && col %in% legacy_cat_names) {
+          codes <- col_obj[]
+          categories <- as.character(legacy_cats[[col]][])
+          codes[codes == -1L] <- NA_integer_
+          obs_data[[col]] <- factor(categories[codes + 1L], levels = categories)
+        } else {
+          obs_data[[col]] <- col_obj[]
+        }
       }
     }, error = function(e) {
       if (verbose) {
