@@ -45,7 +45,8 @@ Connect <- function(
       if (!isTRUE(x = force)) {
         stop(err$message, call. = FALSE)
       }
-      warning(err$message, call. = FALSE, immediate. = TRUE)
+      # Silently fall back for HDF5-based formats without R6 classes (h5ad, h5mu)
+      # These are opened as raw H5File objects and handled by format-specific code
       return(H5File$new(filename = filename, mode = mode))
     }
   ))

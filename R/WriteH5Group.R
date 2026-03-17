@@ -48,14 +48,30 @@ BasicWrite <- function(x, name, hgroup, verbose = TRUE) {
       )
     }
   } else if (is.vector(x = x) && !is.null(x = names(x = x))) {
-    hgroup$create_dataset(
-      name = paste0(name, "__names__"),
-      robj = names(x = x),
-      dtype = GuessDType(x = names(x = x))
-    )
-    hgroup$create_dataset(name = name, robj = x, dtype = GuessDType(x = x))
+    gzip <- GetCompressionLevel()
+    if (gzip > 0L && length(x) > 64L) {
+      hgroup$create_dataset(
+        name = paste0(name, "__names__"),
+        robj = names(x = x),
+        dtype = GuessDType(x = names(x = x)),
+        gzip_level = gzip
+      )
+      hgroup$create_dataset(name = name, robj = x, dtype = GuessDType(x = x), gzip_level = gzip)
+    } else {
+      hgroup$create_dataset(
+        name = paste0(name, "__names__"),
+        robj = names(x = x),
+        dtype = GuessDType(x = names(x = x))
+      )
+      hgroup$create_dataset(name = name, robj = x, dtype = GuessDType(x = x))
+    }
   } else if (!is.null(x = x)) {
-    hgroup$create_dataset(name = name, robj = x, dtype = GuessDType(x = x))
+    gzip <- GetCompressionLevel()
+    if (gzip > 0L && length(x) > 64L) {
+      hgroup$create_dataset(name = name, robj = x, dtype = GuessDType(x = x), gzip_level = gzip)
+    } else {
+      hgroup$create_dataset(name = name, robj = x, dtype = GuessDType(x = x))
+    }
   }
   return(invisible(x = NULL))
 }
@@ -129,14 +145,24 @@ ImageWrite <- function(x, name, hgroup, verbose = TRUE) {
 #'
 SparseWrite <- function(x, name, hgroup, verbose = TRUE) {
   xgroup <- hgroup$create_group(name = name)
+  gzip <- GetCompressionLevel()
   datasets <- c('indices' = 'i', 'indptr' = 'p', 'data' = 'x')
   for (i in seq_along(along.with = datasets)) {
     ds.i <- slot(object = x, name = datasets[i])
-    xgroup$create_dataset(
-      name = names(x = datasets)[i],
-      robj = ds.i,
-      dtype = GuessDType(x = ds.i)
-    )
+    if (gzip > 0L && length(ds.i) > 0L) {
+      xgroup$create_dataset(
+        name = names(x = datasets)[i],
+        robj = ds.i,
+        dtype = GuessDType(x = ds.i),
+        gzip_level = gzip
+      )
+    } else {
+      xgroup$create_dataset(
+        name = names(x = datasets)[i],
+        robj = ds.i,
+        dtype = GuessDType(x = ds.i)
+      )
+    }
   }
   xgroup$create_attr(
     attr_name = 'dims',
@@ -251,7 +277,7 @@ WriteH5GroupAssay5 <- function(x, name, hgroup, verbose = TRUE) {
 
   # Get layers (V5 compatible)
   layers <- if (inherits(x = x, what = 'Assay5')) {
-    tryCatch(Layers(object = x), error = function(e) .STANDARD_LAYERS)
+    tryCatch(SeuratObject::Layers(object = x), error = function(e) .STANDARD_LAYERS)
   } else {
     .STANDARD_LAYERS
   }

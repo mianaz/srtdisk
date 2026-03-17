@@ -39,6 +39,12 @@ these with \code{\link[base]{options}}:
  \item{\code{SeuratDisk.dimreducs.allglobal}}{
   Treat all DimReducs as global, regardless of actual global status
  }
+ \item{\code{SeuratDisk.compression.level}}{
+  Gzip compression level for HDF5 dataset writes (0-9). Level 0 means
+  no compression, level 4 (default) is a good balance of speed vs size.
+  Only applies to newly created datasets, not to data copied via
+  \code{obj_copy_from}.
+ }
 }
 }
 

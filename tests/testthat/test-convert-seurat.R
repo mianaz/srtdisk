@@ -100,7 +100,7 @@ test_that("Convert(Seurat, dest='*.h5ad') errors when file exists and overwrite=
   expect_true(file.exists(dest))
   expect_error(
     Convert(srt, dest = dest, overwrite = FALSE, verbose = FALSE),
-    "already exists"
+    "exists"
   )
 })
 

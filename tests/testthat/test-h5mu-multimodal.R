@@ -13,8 +13,6 @@ test_that("SaveH5MU function exists and is exported", {
 })
 
 test_that("LoadH5MU validates file existence", {
-  skip_if_not(requireNamespace("MuDataSeurat", quietly = TRUE),
-              "MuDataSeurat not available")
   expect_error(
     LoadH5MU("nonexistent_file.h5mu"),
     "File not found"
@@ -22,8 +20,6 @@ test_that("LoadH5MU validates file existence", {
 })
 
 test_that("SaveH5MU validates input object", {
-  skip_if_not(requireNamespace("MuDataSeurat", quietly = TRUE),
-              "MuDataSeurat not available")
   expect_error(
     SaveH5MU("not_a_seurat", "output.h5mu"),
     "must be a Seurat object"
@@ -110,8 +106,6 @@ test_that("ValidateMultimodalObject accepts valid objects", {
 
 test_that("SaveH5MU rejects overwrite when file exists", {
   skip_if_not_installed("Seurat")
-  skip_if_not(requireNamespace("MuDataSeurat", quietly = TRUE),
-              "MuDataSeurat not available")
 
   counts <- matrix(1:12, nrow = 3)
   rownames(counts) <- paste0("Gene", 1:3)
@@ -132,6 +126,11 @@ test_that("Single assay warning works in SaveH5MU", {
   skip_if_not_installed("Seurat")
   skip_if(!requireNamespace("MuDataSeurat", quietly = TRUE),
           "MuDataSeurat not available")
+  # MuDataSeurat does not yet support Seurat v5 Assay5 objects (meta.features slot)
+  skip_if({
+    m <- matrix(rpois(20, 5), nrow = 2, dimnames = list(paste0("g", 1:2), paste0("c", 1:10)))
+    inherits(tryCatch(Seurat::CreateSeuratObject(counts = m)[["RNA"]], error = function(e) NULL), "Assay5")
+  }, "MuDataSeurat does not support Seurat v5 Assay5 objects")
 
   counts <- matrix(1:12, nrow = 3)
   rownames(counts) <- paste0("Gene", 1:3)
@@ -158,6 +157,11 @@ test_that("Multimodal round-trip via SaveH5MU/LoadH5MU preserves structure", {
   skip_if_not_installed("Seurat")
   skip_if(!requireNamespace("MuDataSeurat", quietly = TRUE),
           "MuDataSeurat not available for round-trip test")
+  # MuDataSeurat does not yet support Seurat v5 Assay5 objects (meta.features slot)
+  skip_if({
+    m <- matrix(rpois(20, 5), nrow = 2, dimnames = list(paste0("g", 1:2), paste0("c", 1:10)))
+    inherits(tryCatch(Seurat::CreateSeuratObject(counts = m)[["RNA"]], error = function(e) NULL), "Assay5")
+  }, "MuDataSeurat does not support Seurat v5 Assay5 objects")
 
   # Create multimodal object (RNA + ADT)
   set.seed(42)

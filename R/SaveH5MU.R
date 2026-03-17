@@ -74,14 +74,6 @@ SaveH5MU <- function(object,
                      verbose = TRUE,
                      ...) {
 
-  if (!requireNamespace("MuDataSeurat", quietly = TRUE)) {
-    stop(
-      "Package 'MuDataSeurat' is required for h5mu file support.\n",
-      "Install it with: remotes::install_github('PMBio/MuDataSeurat')",
-      call. = FALSE
-    )
-  }
-
   if (!inherits(object, "Seurat")) {
     stop("'object' must be a Seurat object", call. = FALSE)
   }
@@ -96,6 +88,14 @@ SaveH5MU <- function(object,
     } else {
       stop("File already exists: ", filename, "\nSet overwrite = TRUE to replace it.", call. = FALSE)
     }
+  }
+
+  if (!requireNamespace("MuDataSeurat", quietly = TRUE)) {
+    stop(
+      "Package 'MuDataSeurat' is required for h5mu file support.\n",
+      "Install it with: remotes::install_github('PMBio/MuDataSeurat')",
+      call. = FALSE
+    )
   }
 
   # Determine which assays to export
