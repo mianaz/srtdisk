@@ -19,9 +19,8 @@ Description: Extended implementation of SeuratDisk for Seurat v5 with enhanced
   reduction information, spatial coordinates and image data, and cluster labels.
   We also support rapid and on-disk conversion between h5Seurat and AnnData
   objects, with the goal of enhancing interoperability between Seurat and Scanpy.
-  This version adds MuData (h5mu) multimodal support, direct h5ad loading via
-  LoadH5AD, and includes Seurat v5 Assay5 compatibility with improved spatial
-  data handling.
+  This version adds direct h5ad loading via LoadH5AD and includes Seurat v5
+  Assay5 compatibility with improved spatial data handling.
 URL: https://mianaz.github.io/srtdisk/, https://github.com/mianaz/srtdisk
 BugReports: https://github.com/mianaz/srtdisk/issues
 License: GPL-3 | file LICENSE
@@ -63,14 +62,12 @@ Collate:
     'Convert.R'
     'H5DAccess.R'
     'LoadH5AD.R'
-    'LoadH5MU.R'
     'LoadH5Seurat.R'
     'loom.R'
     'loom_bindings.R'
     'LoadLoom.R'
     'LoadSpatialDemoData.R'
     'ReadH5.R'
-    'SaveH5MU.R'
     'UtilsAssayCompat.R'
     'WriteH5Group.R'
     'SaveH5Seurat.R'

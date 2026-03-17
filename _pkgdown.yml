@@ -43,12 +43,6 @@ reference:
       - readH5AD_obs
       - readH5AD_obsm
 
-  - title: "MuData (h5mu) Format"
-    desc: "Working with MuData multimodal HDF5 files"
-    contents:
-      - LoadH5MU
-      - SaveH5MU
-
   - title: "Loom Format"
     desc: "Loading and saving Loom files for interoperability with loompy"
     contents:

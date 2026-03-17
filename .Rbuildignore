@@ -44,4 +44,3 @@
 ^knitted_vignettes$
 ^test_.*\.h5Seurat$
 ^test_.*\.h5ad$
-^\.h5mu_staging$

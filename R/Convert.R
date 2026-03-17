@@ -24,7 +24,7 @@ NULL
 #' @param source Source dataset: a Seurat object, SingleCellExperiment, loom
 #'   connection, filename path, or H5File connection
 #' @param dest Name/path of destination file or format. Supported formats:
-#'   h5seurat, h5ad, h5mu, loom, rds. Also accepts \code{"sce"} to return
+#'   h5seurat, h5ad, loom, rds. Also accepts \code{"sce"} to return
 #'   a SingleCellExperiment object (in-memory, no file created).
 #' @param assay For h5Seurat -> other formats: name of assay to convert.
 #'   For other formats -> h5Seurat: name to assign to the assay.
@@ -49,7 +49,7 @@ NULL
 #' \itemize{
 #'   \item \strong{R objects}: Seurat, SingleCellExperiment (requires
 #'     \pkg{SingleCellExperiment}), loom (R6 connection)
-#'   \item \strong{File formats}: h5seurat, h5ad, h5mu, loom, rds
+#'   \item \strong{File formats}: h5seurat, h5ad, loom, rds
 #' }
 #'
 #' Any source format can be converted to any destination format. Conversions
@@ -73,7 +73,6 @@ NULL
 #' \code{\link{SaveH5Seurat}} to save Seurat objects
 #' \code{\link{LoadH5Seurat}} to load h5Seurat files
 #' \code{\link{LoadH5AD}} to directly load h5ad files
-#' \code{\link{LoadH5MU}} to load h5mu files
 #' \code{\link{Connect}} to establish file connections
 #'
 #' @examples
@@ -85,7 +84,6 @@ NULL
 #' Convert("data.h5ad", dest = "data.h5seurat")     # h5ad -> h5seurat
 #' Convert("data.h5ad", dest = "data.rds")           # h5ad -> RDS
 #' Convert("data.h5ad", dest = "data.loom")           # h5ad -> loom
-#' Convert("data.h5mu", dest = "data.h5ad")           # h5mu -> h5ad
 #' Convert("data.loom", dest = "data.h5seurat")       # loom -> h5seurat
 #' Convert("data.rds",  dest = "data.h5ad")           # RDS -> h5ad
 #'
@@ -4487,146 +4485,3 @@ SeuratToH5AD <- function(
           overwrite = overwrite, verbose = verbose, standardize = standardize, ...)
 }
 
-#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-# H5MU Conversion Functions
-#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-#' Convert H5MU files to h5Seurat files
-#'
-#' @inheritParams Convert
-#'
-#' @return Returns a handle to \code{dest} as an \code{\link{h5Seurat}} object
-#'
-#' @keywords internal
-#'
-H5MUToH5Seurat <- function(
-  source,
-  dest,
-  assay = 'RNA',
-  overwrite = FALSE,
-  verbose = TRUE
-) {
-  if (verbose) {
-    message("Converting H5MU to h5Seurat via Seurat object...")
-  }
-
-  # Load h5mu file as Seurat object
-  seurat_obj <- LoadH5MU(
-    file = source$filename,
-    verbose = verbose
-  )
-
-  # Save as h5Seurat
-  h5seurat_file <- SaveH5Seurat(
-    object = seurat_obj,
-    filename = dest,
-    overwrite = overwrite,
-    verbose = verbose
-  )
-
-  # Return h5Seurat connection
-  dfile <- h5Seurat$new(filename = dest, mode = 'r')
-  return(dfile)
-}
-
-
-#' Convert h5Seurat files to H5MU files
-#'
-#' @inheritParams Convert
-#'
-#' @return Returns a handle to \code{dest} as an \code{\link[hdf5r]{H5File}} object
-#'
-#' @keywords internal
-#'
-H5SeuratToH5MU <- function(
-  source,
-  dest,
-  assay = DefaultAssay(object = source),
-  overwrite = FALSE,
-  verbose = TRUE
-) {
-  if (verbose) {
-    message("Converting h5Seurat to H5MU via Seurat object...")
-  }
-
-  # Load h5Seurat as Seurat object
-  seurat_obj <- LoadH5Seurat(
-    file = source$filename,
-    verbose = verbose
-  )
-
-  # Save as h5mu
-  h5mu_file <- SaveH5MU(
-    object = seurat_obj,
-    filename = dest,
-    overwrite = overwrite,
-    verbose = verbose
-  )
-
-  # Return H5File connection to h5mu
-  dfile <- H5File$new(filename = dest, mode = 'r')
-  return(dfile)
-}
-
-
-#' Convert H5MU files to H5AD files (extract single modality)
-#'
-#' @inheritParams Convert
-#' @param modality Name of modality to extract from h5mu file
-#'
-#' @return Returns a handle to \code{dest} as an \code{\link[hdf5r]{H5File}} object
-#'
-#' @keywords internal
-#'
-H5MUToH5AD <- function(
-  source,
-  dest,
-  modality = 'rna',
-  overwrite = FALSE,
-  verbose = TRUE
-) {
-  if (verbose) {
-    message("Extracting modality '", modality, "' from H5MU to H5AD...")
-  }
-
-  # Load h5mu file
-  seurat_obj <- LoadH5MU(
-    file = source$filename,
-    modalities = modality,
-    verbose = verbose
-  )
-
-  # Get the corresponding assay name
-  assay_names <- Assays(seurat_obj)
-  if (length(assay_names) == 0) {
-    stop("No assays found in converted object", call. = FALSE)
-  }
-
-  # Use first assay (should be the only one if modality was specified)
-  target_assay <- assay_names[1]
-
-  # Save as h5Seurat first
-  temp_h5seurat <- tempfile(fileext = ".h5seurat")
-  on.exit(file.remove(temp_h5seurat), add = TRUE)
-
-  SaveH5Seurat(
-    object = seurat_obj,
-    filename = temp_h5seurat,
-    overwrite = TRUE,
-    verbose = FALSE
-  )
-
-  # Convert h5Seurat to h5ad
-  temp_h5seurat_conn <- Connect(filename = temp_h5seurat, force = TRUE)
-  dfile <- H5SeuratToH5AD(
-    source = temp_h5seurat_conn,
-    dest = dest,
-    assay = target_assay,
-    overwrite = overwrite,
-    verbose = verbose
-  )
-
-  temp_h5seurat_conn$close_all()
-
-  return(dfile)
-}

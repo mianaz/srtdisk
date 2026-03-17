@@ -18,7 +18,7 @@ H5SeuratToH5AD(
 connection, filename path, or H5File connection}
 
 \item{dest}{Name/path of destination file or format. Supported formats:
-h5seurat, h5ad, h5mu, loom, rds. Also accepts \code{"sce"} to return
+h5seurat, h5ad, loom, rds. Also accepts \code{"sce"} to return
 a SingleCellExperiment object (in-memory, no file created).}
 
 \item{assay}{For h5Seurat -> other formats: name of assay to convert.

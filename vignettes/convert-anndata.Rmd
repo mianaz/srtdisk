@@ -308,8 +308,6 @@ print("ADT features:", list(adata_adt.var_names)[:10])
 
 Each assay produces a separate h5ad file with the same cell metadata but different features.
 
-> **Note on multi-modal formats**: For true multi-modal interoperability, consider the [MuData/h5mu format](https://muon.scverse.org/) from the scverse ecosystem. The [MuDataSeurat](https://pmbio.github.io/MuDataSeurat/) R package provides `ReadH5MU()` and `WriteH5MU()` functions for Seurat objects. This allows storing multiple modalities in a single file with shared cell annotations, though some Seurat-specific features may not round-trip perfectly.
-
 ## Spatial h5ad to Seurat
 
 Converting native spatial h5ad files to Seurat is fully supported. We use a Visium colon sample from [CellxGene](https://cellxgene.cziscience.com) that was processed with scanpy/squidpy standard workflows:

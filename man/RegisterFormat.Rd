@@ -7,7 +7,7 @@
 RegisterFormat(ext, loader = NULL, saver = NULL)
 }
 \arguments{
-\item{ext}{Lowercase file extension (e.g., "h5seurat", "h5ad", "loom", "h5mu", "rds")}
+\item{ext}{Lowercase file extension (e.g., "h5seurat", "h5ad", "loom", "rds")}
 
 \item{loader}{Function(file, assay, verbose, ...) -> Seurat object}
 
