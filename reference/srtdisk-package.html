@@ -88,6 +88,12 @@ these with <code><a href="https://rdrr.io/r/base/options.html" class="external-l
  <dt><code>SeuratDisk.dimreducs.allglobal</code></dt>
 <dd><p>Treat all DimReducs as global, regardless of actual global status</p></dd>
 
+ <dt><code>SeuratDisk.compression.level</code></dt>
+<dd><p>Gzip compression level for HDF5 dataset writes (0-9). Level 0 means
+  no compression, level 4 (default) is a good balance of speed vs size.
+  Only applies to newly created datasets, not to data copied via
+  <code>obj_copy_from</code>.</p></dd>
+
 
 </dl></div>
     <div class="section level2">
