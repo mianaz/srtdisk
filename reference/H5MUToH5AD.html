@@ -56,14 +56,14 @@
 
 
 <dl><dt id="arg-source">source<a class="anchor" aria-label="anchor" href="#arg-source"></a></dt>
-<dd><p>Source dataset: a Seurat object, filename path, or H5File connection</p></dd>
+<dd><p>Source dataset: a Seurat object, SingleCellExperiment, loom
+connection, filename path, or H5File connection</p></dd>
 
 
 <dt id="arg-dest">dest<a class="anchor" aria-label="anchor" href="#arg-dest"></a></dt>
-<dd><p>Name/path of destination file. If only a file type is provided
-(e.g., "h5seurat", "h5ad", "loom"), the extension is appended to the source
-filename (for file sources) or the Seurat project name (for Seurat objects).
-Supported formats: h5seurat, h5ad, loom</p></dd>
+<dd><p>Name/path of destination file or format. Supported formats:
+h5seurat, h5ad, h5mu, loom, rds. Also accepts <code>"sce"</code> to return
+a SingleCellExperiment object (in-memory, no file created).</p></dd>
 
 
 <dt id="arg-modality">modality<a class="anchor" aria-label="anchor" href="#arg-modality"></a></dt>
