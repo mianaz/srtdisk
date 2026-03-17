@@ -11,7 +11,7 @@ NULL
 #' Save a Seurat object to the efficient HDF5-based h5Seurat format. This format
 #' is optimized for large, complex single-cell datasets including multi-modal and
 #' spatial data. h5Seurat files can be rapidly converted to other formats like h5ad
-#' (AnnData) or h5mu (MuData) for interoperability with Python tools.
+#' (AnnData) for interoperability with Python tools.
 #'
 #' @param object,x An object (typically a Seurat object)
 #' @param filename Name of file to save the object to. If not provided, defaults to
@@ -40,7 +40,7 @@ NULL
 #' The h5Seurat format is particularly useful for:
 #' \itemize{
 #'   \item Storing large datasets efficiently with HDF5 compression
-#'   \item Rapid conversion to Python formats (h5ad, h5mu)
+#'   \item Rapid conversion to Python formats (h5ad)
 #'   \item Multi-modal and spatial transcriptomics experiments
 #'   \item Preserving all Seurat V5 layer information
 #' }
@@ -52,7 +52,7 @@ NULL
 #' @seealso
 #' \code{\link{LoadH5Seurat}} to load a saved h5Seurat file
 #' \code{\link{as.h5Seurat}} for direct conversion without object assignment
-#' \code{\link{Convert}} for converting to other formats (h5ad, h5mu)
+#' \code{\link{Convert}} for converting to other formats (h5ad)
 #'
 #' @examples
 #' \dontrun{

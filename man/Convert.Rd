@@ -84,7 +84,7 @@ Convert(
 connection, filename path, or H5File connection}
 
 \item{dest}{Name/path of destination file or format. Supported formats:
-h5seurat, h5ad, h5mu, loom, rds. Also accepts \code{"sce"} to return
+h5seurat, h5ad, loom, rds. Also accepts \code{"sce"} to return
 a SingleCellExperiment object (in-memory, no file created).}
 
 \item{assay}{For h5Seurat -> other formats: name of assay to convert.
@@ -118,7 +118,7 @@ available for memory efficiency.
 \itemize{
   \item \strong{R objects}: Seurat, SingleCellExperiment (requires
     \pkg{SingleCellExperiment}), loom (R6 connection)
-  \item \strong{File formats}: h5seurat, h5ad, h5mu, loom, rds
+  \item \strong{File formats}: h5seurat, h5ad, loom, rds
 }
 
 Any source format can be converted to any destination format. Conversions
@@ -298,7 +298,6 @@ library(Seurat)
 Convert("data.h5ad", dest = "data.h5seurat")     # h5ad -> h5seurat
 Convert("data.h5ad", dest = "data.rds")           # h5ad -> RDS
 Convert("data.h5ad", dest = "data.loom")           # h5ad -> loom
-Convert("data.h5mu", dest = "data.h5ad")           # h5mu -> h5ad
 Convert("data.loom", dest = "data.h5seurat")       # loom -> h5seurat
 Convert("data.rds",  dest = "data.h5ad")           # RDS -> h5ad
 
@@ -316,6 +315,5 @@ sce <- Convert(seurat_obj, dest = "sce")            # Seurat -> SCE
 \code{\link{SaveH5Seurat}} to save Seurat objects
 \code{\link{LoadH5Seurat}} to load h5Seurat files
 \code{\link{LoadH5AD}} to directly load h5ad files
-\code{\link{LoadH5MU}} to load h5mu files
 \code{\link{Connect}} to establish file connections
 }

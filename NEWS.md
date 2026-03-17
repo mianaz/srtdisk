@@ -17,16 +17,6 @@ Validated on mouse atlas (356K cells, 16.8K genes) and human atlas (1.04M cells,
 
 ## Highlights
 
-### MuData (h5mu) Multimodal Support
-
-srtdisk now supports the MuData/h5mu format for multimodal single-cell data:
-
-- **`LoadH5MU()`**: Load h5mu files as multimodal Seurat objects with automatic modality-to-assay name mapping (rna->RNA, prot->ADT, atac->ATAC, etc.)
-- **`SaveH5MU()`**: Export multimodal Seurat objects to h5mu format with spatial data preservation and conflict-free modality naming
-- **`as.h5mu()`**: Convenience alias for SaveH5MU
-- **H5MU conversion pathways**: `Convert()` now supports h5mu as both source and destination format (h5mu<->h5Seurat, h5mu->h5ad)
-- Requires `MuDataSeurat` package (optional dependency)
-
 ### Direct h5ad Loading with `LoadH5AD()`
 
 New `LoadH5AD()` function provides direct h5ad-to-Seurat conversion without the intermediate h5Seurat step:
@@ -40,7 +30,6 @@ New `LoadH5AD()` function provides direct h5ad-to-Seurat conversion without the 
 ### New Vignettes
 
 - **Direct H5AD Loading** (`direct-h5ad-loading`): Showcases `LoadH5AD()` with real data from CellxGene and SeuratData
-- **Multimodal H5MU** (`multimodal-h5mu`): Demonstrates `LoadH5MU()`/`SaveH5MU()` round-trip with CITE-seq data
 
 ## New Internal Utilities
 

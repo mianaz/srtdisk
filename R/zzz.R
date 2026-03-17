@@ -1171,17 +1171,6 @@ SafeSetLayerData <- function(object, layer, value) {
     }
   )
   RegisterFormat(
-    ext = 'h5mu',
-    loader = function(file, assay = 'RNA', verbose = TRUE, ...) {
-      LoadH5MU(file = file, verbose = verbose)
-    },
-    saver = function(object, filename, overwrite = FALSE, verbose = TRUE, ...) {
-      SaveH5MU(object = object, filename = filename,
-               overwrite = overwrite, verbose = verbose, ...)
-      invisible(filename)
-    }
-  )
-  RegisterFormat(
     ext = 'rds',
     loader = function(file, assay = 'RNA', verbose = TRUE, ...) {
       obj <- readRDS(file = file)

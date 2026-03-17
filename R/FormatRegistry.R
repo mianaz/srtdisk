@@ -14,7 +14,7 @@ NULL
 
 #' Register a file format with its load and save functions
 #'
-#' @param ext Lowercase file extension (e.g., "h5seurat", "h5ad", "loom", "h5mu", "rds")
+#' @param ext Lowercase file extension (e.g., "h5seurat", "h5ad", "loom", "rds")
 #' @param loader Function(file, assay, verbose, ...) -> Seurat object
 #' @param saver Function(object, dest, overwrite, verbose, ...) -> invisible(dest)
 #'
