@@ -39,7 +39,7 @@ loom <- R6Class(
       type <- match.arg(arg = type)
       name <- basename(path = name)
       if (type == 'global') {
-        WriteAttribute(x = x, name = name, lfile = self, stype = private$stype())
+        WriteLoomAttribute(x = x, name = name, lfile = self, stype = private$stype())
       } else {
         SizedAttribute(
           x = x,
@@ -265,11 +265,12 @@ CheckMatrix <- function(lfile, name, dims = NULL) {
 #'
 #' Functions for validating loom files before connection
 #'
-#' @param ... ...
+#' @param lfile A connected loom \code{H5File} handle
+#' @param verbose Display progress messages
 #'
-#' @return ...
+#' @return Invisibly returns \code{TRUE} when validation succeeds
 #'
-#' @name ValiateLoom
+#' @name ValidateLoom
 #' @rdname ValidateLoom
 #'
 #' @keywords internal
@@ -356,18 +357,18 @@ methods::setMethod(
 #' @keywords internal
 #' @noRd
 methods::setGeneric(
-  name = 'WriteAttribute',
+  name = 'WriteLoomAttribute',
   def = function(x, name, lfile, stype, transpose = TRUE, verbose = TRUE) {
     if (!inherits(x = lfile, what = 'loom')) {
       stop("'lfile' must be a loom object", call. = FALSE)
     }
-    standardGeneric(f = 'WriteAttribute')
+    standardGeneric(f = 'WriteLoomAttribute')
   },
   signature = c('x')
 )
 
 methods::setMethod(
-  f = 'WriteAttribute',
+  f = 'WriteLoomAttribute',
   signature = c('x' = 'matrix'),
   definition = function(
     x,
@@ -390,7 +391,7 @@ methods::setMethod(
 )
 
 methods::setMethod(
-  f = 'WriteAttribute',
+  f = 'WriteLoomAttribute',
   signature = c('x' = 'vector'),
   definition = function(
     x,

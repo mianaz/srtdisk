@@ -18,6 +18,7 @@ NULL
 #'   \code{<ProjectName>.loom}. The .loom extension is added automatically if not present.
 #' @param overwrite Logical; if \code{TRUE}, overwrite an existing file. Default is \code{FALSE}.
 #' @param verbose Logical; if \code{TRUE} (default), show progress updates
+#' @param x Object to convert when calling \code{as.loom}
 #' @param ... Arguments passed to other methods
 #'
 #' @return \code{SaveLoom}: Invisibly returns the filename of the saved file

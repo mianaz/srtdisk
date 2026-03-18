@@ -11,6 +11,13 @@
 
 \method{dim}{loom}(x)
 }
+\arguments{
+\item{object}{A connected \code{loom} file handle}
+
+\item{...}{Additional arguments passed to Seurat generics}
+
+\item{x}{A \code{loom} object}
+}
 \description{
 Seurat binding for loom files
 }

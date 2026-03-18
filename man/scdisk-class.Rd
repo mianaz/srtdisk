@@ -6,7 +6,7 @@
 \alias{scdisk}
 \title{A disk-based object for single-cell analysis}
 \format{
-An \code{\link[R6]{R6Class}} object
+An \code{\link[R6:R6Class]{R6Class}} object
 }
 \description{
 A disk-based object for single-cell analysis

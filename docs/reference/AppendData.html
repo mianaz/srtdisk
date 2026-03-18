@@ -9,7 +9,7 @@ Seurat object"></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">srtdisk</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -21,6 +21,8 @@ Seurat object"></head><body>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/convert-anndata.html">Conversions: h5Seurat and AnnData</a></li>
+    <li><a class="dropdown-item" href="../articles/convert-loom.html">Conversions: Seurat and Loom</a></li>
+    <li><a class="dropdown-item" href="../articles/direct-h5ad-loading.html">Direct H5AD Loading with LoadH5AD</a></li>
     <li><a class="dropdown-item" href="../articles/h5Seurat-load.html">Saving and Loading Data from an h5Seurat File</a></li>
     <li><a class="dropdown-item" href="../articles/h5Seurat-spec.html">h5Seurat File Format Specification</a></li>
   </ul></li>
@@ -109,7 +111,7 @@ Seurat object"></head><body>
 
 
 <dl><dt id="arg-file">file<a class="anchor" aria-label="anchor" href="#arg-file"></a></dt>
-<dd><p>Path to an h5Seurat file or an open h5Seurat object</p></dd>
+<dd><p>Name of an h5Seurat file path (character) or connected h5Seurat file</p></dd>
 
 
 <dt id="arg-object">object<a class="anchor" aria-label="anchor" href="#arg-object"></a></dt>
@@ -128,27 +130,25 @@ Seurat object"></head><body>
 
 
 <dt id="arg-reductions">reductions<a class="anchor" aria-label="anchor" href="#arg-reductions"></a></dt>
-<dd><p>One of:</p><ul><li><p>A character vector with names of reductions</p></li>
-<li><p><code>NULL</code> for all reductions</p></li>
-<li><p><code>NA</code> for <a href="https://satijalab.github.io/seurat-object/reference/IsGlobal.html" class="external-link">global</a> reductions</p></li>
-<li><p><code>FALSE</code> for no reductions</p></li>
-</ul><p><strong>Note</strong>: Only reductions associated with an assay loaded in
-<code>assays</code> or marked as <a href="https://satijalab.github.io/seurat-object/reference/IsGlobal.html" class="external-link">global</a> will be loaded</p></dd>
+<dd><p>One of:</p><ul><li><p><code>NULL</code> (default): Load all reductions (PCA, UMAP, etc.)</p></li>
+<li><p>A character vector with names of specific reductions (e.g., <code>c("pca", "umap")</code>)</p></li>
+<li><p><code>NA</code>: Load only global (assay-independent) reductions</p></li>
+<li><p><code>FALSE</code>: Skip loading all reductions</p></li>
+</ul><p><strong>Note</strong>: Only reductions associated with a loaded assay or marked as global will be loaded.</p></dd>
 
 
 <dt id="arg-graphs">graphs<a class="anchor" aria-label="anchor" href="#arg-graphs"></a></dt>
-<dd><p>One of:</p><ul><li><p>A character vector with names of graphs</p></li>
-<li><p><code>NULL</code> for all graphs</p></li>
-<li><p><code>FALSE</code> for no graphs</p></li>
-</ul><p><strong>Note</strong>: Only graphs associated with an assay loaded in <code>assays</code>
-will be loaded</p></dd>
+<dd><p>One of:</p><ul><li><p><code>NULL</code> (default): Load all graphs</p></li>
+<li><p>A character vector with specific graph names (e.g., <code>c("RNA_snn", "ADT_snn")</code>)</p></li>
+<li><p><code>FALSE</code>: Skip loading graphs</p></li>
+</ul><p><strong>Note</strong>: Only graphs associated with loaded assays will be available.</p></dd>
 
 
 <dt id="arg-images">images<a class="anchor" aria-label="anchor" href="#arg-images"></a></dt>
-<dd><p>One of:</p><ul><li><p>A character vector with names of images</p></li>
-<li><p><code>NULL</code> for all images</p></li>
-<li><p><code>NA</code> for <a href="https://satijalab.github.io/seurat-object/reference/IsGlobal.html" class="external-link">global</a> images</p></li>
-<li><p><code>FALSE</code> for no images</p></li>
+<dd><p>One of:</p><ul><li><p><code>NULL</code> (default): Load all images (for spatial experiments)</p></li>
+<li><p>A character vector with image names</p></li>
+<li><p><code>NA</code>: Load only global images</p></li>
+<li><p><code>FALSE</code>: Skip images</p></li>
 </ul></dd>
 
 
@@ -168,7 +168,7 @@ following values:</p><dl><dt>“commands”</dt>
 
 
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
-<dd><p>Show progress updates</p></dd>
+<dd><p>Logical; if <code>TRUE</code> (default), show progress messages</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>

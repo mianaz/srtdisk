@@ -42,8 +42,9 @@ Transpose(x, ...)
 \item{verbose}{Show progress updates}
 }
 \value{
-\code{\link[Matrix]{dgCMatrix}} method: returns a
-\code{\link[Matrix]{dgCMatrix}} with the data of \code{x} transposed
+\code{\link[Matrix:dgCMatrix-class]{dgCMatrix}} method: returns a
+\code{\link[Matrix:dgCMatrix-class]{dgCMatrix}} with the data of \code{x}
+transposed
 
 \code{\link[hdf5r]{H5D}} and \code{\link[hdf5r]{H5Group}} methods:
 Invisibly returns \code{NULL}

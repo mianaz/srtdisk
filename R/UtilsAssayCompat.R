@@ -30,9 +30,6 @@ IsAssay5 <- function(object) {
 #' @return Matrix or sparse matrix of assay data
 #' @keywords internal
 #'
-#' @seealso \code{\link{SafeGetAssayData}} in V5Compatibility.R for the
-#'   original implementation
-#'
 GetAssayDataCompat <- function(object, layer_or_slot, verbose = FALSE) {
   # In SeuratObject 5.0+, the 'slot' argument is defunct - always use 'layer'
   # This works for both Assay and Assay5 objects in modern SeuratObject
@@ -150,4 +147,3 @@ RequiresS4Reconstruction <- function(object, h5_group = NULL, verbose = FALSE) {
   }
   return(FALSE)
 }
-

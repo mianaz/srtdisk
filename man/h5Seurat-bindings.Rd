@@ -37,6 +37,17 @@
 
 \method{Stdev}{h5Seurat}(object, reduction = "pca", ...)
 }
+\arguments{
+\item{x}{A connected \code{h5Seurat} file handle or group}
+
+\item{...}{Additional arguments passed to the underlying Seurat generics}
+
+\item{object}{A connected \code{h5Seurat} file handle}
+
+\item{value}{Replacement value for assignment methods}
+
+\item{reduction}{Reduction name to operate on}
+}
 \description{
 Seurat bindings for h5Seurat files
 }

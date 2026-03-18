@@ -10,13 +10,14 @@ GetSCDisk(r6class = NULL)
 RegisterSCDisk(r6class)
 }
 \arguments{
-\item{r6class}{An \link[R6::R6Class]{R6 class generator} or a character name
+\item{r6class}{An \link[R6:R6Class]{R6 class generator} or a character name
 of an R6 class generator}
 }
 \value{
 \code{GetSCDisk}: if \code{r6class} is \code{NULL}, then a vector of
 all registered \code{scdisk} subclasses; otherwise, a
-\link[R6::R6Class]{generator} for the requested \code{scdisk} subclass
+\link[R6:R6Class]{R6 class generator} for the requested \code{scdisk}
+subclass
 
 \code{RegisterSCDisk}: adds \code{r6class} to the internal subclass
 registry and invisibly returns \code{NULL}
@@ -35,7 +36,7 @@ generators or other aspects of the class definition (such as
 \code{\link{Convert}})
 
 To register a subclass of \code{scdisk}, simply add a call to
-\code{RegisterSCDisk} in your \link[base::ns-hooks]{load hook}
+\code{RegisterSCDisk} in your \link[base:ns-hooks]{load hook}
 
 \preformatted{
 .onLoad <- function(libname, pkgname) {

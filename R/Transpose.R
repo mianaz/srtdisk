@@ -22,8 +22,9 @@ Transpose <- function(x, ...) {
 #' @importFrom methods slot
 #' @importFrom Matrix sparseMatrix
 #'
-#' @return \code{\link[Matrix]{dgCMatrix}} method: returns a
-#' \code{\link[Matrix]{dgCMatrix}} with the data of \code{x} transposed
+#' @return \code{\link[Matrix:dgCMatrix-class]{dgCMatrix}} method: returns a
+#' \code{\link[Matrix:dgCMatrix-class]{dgCMatrix}} with the data of \code{x}
+#' transposed
 #'
 #' @rdname Transpose
 #' @method Transpose dgCMatrix

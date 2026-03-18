@@ -184,7 +184,7 @@ SparseWrite <- function(x, name, hgroup, verbose = TRUE) {
 #' provides a wrapper with sensible defaults over some of these complex code
 #' constructs to provide greater control over how data are written to disk.
 #' These defaults were chosen to fit best with \link{h5Seurat} files, see
-#' \code{\href{../doc/h5Seurat-spec.html}{vignette("h5Seurat-spec")}} for more
+#' \href{../doc/h5Seurat-spec.html}{\code{vignette("h5Seurat-spec")}} for more
 #' details
 #'
 #' @param x An object
@@ -389,6 +389,8 @@ setMethod(
   }
 )
 
+#' @rdname WriteH5Group
+#'
 setMethod(
   f = 'WriteH5Group',
   signature = c('x' = 'Assay'),

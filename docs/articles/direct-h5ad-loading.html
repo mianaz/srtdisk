@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+
+
+<title>Direct H5AD Loading with LoadH5AD</title>
+
+<script src="direct-h5ad-loading_files/header-attrs-2.30/header-attrs.js"></script>
+<script src="direct-h5ad-loading_files/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="direct-h5ad-loading_files/bootstrap-3.3.5/css/cosmo.min.css" rel="stylesheet" />
+<script src="direct-h5ad-loading_files/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="direct-h5ad-loading_files/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="direct-h5ad-loading_files/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="direct-h5ad-loading_files/jqueryui-1.13.2/jquery-ui.min.js"></script>
+<link href="direct-h5ad-loading_files/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="direct-h5ad-loading_files/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="direct-h5ad-loading_files/navigation-1.1/tabsets.js"></script>
+<script src="direct-h5ad-loading_files/navigation-1.1/codefolding.js"></script>
+<link href="direct-h5ad-loading_files/highlightjs-9.12.0/default.css" rel="stylesheet" />
+<script src="direct-h5ad-loading_files/highlightjs-9.12.0/highlight.js"></script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+<style type="text/css">code{white-space: pre;}</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+
+
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "\e258";
+  font-family: 'Glyphicons Halflings';
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
+
+
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div id="header">
+
+<div class="btn-group pull-right float-right">
+<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu dropdown-menu-right" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
+
+
+<h1 class="title toc-ignore">Direct H5AD Loading with LoadH5AD</h1>
+
+</div>
+
+
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>srtdisk provides two ways to load h5ad files into R as Seurat
+objects:</p>
+<ol style="list-style-type: decimal">
+<li><strong><code>Convert()</code> +
+<code>LoadH5Seurat()</code></strong> — the traditional two-step approach
+via an intermediate h5Seurat file</li>
+<li><strong><code>LoadH5AD()</code></strong> — direct loading without
+intermediate files (new in v0.3.0)</li>
+</ol>
+<p><code>LoadH5AD()</code> is simpler and faster for common use cases:
+load a scanpy-processed h5ad file directly into a Seurat object,
+preserving expression data, metadata, dimensional reductions, and
+neighbor graphs.</p>
+<pre class="r"><code>library(Seurat)
+library(srtdisk)</code></pre>
+</div>
+<div id="loading-a-cellxgene-h5ad-file" class="section level2">
+<h2>Loading a CellxGene h5ad file</h2>
+<p>The package bundles a colorectal cancer sample from <a
+href="https://cellxgene.cziscience.com">CellxGene</a> (935 cells x
+25,344 genes). Let’s load it directly with <code>LoadH5AD()</code>:</p>
+<pre class="r"><code>h5ad_path &lt;- system.file(&quot;testdata&quot;, &quot;crc_sample.h5ad&quot;, package = &quot;srtdisk&quot;)
+crc &lt;- LoadH5AD(h5ad_path, verbose = TRUE)
+crc
+#&gt; An object of class Seurat 
+#&gt; 25344 features across 935 samples within 1 assay 
+#&gt; Active assay: RNA (25344 features, 3466 variable features)
+#&gt;  2 layers present: counts, data
+#&gt;  1 dimensional reduction calculated: umap</code></pre>
+<p>The h5ad file is loaded in a single call. Let’s inspect the
+result:</p>
+<pre class="r"><code># Assays and layers
+cat(&quot;Assays:&quot;, paste(Assays(crc), collapse = &quot;, &quot;), &quot;\n&quot;)
+#&gt; Assays: RNA
+cat(&quot;Layers:&quot;, paste(Layers(crc), collapse = &quot;, &quot;), &quot;\n&quot;)
+#&gt; Layers: counts, data
+
+# Metadata columns
+cat(&quot;Metadata columns:&quot;, ncol(crc[[]]), &quot;\n&quot;)
+#&gt; Metadata columns: 50
+head(crc[[]][, 1:min(5, ncol(crc[[]]))], 3)
+#&gt;                         orig.ident nCount_RNA nFeature_RNA         DC 1
+#&gt; 120703423724317_KG182M2       H5AD      47096         7255 -0.028095834
+#&gt; 120703436319453_KG182M2       H5AD       6742         2719  0.005544095
+#&gt; 120703436877172_KG182M2       H5AD      13992         4172  0.045204181
+#&gt;                                 DC 2
+#&gt; 120703423724317_KG182M2 -0.006741798
+#&gt; 120703436319453_KG182M2  0.020778758
+#&gt; 120703436877172_KG182M2 -0.032072473</code></pre>
+<pre class="r"><code># Dimensional reductions
+cat(&quot;Reductions:&quot;, paste(names(crc@reductions), collapse = &quot;, &quot;), &quot;\n&quot;)
+#&gt; Reductions: umap
+
+# Neighbor graphs
+if (length(crc@graphs) &gt; 0) {
+  cat(&quot;Graphs:&quot;, paste(names(crc@graphs), collapse = &quot;, &quot;), &quot;\n&quot;)
+}</code></pre>
+<div id="visualize" class="section level3">
+<h3>Visualize</h3>
+<p>If the h5ad file contains UMAP coordinates (stored in
+<code>obsm/X_umap</code>), they are automatically restored:</p>
+<pre class="r"><code>if (&quot;umap&quot; %in% names(crc@reductions)) {
+  DimPlot(crc, reduction = &quot;umap&quot;, group.by = &quot;tissue&quot;, pt.size = 0.5)
+}</code></pre>
+<p><img src="direct-h5ad-loading_files/figure-html/plot_crc_umap-1.png" alt="" width="100%" /></p>
+</div>
+</div>
+<div id="comparison-loadh5ad-vs-convert-loadh5seurat"
+class="section level2">
+<h2>Comparison: LoadH5AD vs Convert + LoadH5Seurat</h2>
+<p>The traditional approach requires two steps and creates an
+intermediate h5Seurat file:</p>
+<pre class="r"><code># Traditional approach (two steps)
+local_h5ad &lt;- file.path(tempdir(), basename(h5ad_path))
+file.copy(h5ad_path, local_h5ad, overwrite = TRUE)
+#&gt; [1] TRUE
+Convert(local_h5ad, dest = &quot;h5seurat&quot;, overwrite = TRUE)
+h5seurat_path &lt;- sub(&quot;\\.h5ad$&quot;, &quot;.h5seurat&quot;, local_h5ad)
+crc_traditional &lt;- LoadH5Seurat(h5seurat_path)
+
+cat(&quot;LoadH5AD cells:&quot;, ncol(crc), &quot;\n&quot;)
+#&gt; LoadH5AD cells: 935
+cat(&quot;Traditional cells:&quot;, ncol(crc_traditional), &quot;\n&quot;)
+#&gt; Traditional cells: 935
+cat(&quot;LoadH5AD features:&quot;, nrow(crc), &quot;\n&quot;)
+#&gt; LoadH5AD features: 25344
+cat(&quot;Traditional features:&quot;, nrow(crc_traditional), &quot;\n&quot;)
+#&gt; Traditional features: 25344</code></pre>
+<p>Both approaches produce equivalent Seurat objects.
+<code>LoadH5AD()</code> is simpler when you don’t need the intermediate
+h5Seurat file.</p>
+</div>
+<div id="loading-a-seurat-originated-h5ad" class="section level2">
+<h2>Loading a Seurat-originated h5ad</h2>
+<p>You can also use <code>LoadH5AD()</code> to round-trip data that was
+originally created in Seurat, exported to h5ad via
+<code>Convert()</code>, and optionally processed in Python.</p>
+<pre class="r"><code>library(SeuratData)
+if (&quot;pbmc3k.final&quot; %in% rownames(InstalledData())) {
+  data(&quot;pbmc3k.final&quot;, package = &quot;pbmc3k.SeuratData&quot;)
+  pbmc &lt;- UpdateSeuratObject(pbmc3k.final)
+
+  # Export to h5ad
+  SaveH5Seurat(pbmc, filename = &quot;pbmc3k_direct.h5Seurat&quot;, overwrite = TRUE)
+  Convert(&quot;pbmc3k_direct.h5Seurat&quot;, dest = &quot;h5ad&quot;, overwrite = TRUE)
+
+  # Load back with LoadH5AD
+  pbmc_loaded &lt;- LoadH5AD(&quot;pbmc3k_direct.h5ad&quot;)
+  pbmc_loaded
+} else {
+  message(&quot;pbmc3k.final dataset not installed; skipping roundtrip example.&quot;)
+}</code></pre>
+<pre class="r"><code>if (exists(&quot;pbmc&quot;, inherits = FALSE) &amp;&amp; exists(&quot;pbmc_loaded&quot;, inherits = FALSE)) {
+  cat(&quot;Original cells:&quot;, ncol(pbmc), &quot;\n&quot;)
+  cat(&quot;Loaded cells:&quot;, ncol(pbmc_loaded), &quot;\n&quot;)
+
+  # Check reductions
+  cat(&quot;Original reductions:&quot;, paste(names(pbmc@reductions), collapse = &quot;, &quot;), &quot;\n&quot;)
+  cat(&quot;Loaded reductions:&quot;, paste(names(pbmc_loaded@reductions), collapse = &quot;, &quot;), &quot;\n&quot;)
+}</code></pre>
+<pre class="r"><code>if (exists(&quot;pbmc_loaded&quot;, inherits = FALSE) &amp;&amp; &quot;umap&quot; %in% names(pbmc_loaded@reductions)) {
+  DimPlot(pbmc_loaded, reduction = &quot;umap&quot;, group.by = &quot;seurat_annotations&quot;,
+          label = TRUE, pt.size = 0.5) + NoLegend()
+}</code></pre>
+</div>
+<div id="what-loadh5ad-preserves" class="section level2">
+<h2>What LoadH5AD preserves</h2>
+<p><code>LoadH5AD()</code> reads the following from h5ad files:</p>
+<table>
+<colgroup>
+<col width="30%" />
+<col width="41%" />
+<col width="28%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>h5ad Location</th>
+<th>Seurat Destination</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>X</code></td>
+<td>Default assay <code>data</code> layer</td>
+<td>Expression matrix (sparse or dense)</td>
+</tr>
+<tr class="even">
+<td><code>raw/X</code></td>
+<td><code>counts</code> layer</td>
+<td>Raw counts if present</td>
+</tr>
+<tr class="odd">
+<td><code>layers/*</code></td>
+<td>Additional layers</td>
+<td>Named layers mapped to Seurat slots</td>
+</tr>
+<tr class="even">
+<td><code>obs</code></td>
+<td><code>meta.data</code></td>
+<td>Cell metadata (categorical preserved as factors)</td>
+</tr>
+<tr class="odd">
+<td><code>var</code></td>
+<td>Feature metadata</td>
+<td>Gene-level annotations</td>
+</tr>
+<tr class="even">
+<td><code>var['highly_variable']</code></td>
+<td><code>VariableFeatures()</code></td>
+<td>Variable feature selection</td>
+</tr>
+<tr class="odd">
+<td><code>obsm/X_umap</code></td>
+<td><code>reductions$umap</code></td>
+<td>UMAP coordinates</td>
+</tr>
+<tr class="even">
+<td><code>obsm/X_pca</code></td>
+<td><code>reductions$pca</code></td>
+<td>PCA embeddings</td>
+</tr>
+<tr class="odd">
+<td><code>obsm/X_tsne</code></td>
+<td><code>reductions$tsne</code></td>
+<td>tSNE coordinates</td>
+</tr>
+<tr class="even">
+<td><code>obsm/spatial</code></td>
+<td>Spatial coordinates</td>
+<td>Via <code>ConvertH5ADSpatialToSeurat()</code></td>
+</tr>
+<tr class="odd">
+<td><code>obsp/connectivities</code></td>
+<td><code>graphs$RNA_snn</code></td>
+<td>SNN graph</td>
+</tr>
+<tr class="even">
+<td><code>obsp/distances</code></td>
+<td><code>graphs$RNA_nn</code></td>
+<td>Distance graph</td>
+</tr>
+<tr class="odd">
+<td><code>uns/*</code></td>
+<td><code>misc</code></td>
+<td>Unstructured annotations</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="when-to-use-loadh5ad-vs-convert" class="section level2">
+<h2>When to use LoadH5AD vs Convert</h2>
+<table>
+<colgroup>
+<col width="45%" />
+<col width="54%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Scenario</th>
+<th>Recommended</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Quick exploration of an h5ad file</td>
+<td><code>LoadH5AD()</code></td>
+</tr>
+<tr class="even">
+<td>Round-trip editing (load, modify, re-export)</td>
+<td><code>Convert()</code> + <code>LoadH5Seurat()</code></td>
+</tr>
+<tr class="odd">
+<td>Need h5Seurat for other tools</td>
+<td><code>Convert()</code></td>
+</tr>
+<tr class="even">
+<td>Loading scanpy-processed data for Seurat analysis</td>
+<td><code>LoadH5AD()</code></td>
+</tr>
+<tr class="odd">
+<td>Working with spatial h5ad from CellxGene</td>
+<td><code>LoadH5AD()</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="session-info" class="section level2">
+<h2>Session Info</h2>
+<pre class="r"><code>sessionInfo()
+#&gt; R version 4.5.2 (2025-10-31)
+#&gt; Platform: aarch64-apple-darwin20
+#&gt; Running under: macOS Tahoe 26.3
+#&gt; 
+#&gt; Matrix products: default
+#&gt; BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+#&gt; LAPACK: /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.1
+#&gt; 
+#&gt; locale:
+#&gt; [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+#&gt; 
+#&gt; time zone: America/Indiana/Indianapolis
+#&gt; tzcode source: internal
+#&gt; 
+#&gt; attached base packages:
+#&gt; [1] stats     graphics  grDevices utils     datasets  methods   base     
+#&gt; 
+#&gt; other attached packages:
+#&gt;  [1] stxKidney.SeuratData_0.1.0    stxBrain.SeuratData_0.1.2    
+#&gt;  [3] ssHippo.SeuratData_3.1.4      pbmcref.SeuratData_1.0.0     
+#&gt;  [5] pbmcMultiome.SeuratData_0.1.4 pbmc3k.SeuratData_3.1.4      
+#&gt;  [7] panc8.SeuratData_3.0.2        cbmc.SeuratData_3.1.4        
+#&gt;  [9] SeuratData_0.2.2.9002         srtdisk_0.3.1                
+#&gt; [11] Seurat_5.4.0                  SeuratObject_5.3.0           
+#&gt; [13] sp_2.2-1                      reticulate_1.45.0            
+#&gt; 
+#&gt; loaded via a namespace (and not attached):
+#&gt;   [1] RColorBrewer_1.1-3     jsonlite_2.0.0         magrittr_2.0.4        
+#&gt;   [4] spatstat.utils_3.2-2   farver_2.1.2           rmarkdown_2.30        
+#&gt;   [7] vctrs_0.7.1            ROCR_1.0-12            spatstat.explore_3.7-0
+#&gt;  [10] htmltools_0.5.9        sass_0.4.10            sctransform_0.4.3     
+#&gt;  [13] parallelly_1.46.1      KernSmooth_2.23-26     bslib_0.10.0          
+#&gt;  [16] htmlwidgets_1.6.4      ica_1.0-3              plyr_1.8.9            
+#&gt;  [19] plotly_4.12.0          zoo_1.8-15             cachem_1.1.0          
+#&gt;  [22] igraph_2.2.2           mime_0.13              lifecycle_1.0.5       
+#&gt;  [25] pkgconfig_2.0.3        Matrix_1.7-4           R6_2.6.1              
+#&gt;  [28] fastmap_1.2.0          fitdistrplus_1.2-6     future_1.69.0         
+#&gt;  [31] shiny_1.13.0           digest_0.6.39          patchwork_1.3.2       
+#&gt;  [34] tensor_1.5.1           RSpectra_0.16-2        irlba_2.3.7           
+#&gt;  [37] labeling_0.4.3         progressr_0.18.0       spatstat.sparse_3.1-0 
+#&gt;  [40] httr_1.4.8             polyclip_1.10-7        abind_1.4-8           
+#&gt;  [43] compiler_4.5.2         bit64_4.6.0-1          withr_3.0.2           
+#&gt;  [46] S7_0.2.1               fastDummies_1.7.5      MASS_7.3-65           
+#&gt;  [49] rappdirs_0.3.4         tools_4.5.2            lmtest_0.9-40         
+#&gt;  [52] otel_0.2.0             httpuv_1.6.16          future.apply_1.20.2   
+#&gt;  [55] goftest_1.2-3          glue_1.8.0             nlme_3.1-168          
+#&gt;  [58] promises_1.5.0         grid_4.5.2             Rtsne_0.17            
+#&gt;  [61] cluster_2.1.8.2        reshape2_1.4.5         generics_0.1.4        
+#&gt;  [64] hdf5r_1.3.12           gtable_0.3.6           spatstat.data_3.1-9   
+#&gt;  [67] tidyr_1.3.2            data.table_1.18.2.1    spatstat.geom_3.7-0   
+#&gt;  [70] RcppAnnoy_0.0.23       ggrepel_0.9.7          RANN_2.6.2            
+#&gt;  [73] pillar_1.11.1          stringr_1.6.0          spam_2.11-3           
+#&gt;  [76] RcppHNSW_0.6.0         later_1.4.8            splines_4.5.2         
+#&gt;  [79] dplyr_1.2.0            lattice_0.22-9         survival_3.8-6        
+#&gt;  [82] bit_4.6.0              deldir_2.0-4           tidyselect_1.2.1      
+#&gt;  [85] miniUI_0.1.2           pbapply_1.7-4          knitr_1.51            
+#&gt;  [88] gridExtra_2.3          scattermore_1.2        xfun_0.56             
+#&gt;  [91] matrixStats_1.5.0      stringi_1.8.7          lazyeval_0.2.2        
+#&gt;  [94] yaml_2.3.12            evaluate_1.0.5         codetools_0.2-20      
+#&gt;  [97] tibble_3.3.1           cli_3.6.5              uwot_0.2.4            
+#&gt; [100] xtable_1.8-8           jquerylib_0.1.4        dichromat_2.0-0.1     
+#&gt; [103] Rcpp_1.1.1             globals_0.19.1         spatstat.random_3.4-4 
+#&gt; [106] png_0.1-8              spatstat.univar_3.1-6  parallel_4.5.2        
+#&gt; [109] ggplot2_4.0.2          dotCall64_1.2          listenv_0.10.1        
+#&gt; [112] viridisLite_0.4.3      scales_1.4.0           ggridges_0.5.7        
+#&gt; [115] purrr_1.2.1            crayon_1.5.3           rlang_1.1.7           
+#&gt; [118] cowplot_1.2.0</code></pre>
+</div>
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("show" === "show");
+});
+</script>
+
+<script>
+$(document).ready(function ()  {
+
+    // temporarily add toc-ignore selector to headers for the consistency with Pandoc
+    $('.unlisted.unnumbered').addClass('toc-ignore')
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_');
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

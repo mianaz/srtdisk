@@ -111,7 +111,7 @@ ConvertBPCellsMatrix <- function(mat, verbose = FALSE) {
 
   if (!is_bpcells) return(mat)
 
-  if (verbose) message("Converting BPCells object to dgCMatrix")
+  if (verbose) EmitMessage("Converting BPCells object to dgCMatrix")
 
   tryCatch(
     as(mat, "dgCMatrix"),
@@ -265,67 +265,9 @@ ClosestVersion <- function(
   return(as.character(x = targets[index]))
 }
 
-#' Convert an HDF5 compound dataset to a group
-#'
-#' @param src An HDF5 dataset (\code{\link[hdf5r]{H5D}}) of type
-#' \code{\link[hdf5r]{H5T_COMPOUND}}
-#' @param dest An HDF5 file (\code{\link[hdf5r]{H5File}}) or group
-#' (\code{\link[hdf5r]{H5Group}})
-#' @param dst.name Name of group in \code{dest}
-#' @param order Name of HDF5 attribute to store column order as
-#' @param index Integer values of which values to pull; defaults to all values
-#' @param overwrite Overwrite existing group \code{dst.name} in \code{dest}
-#'
-#' @return Invisibly returns \code{NULL}
-#'
-#'
-#' @keywords internal
-#'
-CompoundToGroup <- function(
-  src,
-  dest,
-  dst.name = basename(path = src$get_obj_name()),
-  order = c('colnames', 'column-order'),
-  index = NULL,
-  overwrite = FALSE
-) {
-  order <- match.arg(arg = order)
-  if (!IsDType(src, 'H5T_COMPOUND')) {
-    stop("'src' must be an HDF5 compound dataset", call. = FALSE)
-  } else if (!inherits(x = dest, what = c('H5File', 'H5Group'))) {
-    stop("'dest' must be a HDF5 file or group", call. = FALSE)
-  }
-  if (dest$exists(name = dst.name)) {
-    if (overwrite) {
-      dest$link_delete(name = dst.name)
-    } else {
-      stop(dst.name, " already exists in the destination", call. = FALSE)
-    }
-  }
-  index <- index %||% seq.default(from = 1, to = src$dims)
-  group <- dest$create_group(name = dst.name)
-  cpd <- src$get_type()
-  for (i in seq_along(along.with = cpd$get_cpd_labels())) {
-    name <- cpd$get_cpd_labels()[i]
-    dtype <- cpd$get_cpd_types()[[i]]
-    group$create_dataset(
-      name = name,
-      robj = unlist(
-        x = src$read_low_level(mem_type = H5T_COMPOUND$new(
-          labels = name,
-          dtypes = dtype
-        )),
-        use.names = FALSE
-      )[index],
-      dtype = dtype
-    )
-  }
-  group$create_attr(
-    attr_name = order,
-    robj = cpd$get_cpd_labels(),
-    dtype = GuessDType(x = cpd$get_cpd_labels())
-  )
-  return(invisible(x = NULL))
+# Internal helper to emit messages while avoiding package startup warnings
+EmitMessage <- function(...) {
+  base::message(...)
 }
 
 #' Determine a filetype based on its extension
@@ -1056,7 +998,7 @@ SafeSetLayerData <- function(object, layer, value) {
       }
 
       if (length(bpcells_layers) > 0) {
-        if (verbose) message("BPCells on-disk matrices detected: streaming to h5ad (no full materialization)")
+        if (verbose) EmitMessage("BPCells on-disk matrices detected: streaming to h5ad (no full materialization)")
 
         # Replace BPCells layers with zero-entry placeholders (correct dims, ~zero RAM)
         # so SaveH5Seurat writes metadata correctly without materializing the matrix
@@ -1144,7 +1086,7 @@ SafeSetLayerData <- function(object, layer, value) {
             h5$close_all()
           }
 
-          if (verbose) message("  Streamed '", ln, "' -> ", group_name, " via BPCells (no materialization)")
+          if (verbose) EmitMessage("  Streamed '", ln, "' -> ", group_name, " via BPCells (no materialization)")
         }
       } else {
         # Standard path (no BPCells): Seurat -> temp h5seurat -> h5ad
@@ -1190,24 +1132,33 @@ SafeSetLayerData <- function(object, layer, value) {
         stop("Destination RDS file exists", call. = FALSE)
       }
       saveRDS(object = object, file = filename)
-      if (verbose) message("Saved Seurat object to ", filename)
+      if (verbose) EmitMessage("Saved Seurat object to ", filename)
       invisible(filename)
     }
   )
 
-  # Register zarr format (AnnData Zarr stores)
-  # Requires jsonlite (for zarr v2 metadata); zarr R package optional
-  RegisterFormat(
-    ext = 'zarr',
-    loader = function(file, assay = 'RNA', verbose = TRUE, ...) {
-      LoadZarr(file = file, assay.name = assay, verbose = verbose, ...)
-    },
-    saver = function(object, filename, overwrite = FALSE, verbose = TRUE, ...) {
-      SaveZarr(object = object, filename = filename,
-               overwrite = overwrite, verbose = verbose, ...)
-      invisible(filename)
-    }
-  )
+  # Register zarr format (AnnData Zarr stores) when helpers are available
+  if (all(vapply(
+      X = c("LoadZarr", "SaveZarr"),
+      FUN = exists,
+      FUN.VALUE = logical(1),
+      mode = "function",
+      inherits = TRUE
+    ))) {
+    load_zarr <- get("LoadZarr", inherits = TRUE)
+    save_zarr <- get("SaveZarr", inherits = TRUE)
+    RegisterFormat(
+      ext = 'zarr',
+      loader = function(file, assay = 'RNA', verbose = TRUE, ...) {
+        load_zarr(file = file, assay.name = assay, verbose = verbose, ...)
+      },
+      saver = function(object, filename, overwrite = FALSE, verbose = TRUE, ...) {
+        save_zarr(object = object, filename = filename,
+                  overwrite = overwrite, verbose = verbose, ...)
+        invisible(filename)
+      }
+    )
+  }
 
   # Register direct HDF5-level conversion paths (bypass hub for efficiency).
   # These are only for format pairs that can be converted via direct HDF5

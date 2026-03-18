@@ -6,7 +6,6 @@
 .Ruserdata
 
 # Ignore built vignettes
-inst/doc
 doc
 Meta
 
