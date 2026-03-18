@@ -29,7 +29,6 @@ available for memory efficiency."></head><body>
     <li><a class="dropdown-item" href="../articles/direct-h5ad-loading.html">Direct H5AD Loading with LoadH5AD</a></li>
     <li><a class="dropdown-item" href="../articles/h5Seurat-load.html">Saving and Loading Data from an h5Seurat File</a></li>
     <li><a class="dropdown-item" href="../articles/h5Seurat-spec.html">h5Seurat File Format Specification</a></li>
-    <li><a class="dropdown-item" href="../articles/multimodal-h5mu.html">Multimodal Data with MuData (h5mu)</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -144,7 +143,7 @@ connection, filename path, or H5File connection</p></dd>
 
 <dt id="arg-dest">dest<a class="anchor" aria-label="anchor" href="#arg-dest"></a></dt>
 <dd><p>Name/path of destination file or format. Supported formats:
-h5seurat, h5ad, h5mu, loom, rds. Also accepts <code>"sce"</code> to return
+h5seurat, h5ad, loom, rds. Also accepts <code>"sce"</code> to return
 a SingleCellExperiment object (in-memory, no file created).</p></dd>
 
 
@@ -183,7 +182,7 @@ Only applicable for conversions to h5ad format. Default is <code>FALSE</code>.</
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p><strong>Supported Formats:</strong></p><ul><li><p><strong>R objects</strong>: Seurat, SingleCellExperiment (requires
     <span class="pkg">SingleCellExperiment</span>), loom (R6 connection)</p></li>
-<li><p><strong>File formats</strong>: h5seurat, h5ad, h5mu, loom, rds</p></li>
+<li><p><strong>File formats</strong>: h5seurat, h5ad, loom, rds</p></li>
 </ul><p>Any source format can be converted to any destination format. Conversions
 without a direct path go through Seurat as a universal hub:
 <code>Source -&gt; Seurat -&gt; Destination</code>.</p>
@@ -347,7 +346,6 @@ index (<code>source$index()</code>). It works in the following manner:</p><div c
 <code><a href="SaveH5Seurat.html">SaveH5Seurat</a></code> to save Seurat objects
 <code><a href="LoadH5Seurat.html">LoadH5Seurat</a></code> to load h5Seurat files
 <code><a href="LoadH5AD.html">LoadH5AD</a></code> to directly load h5ad files
-<code><a href="LoadH5MU.html">LoadH5MU</a></code> to load h5mu files
 <code><a href="Connect.html">Connect</a></code> to establish file connections</p></div>
     </div>
 
@@ -361,7 +359,6 @@ index (<code>source$index()</code>). It works in the following manner:</p><div c
 <span class="r-in"><span><span class="fu">Convert</span><span class="op">(</span><span class="st">"data.h5ad"</span>, dest <span class="op">=</span> <span class="st">"data.h5seurat"</span><span class="op">)</span>     <span class="co"># h5ad -&gt; h5seurat</span></span></span>
 <span class="r-in"><span><span class="fu">Convert</span><span class="op">(</span><span class="st">"data.h5ad"</span>, dest <span class="op">=</span> <span class="st">"data.rds"</span><span class="op">)</span>           <span class="co"># h5ad -&gt; RDS</span></span></span>
 <span class="r-in"><span><span class="fu">Convert</span><span class="op">(</span><span class="st">"data.h5ad"</span>, dest <span class="op">=</span> <span class="st">"data.loom"</span><span class="op">)</span>           <span class="co"># h5ad -&gt; loom</span></span></span>
-<span class="r-in"><span><span class="fu">Convert</span><span class="op">(</span><span class="st">"data.h5mu"</span>, dest <span class="op">=</span> <span class="st">"data.h5ad"</span><span class="op">)</span>           <span class="co"># h5mu -&gt; h5ad</span></span></span>
 <span class="r-in"><span><span class="fu">Convert</span><span class="op">(</span><span class="st">"data.loom"</span>, dest <span class="op">=</span> <span class="st">"data.h5seurat"</span><span class="op">)</span>       <span class="co"># loom -&gt; h5seurat</span></span></span>
 <span class="r-in"><span><span class="fu">Convert</span><span class="op">(</span><span class="st">"data.rds"</span>,  dest <span class="op">=</span> <span class="st">"data.h5ad"</span><span class="op">)</span>           <span class="co"># RDS -&gt; h5ad</span></span></span>
 <span class="r-in"><span></span></span>
@@ -380,7 +377,7 @@ index (<code>source$index()</code>). It works in the following manner:</p><div c
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Miana Z, Paul Hoffman, Rahul Satija.</p>
+  <p>Developed by Miana Z.</p>
 </div>
 
 <div class="pkgdown-footer-right">
