@@ -77,13 +77,11 @@ Collate:
     'h5Seurat_bindings.R'
 Suggests:
     BiocGenerics,
-    BPCells,
     formatR,
     httr,
     knitr,
     reticulate,
     rmarkdown,
-    SeuratData,
     SingleCellExperiment,
     SummarizedExperiment,
     testthat (>= 3.0.0)
