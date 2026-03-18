@@ -23,7 +23,6 @@
     <li><a class="dropdown-item" href="../articles/direct-h5ad-loading.html">Direct H5AD Loading with LoadH5AD</a></li>
     <li><a class="dropdown-item" href="../articles/h5Seurat-load.html">Saving and Loading Data from an h5Seurat File</a></li>
     <li><a class="dropdown-item" href="../articles/h5Seurat-spec.html">h5Seurat File Format Specification</a></li>
-    <li><a class="dropdown-item" href="../articles/multimodal-h5mu.html">Multimodal Data with MuData (h5mu)</a></li>
   </ul></li>
 <li class="active nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -61,19 +60,6 @@
 <div class="section level3">
 <h3 id="highlights-0-3-0">Highlights<a class="anchor" aria-label="anchor" href="#highlights-0-3-0"></a></h3>
 <div class="section level4">
-<h4 id="mudata-h5mu-multimodal-support-0-3-0">MuData (h5mu) Multimodal Support<a class="anchor" aria-label="anchor" href="#mudata-h5mu-multimodal-support-0-3-0"></a></h4>
-<p>srtdisk now supports the MuData/h5mu format for multimodal single-cell data:</p>
-<ul><li>
-<strong><code><a href="../reference/LoadH5MU.html">LoadH5MU()</a></code></strong>: Load h5mu files as multimodal Seurat objects with automatic modality-to-assay name mapping (rna-&gt;RNA, prot-&gt;ADT, atac-&gt;ATAC, etc.)</li>
-<li>
-<strong><code><a href="../reference/SaveH5MU.html">SaveH5MU()</a></code></strong>: Export multimodal Seurat objects to h5mu format with spatial data preservation and conflict-free modality naming</li>
-<li>
-<strong><code><a href="../reference/SaveH5MU.html">as.h5mu()</a></code></strong>: Convenience alias for SaveH5MU</li>
-<li>
-<strong>H5MU conversion pathways</strong>: <code><a href="../reference/Convert.html">Convert()</a></code> now supports h5mu as both source and destination format (h5mu&lt;-&gt;h5Seurat, h5mu-&gt;h5ad)</li>
-<li>Requires <code>MuDataSeurat</code> package (optional dependency)</li>
-</ul></div>
-<div class="section level4">
 <h4 id="direct-h5ad-loading-with-loadh5ad-0-3-0">Direct h5ad Loading with <code>LoadH5AD()</code>
 <a class="anchor" aria-label="anchor" href="#direct-h5ad-loading-with-loadh5ad-0-3-0"></a></h4>
 <p>New <code><a href="../reference/LoadH5AD.html">LoadH5AD()</a></code> function provides direct h5ad-to-Seurat conversion without the intermediate h5Seurat step:</p>
@@ -87,8 +73,6 @@
 <h4 id="new-vignettes-0-3-0">New Vignettes<a class="anchor" aria-label="anchor" href="#new-vignettes-0-3-0"></a></h4>
 <ul><li>
 <strong>Direct H5AD Loading</strong> (<code>direct-h5ad-loading</code>): Showcases <code><a href="../reference/LoadH5AD.html">LoadH5AD()</a></code> with real data from CellxGene and SeuratData</li>
-<li>
-<strong>Multimodal H5MU</strong> (<code>multimodal-h5mu</code>): Demonstrates <code><a href="../reference/LoadH5MU.html">LoadH5MU()</a></code>/<code><a href="../reference/SaveH5MU.html">SaveH5MU()</a></code> round-trip with CITE-seq data</li>
 </ul></div>
 </div>
 <div class="section level3">
@@ -337,7 +321,7 @@
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Miana Z, Paul Hoffman, Rahul Satija.</p>
+  <p>Developed by Miana Z.</p>
 </div>
 
 <div class="pkgdown-footer-right">
