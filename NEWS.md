@@ -1,3 +1,14 @@
+# srtdisk 0.3.2
+
+> **Release Date:** 2026-03-18
+
+## Changes
+
+- Removed immature h5mu support
+- Updated author roles: Hoffman and Satija changed from author (aut) to contributor (ctb)
+
+---
+
 # srtdisk 0.3.1
 
 > **Release Date:** 2026-02-25
