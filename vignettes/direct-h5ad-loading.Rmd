@@ -131,8 +131,10 @@ The traditional approach requires two steps and creates an intermediate h5Seurat
 
 ```{r traditional, eval = file.exists(h5ad_path)}
 # Traditional approach (two steps)
-Convert(h5ad_path, dest = "h5seurat", overwrite = TRUE)
-h5seurat_path <- sub("\\.h5ad$", ".h5seurat", h5ad_path)
+local_h5ad <- file.path(tempdir(), basename(h5ad_path))
+file.copy(h5ad_path, local_h5ad, overwrite = TRUE)
+Convert(local_h5ad, dest = "h5seurat", overwrite = TRUE)
+h5seurat_path <- sub("\\.h5ad$", ".h5seurat", local_h5ad)
 crc_traditional <- LoadH5Seurat(h5seurat_path)
 
 cat("LoadH5AD cells:", ncol(crc), "\n")
@@ -144,7 +146,9 @@ cat("Traditional features:", nrow(crc_traditional), "\n")
 Both approaches produce equivalent Seurat objects. `LoadH5AD()` is simpler when you don't need the intermediate h5Seurat file.
 
 ```{r cleanup_traditional, echo=FALSE, results='hide'}
-f <- sub("\\.h5ad$", ".h5seurat", h5ad_path)
+local_copy <- if (exists("local_h5ad")) local_h5ad else h5ad_path
+f <- sub("\\.h5ad$", ".h5seurat", local_copy)
+if (exists("local_h5ad") && file.exists(local_h5ad)) file.remove(local_h5ad)
 if (file.exists(f)) file.remove(f)
 ```
 
@@ -154,32 +158,35 @@ You can also use `LoadH5AD()` to round-trip data that was originally created in 
 
 ```{r roundtrip, eval = has_SeuratData}
 library(SeuratData)
-if (!"pbmc3k.final" %in% rownames(InstalledData())) {
-  InstallData("pbmc3k")
+if ("pbmc3k.final" %in% rownames(InstalledData())) {
+  data("pbmc3k.final", package = "pbmc3k.SeuratData")
+  pbmc <- UpdateSeuratObject(pbmc3k.final)
+
+  # Export to h5ad
+  SaveH5Seurat(pbmc, filename = "pbmc3k_direct.h5Seurat", overwrite = TRUE)
+  Convert("pbmc3k_direct.h5Seurat", dest = "h5ad", overwrite = TRUE)
+
+  # Load back with LoadH5AD
+  pbmc_loaded <- LoadH5AD("pbmc3k_direct.h5ad")
+  pbmc_loaded
+} else {
+  message("pbmc3k.final dataset not installed; skipping roundtrip example.")
 }
-data("pbmc3k.final", package = "pbmc3k.SeuratData")
-pbmc <- UpdateSeuratObject(pbmc3k.final)
-
-# Export to h5ad
-SaveH5Seurat(pbmc, filename = "pbmc3k_direct.h5Seurat", overwrite = TRUE)
-Convert("pbmc3k_direct.h5Seurat", dest = "h5ad", overwrite = TRUE)
-
-# Load back with LoadH5AD
-pbmc_loaded <- LoadH5AD("pbmc3k_direct.h5ad")
-pbmc_loaded
 ```
 
 ```{r roundtrip_compare, eval = has_SeuratData}
-cat("Original cells:", ncol(pbmc), "\n")
-cat("Loaded cells:", ncol(pbmc_loaded), "\n")
+if (exists("pbmc", inherits = FALSE) && exists("pbmc_loaded", inherits = FALSE)) {
+  cat("Original cells:", ncol(pbmc), "\n")
+  cat("Loaded cells:", ncol(pbmc_loaded), "\n")
 
-# Check reductions
-cat("Original reductions:", paste(names(pbmc@reductions), collapse = ", "), "\n")
-cat("Loaded reductions:", paste(names(pbmc_loaded@reductions), collapse = ", "), "\n")
+  # Check reductions
+  cat("Original reductions:", paste(names(pbmc@reductions), collapse = ", "), "\n")
+  cat("Loaded reductions:", paste(names(pbmc_loaded@reductions), collapse = ", "), "\n")
+}
 ```
 
 ```{r roundtrip_plot, eval = has_SeuratData}
-if ("umap" %in% names(pbmc_loaded@reductions)) {
+if (exists("pbmc_loaded", inherits = FALSE) && "umap" %in% names(pbmc_loaded@reductions)) {
   DimPlot(pbmc_loaded, reduction = "umap", group.by = "seurat_annotations",
           label = TRUE, pt.size = 0.5) + NoLegend()
 }

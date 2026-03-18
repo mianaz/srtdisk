@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">srtdisk</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -19,6 +19,8 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/convert-anndata.html">Conversions: h5Seurat and AnnData</a></li>
+    <li><a class="dropdown-item" href="../articles/convert-loom.html">Conversions: Seurat and Loom</a></li>
+    <li><a class="dropdown-item" href="../articles/direct-h5ad-loading.html">Direct H5AD Loading with LoadH5AD</a></li>
     <li><a class="dropdown-item" href="../articles/h5Seurat-load.html">Saving and Loading Data from an h5Seurat File</a></li>
     <li><a class="dropdown-item" href="../articles/h5Seurat-spec.html">h5Seurat File Format Specification</a></li>
   </ul></li>
@@ -66,7 +68,7 @@ determined by <code><a href="https://rdrr.io/r/base/timezones.html" class="exter
 
 
 <dt id="arg-tz">tz<a class="anchor" aria-label="anchor" href="#arg-tz"></a></dt>
-<dd><p>A character string specifying the time zone to be used for
+<dd><p>a character string specifying the time zone to be used for
     the conversion.  System-specific (see <code><a href="https://rdrr.io/r/base/as.POSIXlt.html" class="external-link">as.POSIXlt</a></code>), but
     <code>""</code> is the current time zone, and <code>"GMT"</code> is UTC.
     Invalid values are most commonly treated as UTC, on some platforms with
@@ -74,12 +76,15 @@ determined by <code><a href="https://rdrr.io/r/base/timezones.html" class="exter
 
 
 <dt id="arg-format">format<a class="anchor" aria-label="anchor" href="#arg-format"></a></dt>
-<dd><p>A character string.  The default for the <code>format</code>
+<dd><p>a character string.  The default for the <code>format</code>
     methods is
     <code>"%Y-%m-%d %H:%M:%S"</code> if any element has a time
     component which is not midnight, and <code>"%Y-%m-%d"</code>
-    otherwise.  If <code><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a>("digits.secs")</code> is set, up to
-    the specified number of digits will be printed for seconds.</p></dd>
+    otherwise.  In the first case and if <code>digits</code> is not <code>NULL</code>,
+    i.e., by default when <code><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a>("digits.secs")</code> is set, up to
+    the specified number of digits will be printed for seconds, using
+    <code>"%OS&lt;n&gt;"</code> instead of <code>"%S"</code> in the format, see also
+    ‘Details’.</p></dd>
 
 
 <dt id="arg-type">type<a class="anchor" aria-label="anchor" href="#arg-type"></a></dt>
@@ -143,7 +148,7 @@ specified format</p>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Create a timestamp</span></span></span>
 <span class="r-in"><span><span class="fu">srtdisk</span><span class="fu">:::</span><span class="fu">Timestamp</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "20260129T184630Z"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "20260318T033720Z"</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Format a timestamp for easy viewing</span></span></span>
 <span class="r-in"><span><span class="va">time</span> <span class="op">&lt;-</span> <span class="st">"20200804T214148Z"</span></span></span>

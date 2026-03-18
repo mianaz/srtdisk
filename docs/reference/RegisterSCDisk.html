@@ -9,7 +9,7 @@ use in functions that rely on the class definition instead of an object."></head
 
     <a class="navbar-brand me-2" href="../index.html">srtdisk</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -21,6 +21,8 @@ use in functions that rely on the class definition instead of an object."></head
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/convert-anndata.html">Conversions: h5Seurat and AnnData</a></li>
+    <li><a class="dropdown-item" href="../articles/convert-loom.html">Conversions: Seurat and Loom</a></li>
+    <li><a class="dropdown-item" href="../articles/direct-h5ad-loading.html">Direct H5AD Loading with LoadH5AD</a></li>
     <li><a class="dropdown-item" href="../articles/h5Seurat-load.html">Saving and Loading Data from an h5Seurat File</a></li>
     <li><a class="dropdown-item" href="../articles/h5Seurat-spec.html">h5Seurat File Format Specification</a></li>
   </ul></li>
@@ -58,7 +60,7 @@ use in functions that rely on the class definition instead of an object.</p>
 
 
 <dl><dt id="arg-r-class">r6class<a class="anchor" aria-label="anchor" href="#arg-r-class"></a></dt>
-<dd><p>An R6 class generator or a character name
+<dd><p>An <a href="https://r6.r-lib.org/reference/R6Class.html" class="external-link">R6 class generator</a> or a character name
 of an R6 class generator</p></dd>
 
 </dl></div>
@@ -66,7 +68,8 @@ of an R6 class generator</p></dd>
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p><code>GetSCDisk</code>: if <code>r6class</code> is <code>NULL</code>, then a vector of
 all registered <code>scdisk</code> subclasses; otherwise, a
-generator for the requested <code>scdisk</code> subclass</p>
+<a href="https://r6.r-lib.org/reference/R6Class.html" class="external-link">R6 class generator</a> for the requested <code>scdisk</code>
+subclass</p>
 <p><code>RegisterSCDisk</code>: adds <code>r6class</code> to the internal subclass
 registry and invisibly returns <code>NULL</code></p>
     </div>

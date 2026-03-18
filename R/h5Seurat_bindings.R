@@ -1,5 +1,11 @@
 #' Seurat bindings for h5Seurat files
 #'
+#' @param object A connected \code{h5Seurat} file handle
+#' @param x A connected \code{h5Seurat} file handle or group
+#' @param value Replacement value for assignment methods
+#' @param reduction Reduction name to operate on
+#' @param ... Additional arguments passed to the underlying Seurat generics
+#'
 #' @importFrom hdf5r h5attr list.groups
 #'
 #' @name h5Seurat-bindings
@@ -8,7 +14,6 @@
 NULL
 
 #' @importFrom Seurat Cells
-#' @inheritParams Seurat::Cells
 #'
 #' @aliases Cells
 #'
@@ -36,7 +41,6 @@ Cells.h5Seurat <- function(x, ...) {
 }
 
 #' @importFrom Seurat DefaultAssay
-#' @inheritParams Seurat::DefaultAssay
 #'
 #' @aliases DefaultAssay
 #'
@@ -68,7 +72,6 @@ DefaultAssay.h5Seurat <- function(object, ...) {
 }
 
 #' @importFrom Seurat Idents
-#' @inheritParams Seurat::Idents
 #'
 #' @aliases Idents
 #'
@@ -99,7 +102,6 @@ Idents.h5Seurat <- function(object, ...) {
 }
 
 #' @importFrom Seurat IsGlobal
-#' @inheritParams Seurat::IsGlobal
 #'
 #' @aliases IsGlobal
 #'
@@ -115,7 +117,6 @@ IsGlobal.H5Group <- function(object, ...) {
 }
 
 #' @importFrom Seurat Key
-#' @inheritParams Seurat::Key
 #'
 #' @aliases Key
 #'
@@ -128,7 +129,6 @@ Key.H5Group <- function(object, ...) {
 }
 
 #' @importFrom Seurat Project
-#' @inheritParams Seurat::Project
 #'
 #' @aliases Project
 #'
@@ -157,7 +157,6 @@ Project.h5Seurat <- function(object, ...) {
 }
 
 #' @importFrom Seurat Stdev
-#' @inheritParams Seurat::Stdev
 #'
 #' @rdname h5Seurat-bindings
 #' @method Stdev h5Seurat

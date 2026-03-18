@@ -47,6 +47,8 @@ as.loom(x, ...)
 \item{verbose}{Logical; if \code{TRUE} (default), show progress updates}
 
 \item{...}{Arguments passed to other methods}
+
+\item{x}{Object to convert when calling \code{as.loom}}
 }
 \value{
 \code{SaveLoom}: Invisibly returns the filename of the saved file

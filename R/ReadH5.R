@@ -4,13 +4,14 @@
 #'
 #' @param x An HDF5 dataset (H5D) or group (H5Group) object
 #' @param ... Arguments passed to other methods
+#' @param recursive For HDF5 groups, recurse into nested groups when \code{TRUE}
 #'
 #' @return Varies depending on the method being called
 #'
 #' @name ReadH5
 #' @rdname ReadH5
 #'
-#' @seealso \code{\link{as.sparse}}
+#' @seealso \code{\link{as.sparse.H5D}}
 #'
 NULL
 
@@ -223,6 +224,8 @@ as.list.H5D <- function(x, ...) {
   return(lapply(X = x[], FUN = identity))
 }
 
+#' @param recursive Recurse into child groups when \code{TRUE}
+#'
 #' @rdname ReadH5
 #' @method as.list H5Group
 #' @export
@@ -303,6 +306,7 @@ as.matrix.H5Group <- function(x, ...) {
 #' Convert an HDF5 dataset to a sparse matrix
 #'
 #' @param x An HDF5 dataset or group
+#' @param ... Additional arguments passed to lower-level readers
 #'
 #' @return A sparse matrix
 #'

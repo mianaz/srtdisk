@@ -4,6 +4,10 @@ NULL
 
 #' Seurat binding for loom files
 #'
+#' @param object A connected \code{loom} file handle
+#' @param x A \code{loom} object
+#' @param ... Additional arguments passed to Seurat generics
+#'
 #' @importFrom hdf5r h5attr list.groups
 #'
 #' @name loom-bindings
@@ -12,7 +16,6 @@ NULL
 NULL
 
 #' @importFrom Seurat DefaultAssay
-#' @inheritParams Seurat::DefaultAssay
 #'
 #' @rdname loom-bindings
 #' @method DefaultAssay loom

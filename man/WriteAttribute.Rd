@@ -4,13 +4,21 @@
 \alias{WriteAttribute}
 \title{Write an attribute to an HDF5 file, group, or dataset}
 \usage{
-WriteAttribute(x, name, lfile, stype, transpose = TRUE, verbose = TRUE)
+WriteAttribute(
+  h5,
+  name,
+  robj,
+  dtype = GuessDType(x = robj),
+  scalar = length(x = robj) == 1,
+  overwrite = FALSE,
+  ...
+)
 }
 \arguments{
-\item{name}{Name to store attribute as}
-
 \item{h5}{An HDF5 \link[hdf5r:H5File]{file}, \link[hdf5r:H5Group]{group}, or
 \link[hdf5r:H5D]{dataset}}
+
+\item{name}{Name to store attribute as}
 
 \item{robj}{An object to write out}
 

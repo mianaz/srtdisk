@@ -11,6 +11,8 @@
 }
 \arguments{
 \item{x}{An HDF5 dataset or group}
+
+\item{...}{Additional arguments passed to lower-level readers}
 }
 \value{
 A sparse matrix

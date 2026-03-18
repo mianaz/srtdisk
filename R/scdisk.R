@@ -13,7 +13,7 @@ NULL
 #' @name scdisk-class
 #' @rdname scdisk-class
 #' @aliases scdisk
-#' @format An \code{\link[R6]{R6Class}} object
+#' @format An \code{\link[R6:R6Class]{R6Class}} object
 #' @seealso \code{\link[hdf5r]{H5File}}
 #'
 #' @importFrom R6 R6Class
@@ -202,7 +202,8 @@ scdisk <- R6Class(
 #'
 #' @return \code{GetSCDisk}: if \code{r6class} is \code{NULL}, then a vector of
 #' all registered \code{scdisk} subclasses; otherwise, a
-#' \link[R6::R6Class]{generator} for the requested \code{scdisk} subclass
+#' \link[R6:R6Class]{R6 class generator} for the requested \code{scdisk}
+#' subclass
 #'
 #' @name RegisterSCDisk
 #' @rdname RegisterSCDisk
@@ -217,7 +218,7 @@ scdisk <- R6Class(
 #' \code{\link{Convert}})
 #'
 #' To register a subclass of \code{scdisk}, simply add a call to
-#' \code{RegisterSCDisk} in your \link[base::ns-hooks]{load hook}
+#' \code{RegisterSCDisk} in your \link[base:ns-hooks]{load hook}
 #'
 #' \preformatted{
 #' .onLoad <- function(libname, pkgname) {
@@ -336,7 +337,7 @@ FormatTime <- function(
 
 #' Does an R6 class inherit from scdisk
 #'
-#' @param r6class An \link[R6::R6Class]{R6 class generator} or a character name
+#' @param r6class An \link[R6:R6Class]{R6 class generator} or a character name
 #' of an R6 class generator
 #'
 #' @return If \code{r6class} inherits from scdisk, returns \code{TRUE};

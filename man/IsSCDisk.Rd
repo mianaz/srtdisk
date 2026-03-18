@@ -7,7 +7,7 @@
 IsSCDisk(r6class)
 }
 \arguments{
-\item{r6class}{An \link[R6::R6Class]{R6 class generator} or a character name
+\item{r6class}{An \link[R6:R6Class]{R6 class generator} or a character name
 of an R6 class generator}
 }
 \value{

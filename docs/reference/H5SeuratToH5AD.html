@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">srtdisk</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -19,6 +19,8 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/convert-anndata.html">Conversions: h5Seurat and AnnData</a></li>
+    <li><a class="dropdown-item" href="../articles/convert-loom.html">Conversions: Seurat and Loom</a></li>
+    <li><a class="dropdown-item" href="../articles/direct-h5ad-loading.html">Direct H5AD Loading with LoadH5AD</a></li>
     <li><a class="dropdown-item" href="../articles/h5Seurat-load.html">Saving and Loading Data from an h5Seurat File</a></li>
     <li><a class="dropdown-item" href="../articles/h5Seurat-spec.html">h5Seurat File Format Specification</a></li>
   </ul></li>
@@ -48,7 +50,7 @@
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">H5SeuratToH5AD</span><span class="op">(</span></span>
 <span>  <span class="va">source</span>,</span>
 <span>  <span class="va">dest</span>,</span>
-<span>  assay <span class="op">=</span> <span class="fu"><a href="https://satijalab.github.io/seurat-object/reference/DefaultAssay.html" class="external-link">DefaultAssay</a></span><span class="op">(</span>object <span class="op">=</span> <span class="va">source</span><span class="op">)</span>,</span>
+<span>  assay <span class="op">=</span> <span class="fu"><a href="h5Seurat-bindings.html">DefaultAssay</a></span><span class="op">(</span>object <span class="op">=</span> <span class="va">source</span><span class="op">)</span>,</span>
 <span>  overwrite <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  standardize <span class="op">=</span> <span class="cn">FALSE</span></span>
@@ -60,30 +62,36 @@
 
 
 <dl><dt id="arg-source">source<a class="anchor" aria-label="anchor" href="#arg-source"></a></dt>
-<dd><p>Source dataset</p></dd>
+<dd><p>Source dataset: a Seurat object, SingleCellExperiment, loom
+connection, filename path, or H5File connection</p></dd>
 
 
 <dt id="arg-dest">dest<a class="anchor" aria-label="anchor" href="#arg-dest"></a></dt>
-<dd><p>Name of destination dataset</p></dd>
+<dd><p>Name/path of destination file or format. Supported formats:
+h5seurat, h5ad, loom, rds. Also accepts <code>"sce"</code> to return
+a SingleCellExperiment object (in-memory, no file created).</p></dd>
 
 
 <dt id="arg-assay">assay<a class="anchor" aria-label="anchor" href="#arg-assay"></a></dt>
-<dd><p>Converting from <code><a href="h5Seurat-class.html">h5Seurat</a></code>: name of assay to write
-out; converting to <code><a href="h5Seurat-class.html">h5Seurat</a></code>: name to store assay data as</p></dd>
+<dd><p>For h5Seurat -&gt; other formats: name of assay to convert.
+For other formats -&gt; h5Seurat: name to assign to the assay.
+Default is "RNA".</p></dd>
 
 
 <dt id="arg-overwrite">overwrite<a class="anchor" aria-label="anchor" href="#arg-overwrite"></a></dt>
-<dd><p>Overwrite existing <code>dest</code></p></dd>
+<dd><p>Logical; if <code>TRUE</code>, overwrite an existing destination file.
+Default is <code>FALSE</code>.</p></dd>
 
 
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
-<dd><p>Show progress updates</p></dd>
+<dd><p>Logical; if <code>TRUE</code> (default), show progress updates</p></dd>
 
 
 <dt id="arg-standardize">standardize<a class="anchor" aria-label="anchor" href="#arg-standardize"></a></dt>
 <dd><p>Logical; if <code>TRUE</code>, convert Seurat-style metadata column names
-to scanpy/AnnData conventions. For example, <code>nCount_RNA</code> becomes <code>n_counts</code>,
-<code>nFeature_RNA</code> becomes <code>n_genes</code>. Default is <code>FALSE</code>.</p></dd>
+to scanpy/AnnData conventions when converting to h5ad format. For example,
+<code>nCount_RNA</code> becomes <code>n_counts</code>, <code>nFeature_RNA</code> becomes <code>n_genes</code>.
+Only applicable for conversions to h5ad format. Default is <code>FALSE</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

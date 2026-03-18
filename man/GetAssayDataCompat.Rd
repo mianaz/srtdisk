@@ -20,8 +20,4 @@ Matrix or sparse matrix of assay data
 Retrieves data from an Assay or Assay5 object, automatically using the
 appropriate parameter name (layer for V5, slot for V4).
 }
-\seealso{
-\code{\link{SafeGetAssayData}} in V5Compatibility.R for the
-  original implementation
-}
 \keyword{internal}

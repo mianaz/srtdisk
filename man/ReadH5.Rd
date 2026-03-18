@@ -43,6 +43,8 @@
     meaning of \code{\link[base]{data.frame}(*, check.names = !optional)}.
     See also the \code{make.names} argument of the \code{matrix} method.}
 
+\item{recursive}{Recurse into child groups when \code{TRUE}}
+
 \item{transpose}{Transpose the matrix before returning}
 }
 \value{
@@ -61,5 +63,5 @@ the data from the HDF5 dataset
 Read data from HDF5 files
 }
 \seealso{
-\code{\link{as.sparse}}
+\code{\link{as.sparse.H5D}}
 }
