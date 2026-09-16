@@ -428,7 +428,11 @@ as.Seurat.h5Seurat <- function(
     # Ensure slots is a non-empty character vector (requested)
     # When NULL, load all available expression slots (counts, data, scale.data)
     if (is.null(slots) || length(slots) == 0 || !is.character(slots)) {
-      slots <- c("counts", "data", "scale.data")  # Try to load all expression slots
+      # Load every layer the index knows about (counts/data/scale.data plus
+      # any split or extra V5 layers), falling back to the standard three
+      slots <- tryCatch(names(x = Filter(f = isTRUE, x = index[[assay]]$slots)),
+                        error = function(e) NULL)
+      if (!length(slots)) slots <- c("counts", "data", "scale.data")
     }
 
     # Inspect the h5 file for available layer names for this assay

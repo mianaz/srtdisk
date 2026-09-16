@@ -59,6 +59,16 @@ reference:
       - ConvertH5ADSpatialToSeurat
       - ConvertSeuratSpatialToH5AD
 
+  - title: "Version Compatibility"
+    desc: "Lossless conversion between Seurat v3/v4 and v5 objects and between anndata on-disk layouts"
+    contents:
+      - UpgradeSeurat
+      - DowngradeSeurat
+      - SeuratGeneration
+      - UpgradeH5AD
+      - DowngradeH5AD
+      - H5ADLayout
+
   - title: "Format Conversion"
     desc: "General conversion utilities between all supported formats"
     contents:
