@@ -126,6 +126,26 @@ brain_rt <- LoadH5Seurat("brain_spatial.h5seurat")
 | `SaveH5Seurat()` | Save Seurat object to h5Seurat file                   |
 | `LoadH5Seurat()` | Load Seurat object from h5Seurat file                 |
 
+### Version Compatibility
+
+| Function                                   | Description                                                                 |
+|--------------------------------------------|-----------------------------------------------------------------------------|
+| `UpgradeSeurat()` / `DowngradeSeurat()`    | Lossless Seurat v3/v4 (`Assay`, `VisiumV1`) <-> v5 (`Assay5`, `VisiumV2`)   |
+| `SeuratGeneration()`                       | Report which Seurat generation an object (or its assays/images) belongs to  |
+| `UpgradeH5AD()` / `DowngradeH5AD()`        | Lossless h5ad rewrite between the anndata 0.7 and the anndata >= 0.8 layout |
+| `H5ADLayout()`                             | Inspect an h5ad file's layout, encodings and minimum readable anndata       |
+
+```r
+# Make a v5 object loadable by Seurat v4, then get it back unchanged
+v4 <- DowngradeSeurat(obj)            # Assay5 -> Assay, VisiumV2 -> VisiumV1, sidecar in misc
+v5 <- UpgradeSeurat(v4)               # identical layers, order, default layer
+
+# Make an anndata 0.13 / pandas 3 file readable by anndata 0.7 or SeuratDisk
+DowngradeH5AD("modern.h5ad", "legacy.h5ad")
+UpgradeH5AD("legacy.h5ad", "restored.h5ad")   # original encodings restored
+H5ADLayout("modern.h5ad")
+```
+
 ### h5Seurat File Operations
 
 | Function       | Description                                      |
