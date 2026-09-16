@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="index.html">srtdisk</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -82,34 +82,34 @@
 <col width="19%">
 <col width="53%">
 </colgroup>
-<thead><tr class="header">
+<thead><tr>
 <th>Feature</th>
 <th>SeuratDisk</th>
 <th>srtdisk</th>
 </tr></thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td>Seurat v5 Assay5</td>
 <td>Not supported</td>
 <td>Full support</td>
 </tr>
-<tr class="even">
+<tr>
 <td>Visium Spatial</td>
 <td>Not supported</td>
 <td>Full support</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>Metadata</td>
 <td>Partial</td>
 <td>Numeric, categorical, boolean preserved</td>
 </tr>
-<tr class="even">
+<tr>
 <td>Direct Conversion</td>
 <td>Two-step only</td>
 <td>
 <code><a href="reference/SeuratToH5AD.html">SeuratToH5AD()</a></code> wrapper</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>h5ad Compatibility</td>
 <td>Basic</td>
 <td>Improved scanpy conventions</td>
@@ -196,24 +196,24 @@
 <col width="24%">
 <col width="75%">
 </colgroup>
-<thead><tr class="header">
+<thead><tr>
 <th>Function</th>
 <th>Description</th>
 </tr></thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code><a href="reference/Convert.html">Convert()</a></code></td>
 <td>Unified converter: Seurat/h5Seurat/h5ad/Loom</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code><a href="reference/SeuratToH5AD.html">SeuratToH5AD()</a></code></td>
 <td>Convenience wrapper for Seurat to h5ad</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code><a href="reference/SaveH5Seurat.html">SaveH5Seurat()</a></code></td>
 <td>Save Seurat object to h5Seurat file</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code><a href="reference/LoadH5Seurat.html">LoadH5Seurat()</a></code></td>
 <td>Load Seurat object from h5Seurat file</td>
 </tr>
@@ -221,19 +221,64 @@
 </table>
 </div>
 <div class="section level3">
-<h3 id="h5seurat-file-operations">h5Seurat File Operations<a class="anchor" aria-label="anchor" href="#h5seurat-file-operations"></a>
+<h3 id="version-compatibility">Version Compatibility<a class="anchor" aria-label="anchor" href="#version-compatibility"></a>
 </h3>
 <table class="table">
-<thead><tr class="header">
+<colgroup>
+<col width="36%">
+<col width="63%">
+</colgroup>
+<thead><tr>
 <th>Function</th>
 <th>Description</th>
 </tr></thead>
 <tbody>
-<tr class="odd">
+<tr>
+<td>
+<code><a href="reference/SeuratVersion.html">UpgradeSeurat()</a></code> / <code><a href="reference/SeuratVersion.html">DowngradeSeurat()</a></code>
+</td>
+<td>Lossless Seurat v3/v4 (<code>Assay</code>, <code>VisiumV1</code>) &lt;-&gt; v5 (<code>Assay5</code>, <code>VisiumV2</code>)</td>
+</tr>
+<tr>
+<td><code><a href="reference/SeuratVersion.html">SeuratGeneration()</a></code></td>
+<td>Report which Seurat generation an object (or its assays/images) belongs to</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/H5ADVersion.html">UpgradeH5AD()</a></code> / <code><a href="reference/H5ADVersion.html">DowngradeH5AD()</a></code>
+</td>
+<td>Lossless h5ad rewrite between the anndata 0.7 and the anndata &gt;= 0.8 layout</td>
+</tr>
+<tr>
+<td><code><a href="reference/H5ADVersion.html">H5ADLayout()</a></code></td>
+<td>Inspect an h5ad file’s layout, encodings and minimum readable anndata</td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Make a v5 object loadable by Seurat v4, then get it back unchanged</span></span>
+<span><span class="va">v4</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/SeuratVersion.html">DowngradeSeurat</a></span><span class="op">(</span><span class="va">obj</span><span class="op">)</span>            <span class="co"># Assay5 -&gt; Assay, VisiumV2 -&gt; VisiumV1, sidecar in misc</span></span>
+<span><span class="va">v5</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/SeuratVersion.html">UpgradeSeurat</a></span><span class="op">(</span><span class="va">v4</span><span class="op">)</span>               <span class="co"># identical layers, order, default layer</span></span>
+<span></span>
+<span><span class="co"># Make an anndata 0.13 / pandas 3 file readable by anndata 0.7 or SeuratDisk</span></span>
+<span><span class="fu"><a href="reference/H5ADVersion.html">DowngradeH5AD</a></span><span class="op">(</span><span class="st">"modern.h5ad"</span>, <span class="st">"legacy.h5ad"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/H5ADVersion.html">UpgradeH5AD</a></span><span class="op">(</span><span class="st">"legacy.h5ad"</span>, <span class="st">"restored.h5ad"</span><span class="op">)</span>   <span class="co"># original encodings restored</span></span>
+<span><span class="fu"><a href="reference/H5ADVersion.html">H5ADLayout</a></span><span class="op">(</span><span class="st">"modern.h5ad"</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="h5seurat-file-operations">h5Seurat File Operations<a class="anchor" aria-label="anchor" href="#h5seurat-file-operations"></a>
+</h3>
+<table class="table">
+<thead><tr>
+<th>Function</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
 <td><code><a href="reference/Connect.html">Connect()</a></code></td>
 <td>Open connection to h5Seurat file for exploration</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code><a href="reference/AppendData.html">AppendData()</a></code></td>
 <td>Add data to existing Seurat object from h5Seurat</td>
 </tr>
@@ -244,20 +289,20 @@
 <h3 id="conversion-options">Conversion Options<a class="anchor" aria-label="anchor" href="#conversion-options"></a>
 </h3>
 <table class="table">
-<thead><tr class="header">
+<thead><tr>
 <th>Option</th>
 <th>Description</th>
 </tr></thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>standardize = TRUE</code></td>
 <td>Convert column names to scanpy conventions</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>assays = "RNA"</code></td>
 <td>Specify which assay(s) to convert</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>overwrite = TRUE</code></td>
 <td>Overwrite existing output files</td>
 </tr>
@@ -277,62 +322,62 @@
 <col width="25%">
 <col width="25%">
 </colgroup>
-<thead><tr class="header">
+<thead><tr>
 <th align="center">Package</th>
 <th align="center">CRAN Webpage</th>
 <th align="center">Source</th>
 <th align="center">Website</th>
 </tr></thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td align="center">cli</td>
 <td align="center"><a href="https://cran.r-project.org/package=cli" class="external-link">CRAN</a></td>
 <td align="center"><a href="https://github.com/r-lib/cli" class="external-link">GitHub</a></td>
 <td align="center"><a href="https://cli.r-lib.org" class="external-link">Website</a></td>
 </tr>
-<tr class="even">
+<tr>
 <td align="center">crayon</td>
 <td align="center"><a href="https://cran.r-project.org/package=crayon" class="external-link">CRAN</a></td>
 <td align="center"><a href="https://github.com/r-lib/crayon" class="external-link">GitHub</a></td>
 <td align="center"><a href="https://r-lib.github.io/crayon/" class="external-link">Website</a></td>
 </tr>
-<tr class="odd">
+<tr>
 <td align="center">hdf5r</td>
 <td align="center"><a href="https://cran.r-project.org/package=hdf5r" class="external-link">CRAN</a></td>
 <td align="center"><a href="https://github.com/hhoeflin/hdf5r/" class="external-link">GitHub</a></td>
 <td align="center"><a href="https://hhoeflin.github.io/hdf5r/" class="external-link">Website</a></td>
 </tr>
-<tr class="even">
+<tr>
 <td align="center">Matrix</td>
 <td align="center"><a href="https://cran.r-project.org/package=Matrix" class="external-link">CRAN</a></td>
 <td align="center">-</td>
 <td align="center"><a href="https://Matrix.R-forge.R-project.org" class="external-link">Website</a></td>
 </tr>
-<tr class="odd">
+<tr>
 <td align="center">R6</td>
 <td align="center"><a href="https://cran.r-project.org/package=R6" class="external-link">CRAN</a></td>
 <td align="center"><a href="https://github.com/r-lib/R6" class="external-link">GitHub</a></td>
 <td align="center"><a href="https://r6.r-lib.org" class="external-link">Website</a></td>
 </tr>
-<tr class="even">
+<tr>
 <td align="center">rlang</td>
 <td align="center"><a href="https://cran.r-project.org/package=rlang" class="external-link">CRAN</a></td>
 <td align="center"><a href="https://github.com/r-lib/rlang" class="external-link">GitHub</a></td>
 <td align="center"><a href="https://rlang.r-lib.org" class="external-link">Website</a></td>
 </tr>
-<tr class="odd">
+<tr>
 <td align="center">Seurat</td>
 <td align="center"><a href="https://cran.r-project.org/package=Seurat" class="external-link">CRAN</a></td>
 <td align="center"><a href="https://github.com/satijalab/seurat" class="external-link">GitHub</a></td>
 <td align="center"><a href="https://satijalab.org/seurat" class="external-link">Website</a></td>
 </tr>
-<tr class="even">
+<tr>
 <td align="center">SeuratObject</td>
 <td align="center"><a href="https://cran.r-project.org/package=SeuratObject" class="external-link">CRAN</a></td>
 <td align="center"><a href="https://github.com/satijalab/seurat-object" class="external-link">GitHub</a></td>
 <td align="center"><a href="https://satijalab.github.io/seurat-object/" class="external-link">Website</a></td>
 </tr>
-<tr class="odd">
+<tr>
 <td align="center">stringi</td>
 <td align="center"><a href="https://cran.r-project.org/package=stringi" class="external-link">CRAN</a></td>
 <td align="center"><a href="https://github.com/gagolews/stringi" class="external-link">GitHub</a></td>
@@ -387,7 +432,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>
