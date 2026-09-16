@@ -129,6 +129,8 @@ as.data.frame.H5Group <- function(x, row.names = NULL, optional = FALSE, ...) {
         tryCatch({
           values <- as.integer(x = x[[i]][['values']][])
           levels <- x[[i]][['levels']][]
+          # out-of-range codes (e.g. NA written through a narrow dtype) are NA
+          values[!is.na(values) & (values < 1L | values > length(levels))] <- NA_integer_
 
           # Note: h5seurat files already store 1-based indices
           # - When converting from h5ad: ColToFactor adds 1 (Convert.R:419)
@@ -177,6 +179,10 @@ as.data.frame.H5Group <- function(x, row.names = NULL, optional = FALSE, ...) {
 
       # Handle factors
       if (IsFactor(x = x[[i]])) {
+        # out-of-range codes (NA written through a narrow dtype, or anndata's
+        # -1 shifted to 0) are missing values
+        dset <- as.integer(dset)
+        dset[!is.na(dset) & (dset < 1L | dset > length(x[[i]][['levels']][]))] <- NA_integer_
         if (x[[i]]$attr_exists(attr_name = 'ordered') &&
             h5attr(x = x[[i]], which = 'ordered')) {
           df[[i]] <- ordered(

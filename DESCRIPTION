@@ -1,8 +1,8 @@
 Package: srtdisk
 Type: Package
 Title: Extended HDF5-Based Single Cell File Format Support
-Version: 0.3.2
-Date: 2026-03-18
+Version: 0.4.0
+Date: 2026-09-16
 Authors@R: c(
   person(given = 'Miana', family = 'Z', email = 'zzeng4@nd.edu', role = c('aut', 'cre')),
   person(given = 'Paul', family = 'Hoffman', email = 'phoffman@nygenome.org', role = 'ctb', comment = c(ORCID = '0000-0002-7693-8957')),
@@ -23,7 +23,6 @@ URL: https://mianaz.github.io/srtdisk/, https://github.com/mianaz/srtdisk
 BugReports: https://github.com/mianaz/srtdisk/issues
 License: GPL-3 | file LICENSE
 Encoding: UTF-8
-RoxygenNote: 7.3.3
 Depends:
   R (>= 4.1.0)
 Imports:
@@ -42,6 +41,7 @@ Imports:
   utils
 Collate:
     'zzz.R'
+    'AnnDataCompat.R'
     'GetObject.R'
     'UtilsH5Access.R'
     'AssembleObject.R'
@@ -57,6 +57,8 @@ Collate:
     'Transpose.R'
     'FormatRegistry.R'
     'Convert.R'
+    'H5ADVersion.R'
+    'H5ADVersionAPI.R'
     'H5DAccess.R'
     'LoadH5AD.R'
     'LoadH5Seurat.R'
@@ -69,6 +71,8 @@ Collate:
     'WriteH5Group.R'
     'SaveH5Seurat.R'
     'SaveLoom.R'
+    'SeuratVersion.R'
+    'SeuratVersionAPI.R'
     'SpatialConversion.R'
     'SpatialFOV.R'
     'UtilsMatrix.R'
@@ -84,6 +88,8 @@ Suggests:
     rmarkdown,
     SingleCellExperiment,
     SummarizedExperiment,
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    withr
 Config/testthat/edition: 3
 VignetteBuilder: knitr
+Config/roxygen2/version: 8.1.0
