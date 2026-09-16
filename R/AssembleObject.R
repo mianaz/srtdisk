@@ -224,6 +224,34 @@ NULL
 #'
 #' @aliases AssembleAssay
 #'
+
+# Read one non-standard V5 layer and label it with the cells / features it
+# covers (recorded by the writer under layer.cells / layer.features, else
+# the whole assay).
+.ReadExtraLayer <- function(assay.group, layer, features, cells, verbose = FALSE) {
+  if (!assay.group$exists('layers') || !assay.group[['layers']]$exists(layer)) return(NULL)
+  mat <- ReadV5Layer(h5_group = assay.group, layer_name = layer, features = NULL,
+                     cells = NULL, verbose = verbose)
+  if (is.null(mat)) return(NULL)
+  lc <- if (assay.group$exists('layer.cells') && assay.group[['layer.cells']]$exists(layer)) {
+    as.character(assay.group[['layer.cells']][[layer]][])
+  } else cells
+  lf <- if (assay.group$exists('layer.features') && assay.group[['layer.features']]$exists(layer)) {
+    FixFeatures(features = as.character(assay.group[['layer.features']][[layer]][]))
+  } else features
+  if (nrow(mat) != length(lf) && ncol(mat) == length(lf) && nrow(mat) == length(lc)) {
+    mat <- t(mat)
+  }
+  if (nrow(mat) != length(lf) || ncol(mat) != length(lc)) {
+    if (verbose) message("Layer '", layer, "' has shape ", nrow(mat), " x ", ncol(mat),
+                         " but ", length(lf), " features / ", length(lc), " cells were recorded")
+    return(NULL)
+  }
+  rownames(mat) <- lf
+  colnames(mat) <- lc
+  mat
+}
+
 AssembleAssay <- function(assay, file, slots = NULL, verbose = TRUE) {
   index <- file$index()
   if (!assay %in% names(x = index)) {
@@ -243,7 +271,11 @@ AssembleAssay <- function(assay, file, slots = NULL, verbose = TRUE) {
   }
   
   slots <- match.arg(arg = slots, choices = slots.assay, several.ok = TRUE)
-  if (!any(c('counts', 'data') %in% slots)) {
+  # V5 assays may carry only split layers ("counts.a", "counts.b", ...) or
+  # arbitrary layer names; anything that is not counts/data/scale.data is an
+  # "extra" layer restored verbatim below.
+  extra_layers <- setdiff(slots, c('counts', 'data', 'scale.data'))
+  if (!any(c('counts', 'data') %in% slots) && !length(extra_layers)) {
     stop("At least one of 'counts' or 'data' must be loaded", call. = FALSE)
   }
   assay.group <- file[['assays']][[assay]]
@@ -264,11 +296,18 @@ AssembleAssay <- function(assay, file, slots = NULL, verbose = TRUE) {
   }
 
   read_matrix_data <- function(slot_name) {
+    # scale.data usually covers a feature subset (scaled.features)
+    slot_features <- if (identical(slot_name, 'scale.data') &&
+                         safe_exists(assay.group, 'scaled.features')) {
+      FixFeatures(features = safe_read_dataset(assay.group[['scaled.features']]))
+    } else {
+      features
+    }
     if (exists("ReadV5Layer", envir = asNamespace("srtdisk"))) {
       mat <- ReadV5Layer(
         h5_group = assay.group,
         layer_name = slot_name,
-        features = features,
+        features = slot_features,
         cells = Cells(x = file),
         verbose = verbose
       )
@@ -357,19 +396,39 @@ AssembleAssay <- function(assay, file, slots = NULL, verbose = TRUE) {
   # We need to load counts first if available, then add other layers
   # Initialize assay with counts or data
   init_with_counts <- 'counts' %in% slots
-  init_slot_name <- if (init_with_counts) 'counts' else 'data'
+  # With neither counts nor data on disk (split-layer assays), initialise
+  # from the first extra layer and drop that placeholder once the real
+  # layers are in place.
+  placeholder_init <- !any(c('counts', 'data') %in% slots)
+  init_slot_name <- if (init_with_counts) 'counts' else if ('data' %in% slots) 'data' else {
+    cand <- extra_layers[startsWith(extra_layers, 'counts')]
+    if (length(cand)) cand[1] else extra_layers[1]
+  }
 
   if (verbose) {
     message("Initializing ", assay, " with ", init_slot_name)
   }
 
-  init_data <- read_matrix_data(init_slot_name)
+  init_data <- if (placeholder_init) {
+    # An all-zero placeholder spanning every cell and feature: the real
+    # (subset) layers are added afterwards and the placeholder removed. This
+    # is what lets split layers with disjoint cells live in one Assay5.
+    Matrix::sparseMatrix(
+      i = integer(0), j = integer(0), x = numeric(0),
+      dims = c(length(features), length(Cells(x = file))),
+      dimnames = list(features, Cells(x = file))
+    )
+  } else {
+    read_matrix_data(init_slot_name)
+  }
   if (is.null(init_data)) {
     stop("Failed to read ", init_slot_name, " matrix for assay '", assay, "'", call. = FALSE)
   }
 
-  rownames(x = init_data) <- features
-  colnames(x = init_data) <- Cells(x = file)
+  if (!placeholder_init) {
+    rownames(x = init_data) <- features
+    colnames(x = init_data) <- Cells(x = file)
+  }
 
   # Create V5-compatible assay
   # CreateSeuratObject always puts data in 'counts' layer initially
@@ -378,7 +437,7 @@ AssembleAssay <- function(assay, file, slots = NULL, verbose = TRUE) {
 
   # If we initialized with 'data' (not counts), we need to move the data to the correct layer
   # The data is currently in 'counts' layer but should be in 'data' layer
-  if (!init_with_counts) {
+  if (!init_with_counts && !placeholder_init) {
     # Move data from counts to data layer, clear counts
     obj <- SetAssayDataCompat(object = obj, layer_or_slot = "data", new.data = init_data)
     # Remove the incorrectly placed counts layer by setting empty matrix
@@ -398,7 +457,7 @@ AssembleAssay <- function(assay, file, slots = NULL, verbose = TRUE) {
   # Determine which slot was used for initialization
   init_slot <- if ('counts' %in% slots) 'counts' else 'data'
 
-  for (slot in slots) {
+  for (slot in setdiff(slots, extra_layers)) {
     # Skip the slot used for initialization
     if (slot == init_slot) {
       next
@@ -445,6 +504,48 @@ AssembleAssay <- function(assay, file, slots = NULL, verbose = TRUE) {
       }
     }
   }
+  # Extra (non counts/data/scale.data) layers: split layers and arbitrary
+  # names written by Assay5 objects. Per-layer cell/feature subsets come from
+  # layer.cells / layer.features when the writer recorded them.
+  if (length(extra_layers) && inherits(obj, 'Assay5')) {
+    for (lyr in extra_layers) {
+      dat <- tryCatch(
+        .ReadExtraLayer(assay.group, lyr, features, Cells(x = file), verbose = verbose),
+        error = function(e) NULL
+      )
+      if (is.null(dat)) {
+        if (verbose) message("Skipping layer '", lyr, "' - could not be read")
+        next
+      }
+      if (verbose) message("Adding layer ", lyr, " for ", assay)
+      tryCatch(
+        suppressWarnings(SeuratObject::LayerData(object = obj, layer = lyr) <- dat),
+        error = function(e) {
+          if (verbose) message("Skipping layer '", lyr, "' - failed to set: ", conditionMessage(e))
+        }
+      )
+    }
+    if (placeholder_init && 'counts' %in% SeuratObject::Layers(obj) &&
+        !'counts' %in% slots) {
+      suppressWarnings(SeuratObject::LayerData(object = obj, layer = 'counts') <- NULL)
+    }
+    # Restore the original layer order (recorded by the writer as
+    # `layer.order`; HDF5 lists children alphabetically) and default layer
+    stored_order <- if (assay.group$attr_exists(attr_name = 'layer.order')) {
+      as.character(h5attr(x = assay.group, which = 'layer.order'))
+    } else slots
+    ord <- intersect(stored_order, SeuratObject::Layers(obj))
+    if (length(ord) == length(SeuratObject::Layers(obj)) && !identical(ord, SeuratObject::Layers(obj))) {
+      slot(obj, 'layers') <- slot(obj, 'layers')[ord]
+      slot(obj, 'cells') <- slot(obj, 'cells')[, ord]
+      slot(obj, 'features') <- slot(obj, 'features')[, ord]
+    }
+  }
+  if (inherits(obj, 'Assay5') && assay.group$attr_exists(attr_name = 'default.layer')) {
+    dl <- intersect(as.character(h5attr(x = assay.group, which = 'default.layer')),
+                    SeuratObject::Layers(obj))
+    if (length(dl)) suppressWarnings(SeuratObject::DefaultLayer(object = obj) <- dl)
+  }
   # Add meta features
   if (safe_exists(assay.group, 'meta.features')) {
     if (verbose) {
@@ -466,7 +567,16 @@ AssembleAssay <- function(assay, file, slots = NULL, verbose = TRUE) {
     if (verbose) {
       message("Adding variable feature information for ", assay)
     }
-    VariableFeatures(object = obj) <- safe_read_dataset(assay.group[['variable.features']])
+    # Stored names are the file's; the object's features may have had
+    # underscores replaced by dashes (FixFeatures), so normalise the same way
+    # and keep only names that exist in the assay.
+    vf <- .seurat_feature_names(safe_read_dataset(assay.group[['variable.features']]))
+    vf <- vf[vf %in% rownames(x = obj)]
+    if (length(x = vf)) {
+      VariableFeatures(object = obj) <- vf
+    } else if (verbose) {
+      message("No stored variable features match the assay features for ", assay)
+    }
   }
   # Add miscellaneous information
   if (safe_exists(assay.group, 'misc')) {

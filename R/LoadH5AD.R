@@ -101,18 +101,10 @@ LoadH5AD <- function(file, assay.name = "RNA", use.bpcells = NULL, verbose = TRU
   if (h5ad$exists("obs")) {
     obs_obj <- h5ad[["obs"]]
     if (inherits(obs_obj, "H5Group")) {
-      # Modern h5ad format: obs is a group
-      if (obs_obj$exists("_index")) {
-        cell.names <- as.character(obs_obj[["_index"]][])
-      } else if (obs_obj$exists("index")) {
-        cell.names <- as.character(obs_obj[["index"]][])
-      } else if (obs_obj$attr_exists("_index")) {
-        # AnnData convention: _index attribute names the index column
-        idx_col <- h5attr(obs_obj, "_index")
-        if (obs_obj$exists(idx_col)) {
-          cell.names <- as.character(obs_obj[[idx_col]][])
-        }
-      }
+      # Modern h5ad format: obs is a group; the `_index` attribute names the
+      # index child (a string dataset, or a nullable-string-array group for
+      # anndata >= 0.13 with pandas 3). See .h5ad_read_index.
+      cell.names <- .h5ad_read_index(obs_obj)
     } else if (inherits(obs_obj, "H5D")) {
       # Legacy h5ad format: obs is a compound HDF5 dataset
       obs_compound_df <- obs_obj$read()
@@ -147,16 +139,7 @@ LoadH5AD <- function(file, assay.name = "RNA", use.bpcells = NULL, verbose = TRU
   if (h5ad$exists("var")) {
     var_obj <- h5ad[["var"]]
     if (inherits(var_obj, "H5Group")) {
-      if (var_obj$exists("_index")) {
-        feature.names <- as.character(var_obj[["_index"]][])
-      } else if (var_obj$exists("index")) {
-        feature.names <- as.character(var_obj[["index"]][])
-      } else if (var_obj$attr_exists("_index")) {
-        idx_col <- h5attr(var_obj, "_index")
-        if (var_obj$exists(idx_col)) {
-          feature.names <- as.character(var_obj[[idx_col]][])
-        }
-      }
+      feature.names <- .h5ad_read_index(var_obj)
     } else if (inherits(var_obj, "H5D")) {
       # Legacy compound dataset
       var_compound_df <- var_obj$read()
@@ -279,12 +262,7 @@ LoadH5AD <- function(file, assay.name = "RNA", use.bpcells = NULL, verbose = TRU
 
       raw_features <- NULL
       if (h5ad[["raw"]]$exists("var")) {
-        raw_var <- h5ad[["raw/var"]]
-        if (raw_var$exists("_index")) {
-          raw_features <- as.character(raw_var[["_index"]][])
-        } else if (raw_var$exists("index")) {
-          raw_features <- as.character(raw_var[["index"]][])
-        }
+        raw_features <- .h5ad_read_index(h5ad[["raw/var"]])
       }
 
       if (!is.null(raw_features)) {
@@ -297,13 +275,20 @@ LoadH5AD <- function(file, assay.name = "RNA", use.bpcells = NULL, verbose = TRU
           raw_matrix <- t(raw_matrix)
         }
 
-        # Match dimensions
+        # Match dimensions. Seurat replaces underscores in feature names
+        # with dashes when the object is created, so the intersection has to
+        # happen in the object's namespace, not the file's.
         raw_features <- raw_features[seq_len(min(length(raw_features), nrow(raw_matrix)))]
-        rownames(raw_matrix) <- raw_features
-        colnames(raw_matrix) <- cell.names
+        rownames(raw_matrix) <- .seurat_feature_names(raw_features)
+        colnames(raw_matrix) <- colnames(seurat_obj)
+        x_relabeled <- expr_matrix
+        if (nrow(x_relabeled) == nrow(seurat_obj)) {
+          rownames(x_relabeled) <- rownames(seurat_obj)
+          colnames(x_relabeled) <- colnames(seurat_obj)
+        }
 
         # Find common features
-        common_features <- intersect(feature.names, raw_features)
+        common_features <- intersect(rownames(seurat_obj), rownames(raw_matrix))
         if (length(common_features) > 0) {
           # raw/X -> counts layer (actual raw counts)
           raw_subset <- raw_matrix[common_features, , drop = FALSE]
@@ -313,7 +298,7 @@ LoadH5AD <- function(file, assay.name = "RNA", use.bpcells = NULL, verbose = TRU
             new.data = raw_subset
           )
           # X -> data layer (normalized) when raw/X exists
-          x_subset <- expr_matrix[common_features, , drop = FALSE]
+          x_subset <- x_relabeled[common_features, , drop = FALSE]
           seurat_obj[[assay.name]] <- SetAssayData(
             object = seurat_obj[[assay.name]],
             layer = "data",
@@ -340,8 +325,8 @@ LoadH5AD <- function(file, assay.name = "RNA", use.bpcells = NULL, verbose = TRU
 
         # Ensure dimensions match
         if (nrow(layer_matrix) == nrow(expr_matrix) && ncol(layer_matrix) == ncol(expr_matrix)) {
-          rownames(layer_matrix) <- feature.names
-          colnames(layer_matrix) <- cell.names
+          rownames(layer_matrix) <- rownames(seurat_obj)
+          colnames(layer_matrix) <- colnames(seurat_obj)
 
           # Map layer names to Seurat slots
           seurat_slot <- switch(layer_name,
@@ -383,57 +368,27 @@ LoadH5AD <- function(file, assay.name = "RNA", use.bpcells = NULL, verbose = TRU
       }
     } else {
       obs_group <- h5ad[["obs"]]
-      # Exclude index columns
-      obs_exclude <- c("_index", "index", "__categories")
-      if (obs_group$attr_exists("_index")) {
-        obs_exclude <- c(obs_exclude, h5attr(obs_group, "_index"))
-      }
-      obs_cols <- setdiff(names(obs_group), obs_exclude)
+      # All column encodings (legacy __categories codes, categorical groups,
+      # nullable-integer/boolean/string groups, boolean enums, plain
+      # datasets) decode through .h5ad_read_column.
+      obs_cols <- .h5ad_dataframe_columns(obs_group)
 
-      # Cache __categories group reference if it exists (legacy format)
-      has_legacy_cats <- obs_group$exists("__categories")
-      legacy_cats <- if (has_legacy_cats) obs_group[["__categories"]] else NULL
-      legacy_cat_names <- if (has_legacy_cats) names(legacy_cats) else character(0)
-
+      obs_batch <- list()
       for (col in obs_cols) {
         if (verbose) message("  Adding metadata: ", col)
-
         tryCatch({
-          meta_values <- NULL
-          col_obj <- obs_group[[col]]
-
-          if (inherits(col_obj, "H5Group")) {
-            # Modern h5ad categorical format: group with categories/codes sub-datasets
-            encoding_type <- tryCatch(h5attr(col_obj, "encoding-type"), error = function(e) "")
-            if (encoding_type == "categorical" && col_obj$exists("categories") && col_obj$exists("codes")) {
-              codes <- col_obj[["codes"]]$read()
-              categories <- as.character(col_obj[["categories"]]$read())
-              codes[codes == -1L] <- NA_integer_
-              meta_values <- factor(categories[codes + 1L], levels = categories)
-            }
-          } else if (inherits(col_obj, "H5D")) {
-            # Legacy categorical format: __categories group with per-column category lists
-            if (has_legacy_cats && col %in% legacy_cat_names) {
-              codes <- col_obj$read()
-              categories <- as.character(legacy_cats[[col]]$read())
-              codes[codes == -1L] <- NA_integer_
-              meta_values <- factor(categories[codes + 1L], levels = categories)
-            } else {
-              # Numeric or string dataset
-              meta_values <- col_obj$read()
-              if (is.character(meta_values)) {
-                meta_values <- as.character(meta_values)
-              }
-            }
-          }
-
-          # Add to Seurat object if we got values
-          if (!is.null(meta_values)) {
-            seurat_obj[[col]] <- meta_values
+          meta_values <- .h5ad_read_column(obs_group, col)
+          if (!is.null(meta_values) && length(meta_values) == ncol(seurat_obj)) {
+            obs_batch[[col]] <- meta_values
           }
         }, error = function(e) {
           if (verbose) warning("Could not add metadata column '", col, "': ", e$message, immediate. = TRUE)
         })
+      }
+      if (length(obs_batch) > 0) {
+        batch_df <- data.frame(row.names = colnames(seurat_obj))
+        for (col in names(obs_batch)) batch_df[[col]] <- obs_batch[[col]]
+        seurat_obj <- AddMetaData(seurat_obj, metadata = batch_df)
       }
     }
   }
@@ -496,10 +451,10 @@ LoadH5AD <- function(file, assay.name = "RNA", use.bpcells = NULL, verbose = TRU
             else if (is.numeric(meta_values)) meta_values <- as.logical(meta_values)
           }
           if (length(meta_values) == nrow(seurat_obj)) {
-            names(meta_values) <- feature.names
+            names(meta_values) <- rownames(seurat_obj)
             seurat_obj[[assay.name]][[col]] <- meta_values
             if (col == "highly_variable" && is.logical(meta_values)) {
-              VariableFeatures(seurat_obj) <- feature.names[meta_values]
+              VariableFeatures(seurat_obj) <- rownames(seurat_obj)[meta_values]
             }
           }
         }, error = function(e) {
@@ -508,64 +463,34 @@ LoadH5AD <- function(file, assay.name = "RNA", use.bpcells = NULL, verbose = TRU
       }
     } else {
       var_group <- h5ad[["var"]]
-      var_exclude <- c("_index", "index", "__categories")
-      if (var_group$attr_exists("_index")) {
-        var_exclude <- c(var_exclude, h5attr(var_group, "_index"))
-      }
-      var_cols <- setdiff(names(var_group), var_exclude)
-
-      # Cache __categories if present (legacy format)
-      has_var_cats <- var_group$exists("__categories")
-      var_cats <- if (has_var_cats) var_group[["__categories"]] else NULL
-      var_cat_names <- if (has_var_cats) names(var_cats) else character(0)
+      var_cols <- .h5ad_dataframe_columns(var_group)
 
       for (col in var_cols) {
         if (verbose) message("  Adding feature metadata: ", col)
 
         tryCatch({
-          meta_values <- NULL
-          col_obj <- var_group[[col]]
-
-          if (inherits(col_obj, "H5Group")) {
-            # Modern h5ad categorical format
-            encoding_type <- tryCatch(h5attr(col_obj, "encoding-type"), error = function(e) "")
-            if (encoding_type == "categorical" && col_obj$exists("categories") && col_obj$exists("codes")) {
-              codes <- col_obj[["codes"]]$read()
-              categories <- as.character(col_obj[["categories"]]$read())
-              codes[codes == -1L] <- NA_integer_
-              meta_values <- factor(categories[codes + 1L], levels = categories)
-            }
-          } else if (inherits(col_obj, "H5D")) {
-            # Check legacy categorical format
-            if (has_var_cats && col %in% var_cat_names) {
-              codes <- col_obj$read()
-              categories <- as.character(var_cats[[col]]$read())
-              codes[codes == -1L] <- NA_integer_
-              meta_values <- factor(categories[codes + 1L], levels = categories)
-            } else {
-              meta_values <- col_obj$read()
-            }
-          }
+          meta_values <- .h5ad_read_column(var_group, col)
 
           if (is.null(meta_values)) next
 
           # Special handling for highly_variable: convert to logical
           if (col == "highly_variable") {
-            if (is.factor(meta_values)) {
-              meta_values <- as.character(meta_values) == "True"
+            if (is.factor(meta_values) || is.character(meta_values)) {
+              meta_values <- toupper(as.character(meta_values)) == "TRUE"
             } else if (is.numeric(meta_values)) {
               meta_values <- as.logical(meta_values)
             }
           }
 
-          # Ensure length matches and name with feature names for Seurat v5 compatibility
+          # Ensure length matches and key by the object's final feature names
+          # (Seurat may have replaced underscores with dashes)
           if (length(meta_values) == nrow(seurat_obj)) {
-            names(meta_values) <- feature.names
+            names(meta_values) <- rownames(seurat_obj)
             seurat_obj[[assay.name]][[col]] <- meta_values
 
             # Set variable features if highly_variable column exists
             if (col == "highly_variable" && is.logical(meta_values)) {
-              VariableFeatures(seurat_obj) <- feature.names[meta_values]
+              VariableFeatures(seurat_obj) <- rownames(seurat_obj)[meta_values]
             }
           }
         }, error = function(e) {
@@ -606,17 +531,12 @@ LoadH5AD <- function(file, assay.name = "RNA", use.bpcells = NULL, verbose = TRU
     if (verbose) message("Adding unstructured data...")
     uns_group <- h5ad[["uns"]]
 
+    # Every uns element decodes through .h5ad_read_element (`null` entries
+    # become NULL, nullable groups / categoricals / dataframes decode,
+    # nested dicts become named lists).
     for (item in names(uns_group)) {
       tryCatch({
-        if (inherits(uns_group[[item]], "H5D")) {
-          # Simple dataset
-          seurat_obj@misc[[item]] <- uns_group[[item]][]
-        } else if (inherits(uns_group[[item]], "H5Group")) {
-          # Complex group - store as list
-          if (verbose) message("  Storing complex uns item: ", item)
-          # For now, just note it exists
-          seurat_obj@misc[[paste0(item, "_present")]] <- TRUE
-        }
+        seurat_obj@misc[item] <- list(.h5ad_read_element(uns_group[[item]]))
       }, error = function(e) {
         if (verbose) warning("Could not add uns item ", item, ": ", e$message, immediate. = TRUE)
       })

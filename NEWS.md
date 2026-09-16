@@ -1,3 +1,68 @@
+# srtdisk 0.4.0 (development)
+
+> **Release Date:** unreleased
+
+## Seurat v5.6-beta and SeuratObject 5.4 compatibility
+
+Seurat `v5.6-beta` (branch `v5.6-beta`, version 5.5.1.9999, August 2026)
+changes computation (multithreading via `setThreads()`, a C++ SCTransform
+residual kernel, Gram-matrix PCA, legacy-compatible VST ranking), not object
+structure. The srtdisk test suite passes against it unchanged. The beta's
+`SCTModel` objects carry a numeric `arguments$min_variance` and an explicit
+`arguments$sct.clip.range`; both round-trip through the `SCTModel.list` group
+written for `SCTAssay` objects. SeuratObject 5.2 to 5.4 spatial slots
+(`coords_x_orientation`, `sf.data`, `compact`, `misc`) are handled.
+
+## Lossless Seurat v3/v4 <-> v5 conversion
+
+New `UpgradeSeurat()`, `DowngradeSeurat()` and `SeuratGeneration()`.
+`DowngradeSeurat()` turns every `Assay5` into a v3-style `Assay` (loadable by
+Seurat v4) and every `VisiumV2` image into `VisiumV1`, keeping what the older
+classes cannot hold (split-layer cell membership, extra layers, per-layer
+feature sets, default layer, version stamp, image boundaries) in a sidecar
+under `misc$.seurat_version_sidecar`. `UpgradeSeurat()` converts back and
+consumes the sidecar, so `UpgradeSeurat(DowngradeSeurat(x))` reproduces `x`
+exactly; `SCTAssay` and other subclasses survive the cycle. Both accept an
+`.rds` / `.h5seurat` path plus `dest`.
+
+## Lossless h5ad layout upgrade / downgrade
+
+New `UpgradeH5AD()`, `DowngradeH5AD()` and `H5ADLayout()`. `DowngradeH5AD()`
+rewrites a modern (anndata >= 0.8) h5ad into the anndata 0.7 layout
+(`__categories` with HDF5 object references, no encoding attributes) that
+anndata 0.7 and SeuratDisk-derived converters read; verified with anndata
+0.7.8, 0.8.0 and 0.13.3. Lossy re-encodings (nullable integers with missing
+values, nullable booleans / strings, `null` entries) are recorded in
+`uns/__h5ad_compat_manifest__` and `UpgradeH5AD()` restores them exactly.
+`H5ADLayout()` reports the layout, the oldest anndata able to read the file
+and the encodings present.
+
+## AnnData cross-version compatibility (anndata 0.7 through 0.13)
+
+- anndata 0.13 + pandas 3 files (nullable-string-array obs/var index and
+  columns) could not be read; `LoadH5AD()` and `Convert()` now decode them
+  (new `R/AnnDataCompat.R`).
+- `nullable-integer` / `nullable-boolean` columns (anndata >= 0.8) were
+  silently dropped; they are read as integer / logical with `NA`.
+- `null` (`None`) uns entries become `NULL`; uns DataFrames decode.
+- Ordered categoricals now keep their `ordered` flag in both the legacy and
+  the modern layout; legacy boolean categoricals decode to logicals.
+- Feature names containing underscores broke `LoadH5AD()` (raw/X and layers)
+  and `Convert()` -> `LoadH5Seurat()` (variable features); all paths now use
+  Seurat's dash-normalised names consistently.
+- Missing categorical values (`-1` codes) were written into an int8 `values`
+  dataset during h5ad -> h5Seurat conversion, overflowed and made the column
+  disappear on load; values are now int32 and readers treat out-of-range
+  codes as `NA`.
+
+## h5Seurat: split and extra V5 layers round-trip
+
+`SaveH5Seurat()` records per-layer cells/features, layer order, default
+layer and `scaled.features` for Assay5 objects; `LoadH5Seurat()` rebuilds
+split layers and arbitrary layer names exactly instead of erroring.
+
+---
+
 # srtdisk 0.3.2
 
 > **Release Date:** 2026-03-18

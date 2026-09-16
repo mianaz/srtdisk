@@ -168,6 +168,18 @@ Convert.character <- function(
 
   # HDF5-based formats: check for direct path first, otherwise use hub
   dtype <- FileType(file = dest)
+
+  # h5ad inputs written by anndata >= 0.11 may use encodings the HDF5-level
+  # converter does not understand (nullable-string-array obs/var index and
+  # columns, `null` entries). Materialise a converter-compatible temporary
+  # copy in that case; see .h5ad_normalize_for_convert().
+  if (stype == 'h5ad') {
+    normalized <- .h5ad_normalize_for_convert(source, verbose = verbose)
+    if (isTRUE(normalized$temporary)) {
+      source <- normalized$path
+      on.exit(expr = unlink(normalized$path), add = TRUE)
+    }
+  }
   if (missing(x = assay)) {
     # Try to read default assay from the source file
     hfile_tmp <- tryCatch(
@@ -530,27 +542,22 @@ SanitizeColumnNames <- function(names) {
 # @keywords internal
 #
 FlattenNullable <- function(col_group) {
-  if (!inherits(col_group, 'H5Group')) {
+  if (!inherits(x = col_group, what = 'H5Group')) {
     return(NULL)  # Not a group, skip
   }
-
-  # Check if this is a mask+values structure (not categorical which has categories/codes)
-  if (col_group$exists('mask') && col_group$exists('values')) {
-    # Skip if this looks like a categorical (has categories attribute or encoding-type)
-    if (col_group$exists('categories') ||
-        isTRUE(x = AttrExists(x = col_group, name = 'encoding-type'))) {
-      return(NULL)
-    }
-
-    values <- col_group[['values']][]
-    mask <- col_group[['mask']][]
-
-    # In h5ad nullable dtypes, mask=TRUE means the value is MISSING (NA)
-    values[mask] <- NA
-    return(values)
+  # Categoricals (codes + categories) are handled elsewhere; every
+  # nullable-* encoding (nullable-integer, nullable-boolean and, since
+  # anndata 0.11, nullable-string-array) is a values + mask pair.
+  if (col_group$exists(name = 'categories') || col_group$exists(name = 'codes')) {
+    return(NULL)
   }
-
-  return(NULL)  # Not a mask+values structure
+  values <- .h5ad_read_nullable(col_group)
+  if (is.character(x = values)) {
+    # h5Seurat string datasets cannot hold NA; a factor (NA-capable
+    # levels/values group) keeps the missing values intact.
+    values <- factor(x = values)
+  }
+  return(values)
 }
 
 #' Convert AnnData/H5AD files to h5Seurat files
@@ -1655,12 +1662,13 @@ except Exception as e:
         }
         # Convert 'codes' to 'values' with 0-based to 1-based indexing conversion
         if (!'values' %in% sub_names) {
-          codes_0based <- col_obj[['codes']]$read()
-          codes_dtype <- col_obj[['codes']]$get_type()
+          codes_0based <- as.integer(col_obj[['codes']]$read())
+          values_1based <- codes_0based + 1L
+          values_1based[codes_0based < 0L] <- NA_integer_   # anndata uses -1 for missing
           col_obj$create_dataset(
             name = 'values',
-            robj = codes_0based + 1L,
-            dtype = codes_dtype
+            robj = values_1based,
+            dtype = hdf5r::h5types$H5T_NATIVE_INT32  # NA does not fit anndata's int8 codes dtype
           )
           col_obj$link_delete(name = 'codes')
         }
@@ -2798,7 +2806,7 @@ H5SeuratToH5AD <- function(
               dfile[['obs']][[mapped_col]]$create_dataset(
                 name = 'codes',
                 robj = codes_values,
-                dtype = codes_dtype
+                dtype = hdf5r::h5types$H5T_NATIVE_INT32  # NA does not fit anndata's int8 codes dtype
               )
 
               # Add encoding attributes to codes
@@ -2967,7 +2975,7 @@ H5SeuratToH5AD <- function(
           dfile[[dname]][[mapped_i]]$create_dataset(
             name = 'codes',
             robj = codes_values,
-            dtype = codes_dtype
+            dtype = hdf5r::h5types$H5T_NATIVE_INT32  # NA does not fit anndata's int8 codes dtype
           )
 
           # Add encoding attributes to codes
@@ -3585,7 +3593,7 @@ H5SeuratToH5AD <- function(
               dfile[['obs']][[col]]$create_dataset(
                 name = 'codes',
                 robj = codes_values,
-                dtype = codes_dtype
+                dtype = hdf5r::h5types$H5T_NATIVE_INT32  # NA does not fit anndata's int8 codes dtype
               )
 
               # Add encoding attributes to codes
