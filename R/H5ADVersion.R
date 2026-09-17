@@ -149,6 +149,26 @@ NULL
   dst_parent[[dst_name]]
 }
 
+# Object reference to `obj` (an H5D / H5Group of `file`) for a
+# H5T_STD_REF_OBJ attribute. hdf5r's own `create_reference()` opens a
+# temporary file handle whose garbage-collection finalizer corrupts hdf5r's
+# reference bookkeeping ("r_count can never be more than 1 larger than
+# h5_count" after enough references, at GC-dependent moments). A classic
+# object reference is the object's header address, so it is assembled here
+# from `obj_info()` and attached to the file handle we already hold; the
+# caller closes the returned object right after writing the attribute.
+.h5w_object_reference <- function(file, obj) {
+  addr <- as.numeric(obj$obj_info()$addr)
+  bytes <- integer(8)
+  for (i in seq_len(8)) {
+    bytes[i] <- addr %% 256
+    addr <- addr %/% 256
+  }
+  ref <- hdf5r::H5R_OBJECT$new(1, file)
+  ref$ref <- as.raw(bytes)
+  ref
+}
+
 .h5_is_scalar <- function(dset) {
   isTRUE(tryCatch(dset$get_space()$get_simple_extent_type() == "H5S_SCALAR",
                   error = function(e) FALSE)) ||
@@ -208,12 +228,15 @@ NULL
           !enc %in% .H5AD_MATRIX_ENCODINGS) {
         walk(obj, depth + 1L)
       }
+      .h5_close_quietly(obj)
     }
   }
   walk(h5, 0L)
   root_enc <- .h5ad_encoding(h5)
-  obs_is_group <- h5$exists("obs") && inherits(h5[["obs"]], "H5Group")
-  obs_df_version <- if (obs_is_group) as.character(.h5ad_attr(h5[["obs"]], "encoding-version", "")) else ""
+  obs_is_group <- h5$exists("obs") && .h5_with_child(h5, "obs", function(o) inherits(o, "H5Group"))
+  obs_df_version <- if (obs_is_group) {
+    as.character(.h5_with_child(h5, "obs", function(o) .h5ad_attr(o, "encoding-version", "")))
+  } else ""
   layout <- if (compound) {
     "compound"
   } else if (legacy_cats || identical(obs_df_version, "0.1.0") ||
@@ -222,7 +245,7 @@ NULL
   } else {
     "encoded"
   }
-  has_manifest <- h5$exists("uns") && h5[["uns"]]$exists(.H5AD_MANIFEST)
+  has_manifest <- h5$exists("uns") && .h5_with_child(h5, "uns", function(u) u$exists(.H5AD_MANIFEST))
   has_ns <- "nullable-string-array" %in% encs
   has_nb <- any(c("nullable-integer", "nullable-boolean") %in% encs)
   has_null <- "null" %in% encs
@@ -448,18 +471,22 @@ print.h5ad_layout <- function(x, ...) {
 # recorded in the manifest so an upgrade can restore it.
 .h5ad_write_column_legacy <- function(g, col, x, src_enc, path, ctx, na_note = "") {
   write_cat <- function(f, note = "") {
-    if (!g$exists("__categories")) g$create_group("__categories")
+    if (!g$exists("__categories")) .h5_close_quietly(g$create_group("__categories"))
     cg <- g[["__categories"]]
+    on.exit(.h5_close_quietly(cg), add = TRUE)
     lv <- levels(f)
     cd <- .h5w_dataset(cg, col, lv)
+    on.exit(.h5_close_quietly(cd), add = TRUE)
     .h5w_attr(cd, "ordered", is.ordered(f))
     codes <- as.integer(f) - 1L
     codes[is.na(codes)] <- -1L
     d <- .h5w_dataset(g, col, codes, dtype = .h5w_codes_dtype(length(lv)))
-    ref <- cg$create_reference(col)
+    on.exit(.h5_close_quietly(d), add = TRUE)
+    ref <- .h5w_object_reference(ctx$dst_file, cd)
+    on.exit(.h5_close_quietly(ref), add = TRUE)
     d$create_attr(attr_name = "categories", robj = ref,
                   dtype = hdf5r::h5types$H5T_STD_REF_OBJ, space = .h5w_scalar_space())
-    invisible(d)
+    invisible(NULL)
   }
   if (is.factor(x)) {
     if (src_enc %in% c("nullable-string-array", "string-array")) {
@@ -501,6 +528,10 @@ print.h5ad_layout <- function(x, ...) {
 #' @noRd
 .h5ad_write_dataframe <- function(src, name, dst_parent, path, ctx) {
   obj <- src[[name]]
+  on.exit(.h5_close_quietly(obj), add = TRUE)
+  child_attr <- function(cn, attr, default) {
+    .h5_with_child(obj, cn, function(o) as.character(.h5ad_attr(o, attr, default)))
+  }
   # ---- decode
   if (inherits(obj, "H5D")) {
     # anndata < 0.7: single compound dataset. Categories (if any) live in
@@ -571,12 +602,12 @@ print.h5ad_layout <- function(x, ...) {
       }
       na_value <- rec$note %||% ""
       if (!nzchar(na_value) && inherits(obj, "H5Group") && obj$exists(cn)) {
-        na_value <- as.character(.h5ad_attr(obj[[cn]], "na-value", "NaN"))
+        na_value <- child_attr(cn, "na-value", "NaN")
       }
       .h5ad_write_column_encoded(g, cn, v, want, ctx, na_value = na_value)
     } else {
       na_note <- if (inherits(obj, "H5Group") && obj$exists(cn)) {
-        as.character(.h5ad_attr(obj[[cn]], "na-value", ""))
+        child_attr(cn, "na-value", "")
       } else ""
       .h5ad_write_column_legacy(g, cn, v, src_encs[[cn]], cpath, ctx, na_note = na_note)
     }
@@ -590,7 +621,7 @@ print.h5ad_layout <- function(x, ...) {
     if (want == "nullable-string-array" && !identical(ctx$strings, "categorical")) {
       na_value <- irec$note %||% ""
       if (!nzchar(na_value) && inherits(obj, "H5Group") && obj$exists(index_name)) {
-        na_value <- as.character(.h5ad_attr(obj[[index_name]], "na-value", "NaN"))
+        na_value <- child_attr(index_name, "na-value", "NaN")
       }
       .h5ad_write_nullable_encoded(g, index_name, idx, "nullable-string-array",
                                    na_value = na_value)
@@ -602,7 +633,7 @@ print.h5ad_layout <- function(x, ...) {
   } else {
     if (idx_enc == "nullable-string-array") {
       .ctx_record(ctx, ipath, idx_enc, "0.1.0",
-                  note = as.character(.h5ad_attr(obj[[index_name]], "na-value", "")))
+                  note = child_attr(index_name, "na-value", ""))
     }
     if (anyNA(idx)) idx[is.na(idx)] <- ""
     .h5w_dataset(g, index_name, idx)
@@ -610,13 +641,15 @@ print.h5ad_layout <- function(x, ...) {
   }
   .h5w_attr(g, "_index", index_name)
   .h5w_attr(g, "column-order", keep, force_array = TRUE)
-  invisible(g)
+  .h5_close_quietly(g)
+  invisible(NULL)
 }
 
 # ---- generic element rewriter -----------------------------------------------
 
 .h5ad_rewrite_dataset <- function(src, name, dst, path, ctx) {
   obj <- src[[name]]
+  on.exit(.h5_close_quietly(obj), add = TRUE)
   enc <- .h5ad_encoding(obj)
   if (identical(enc, "null") || .h5_is_null_space(obj)) {
     # anndata < 0.9 has no `null` encoding: drop it for the legacy layout and
@@ -627,9 +660,11 @@ print.h5ad_layout <- function(x, ...) {
     }
     d <- .h5w_copy(src, name, dst)
     .h5w_encoding(d, "null", "0.1.0")
-    return(invisible(d))
+    .h5_close_quietly(d)
+    return(invisible(NULL))
   }
   d <- .h5w_copy(src, name, dst)
+  on.exit(.h5_close_quietly(d), add = TRUE)
   if (ctx$target == "encoded") {
     if (!nzchar(enc) || enc == "array" || enc == "string-array" ||
         enc == "numeric-scalar" || enc == "string" || enc == "bytes") {
@@ -644,11 +679,12 @@ print.h5ad_layout <- function(x, ...) {
   } else {
     .h5w_strip_encoding(d)
   }
-  invisible(d)
+  invisible(NULL)
 }
 
 .h5ad_rewrite_group <- function(src, name, dst, path, ctx, role = "generic") {
   obj <- src[[name]]
+  on.exit(.h5_close_quietly(obj), add = TRUE)
   enc <- .h5ad_encoding(obj)
   if (identical(name, .H5AD_MANIFEST) && role == "uns") {
     return(invisible(NULL))  # never carry a stale manifest forward
@@ -657,20 +693,22 @@ print.h5ad_layout <- function(x, ...) {
   if (enc %in% .H5AD_MATRIX_ENCODINGS ||
       (obj$exists("data") && obj$exists("indices") && obj$exists("indptr"))) {
     g <- .h5w_copy(src, name, dst)
+    on.exit(.h5_close_quietly(g), add = TRUE)
     if (!nzchar(enc)) enc <- "csr_matrix"
     .h5w_encoding(g, enc, "0.1.0")
     if (!isTRUE(g$attr_exists("shape")) && ctx$target == "encoded") {
       # shape is required by anndata >= 0.8; derive it from indptr/indices
-      indptr <- obj[["indptr"]]$read()
-      indices <- obj[["indices"]]$read()
+      indptr <- .h5_with_child(obj, "indptr", function(d) d$read())
+      indices <- .h5_with_child(obj, "indices", function(d) d$read())
       major <- length(indptr) - 1L
       minor <- if (length(indices)) max(indices) + 1L else 0L
       .h5w_attr(g, "shape", if (enc == "csc_matrix") c(minor, major) else c(major, minor))
     }
-    return(invisible(g))
+    return(invisible(NULL))
   }
   if (enc %in% .H5AD_OPAQUE_ENCODINGS) {
-    return(invisible(.h5w_copy(src, name, dst)))
+    .h5_close_quietly(.h5w_copy(src, name, dst))
+    return(invisible(NULL))
   }
   # Dataframes
   is_df <- identical(enc, "dataframe") || role %in% c("obs", "var") ||
@@ -707,13 +745,14 @@ print.h5ad_layout <- function(x, ...) {
   }
   # Plain (dict) group: recurse
   g <- dst$create_group(name)
+  on.exit(.h5_close_quietly(g), add = TRUE)
   child_role <- if (role == "raw") "raw-child" else if (role == "uns") "uns" else "generic"
   for (child in names(obj)) {
     cpath <- paste0(path, "/", child)
-    cobj <- obj[[child]]
+    child_is_dataset <- .h5_with_child(obj, child, function(o) inherits(o, "H5D"))
     r <- child_role
     if (role == "raw" && child == "var") r <- "var"
-    if (inherits(cobj, "H5D")) {
+    if (child_is_dataset) {
       .h5ad_rewrite_dataset(obj, child, g, cpath, ctx)
     } else {
       .h5ad_rewrite_group(obj, child, g, cpath, ctx, role = r)
@@ -724,7 +763,7 @@ print.h5ad_layout <- function(x, ...) {
   } else {
     .h5w_strip_encoding(g)
   }
-  invisible(g)
+  invisible(NULL)
 }
 
 #' Rewrite an h5ad file into another on-disk layout
@@ -775,6 +814,7 @@ print.h5ad_layout <- function(x, ...) {
   ctx$source_layout <- info$layout
   ctx$writer <- pkg
   ctx$writer_version <- tryCatch(as.character(utils::packageVersion(pkg)), error = function(e) "")
+  ctx$dst_file <- dst
   ctx$src_uns_exists <- function(key) src$exists("uns") && src[["uns"]]$exists(key)
   ctx$src_uns_read <- function(key) src[["uns"]][[key]]$read()
 
@@ -787,7 +827,7 @@ print.h5ad_layout <- function(x, ...) {
     role <- roles[nm] %||% "generic"
     if (is.na(role)) role <- "generic"
     if (verbose) message("  ", nm)
-    if (inherits(src[[nm]], "H5D")) {
+    if (.h5_with_child(src, nm, function(o) inherits(o, "H5D"))) {
       if (nm %in% c("obs", "var")) {
         .h5ad_write_dataframe(src, nm, dst, nm, ctx)
       } else {

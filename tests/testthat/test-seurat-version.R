@@ -71,6 +71,24 @@ test_that("Assay5 with split and extra layers round-trips exactly", {
   expect_equal(as.character(up@version), as.character(orig@version))
 })
 
+test_that("assays without feature-level meta data convert in both directions", {
+  # SeuratObject's own coercions fail on a feature table with rows but no
+  # columns (R >= 4.5); a fresh assay without variable features is exactly that
+  set.seed(3)
+  counts <- as(matrix(rpois(600, 2), 30, 20,
+                      dimnames = list(paste0("g", 1:30), paste0("c", 1:20))), "dgCMatrix")
+  v5 <- withr::with_options(list(Seurat.object.assay.version = "v5"), CreateSeuratObject(counts))
+  expect_equal(ncol(v5[["RNA"]][[]]), 0L)
+  down <- DowngradeSeurat(v5, verbose = FALSE)
+  expect_identical(class(down[["RNA"]])[1], "Assay")
+  expect_equal(ncol(down[["RNA"]][[]]), 0L)
+  expect_false(".srt_placeholder" %in% colnames(down[["RNA"]][[]]))
+  up <- UpgradeSeurat(down, verbose = FALSE)
+  expect_s4_class(up[["RNA"]], "Assay5")
+  expect_equal(ncol(up[["RNA"]][[]]), 0L)
+  expect_equal(as.matrix(GetAssayData(up, layer = "counts")), as.matrix(counts))
+})
+
 test_that("SCTAssay survives an upgrade / downgrade cycle", {
   set.seed(2)
   counts <- as(matrix(rpois(4000, 3), 80, 50,
