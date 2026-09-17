@@ -65,6 +65,32 @@ NULL
 #'
 #' @keywords internal
 #' @noRd
+#' Close an hdf5r object handle without failing
+#'
+#' Handles are closed as soon as they are no longer needed: hdf5r's
+#' \code{close_all()} and its GC finalizers misbehave on HDF5 1.12 (the
+#' library bundled by the CRAN Windows binary) when a file is closed while
+#' many child handles are still open.
+#'
+#' @keywords internal
+#' @noRd
+.h5_close_quietly <- function(obj) {
+  if (!is.null(obj) && inherits(obj, "H5RefClass") && !inherits(obj, "H5File")) {
+    tryCatch(obj$close(), error = function(e) NULL)
+  }
+  invisible(NULL)
+}
+
+#' Open a child of an HDF5 group, apply a function and close the handle
+#'
+#' @keywords internal
+#' @noRd
+.h5_with_child <- function(parent, name, fn) {
+  child <- parent[[name]]
+  on.exit(.h5_close_quietly(child), add = TRUE)
+  fn(child)
+}
+
 .h5ad_as_logical <- function(x) {
   if (is.logical(x)) return(x)
   if (is.factor(x)) return(as.logical(toupper(as.character(x))))
@@ -89,8 +115,8 @@ NULL
 .h5ad_read_nullable <- function(grp) {
   if (!inherits(grp, "H5Group")) return(NULL)
   if (!(grp$exists("values") && grp$exists("mask"))) return(NULL)
-  values <- grp[["values"]]$read()
-  mask <- .h5ad_as_logical(grp[["mask"]]$read())
+  values <- .h5_with_child(grp, "values", function(d) d$read())
+  mask <- .h5ad_as_logical(.h5_with_child(grp, "mask", function(d) d$read()))
   enc <- .h5ad_encoding(grp)
   if (identical(enc, "nullable-boolean")) {
     values <- .h5ad_as_logical(values)
@@ -123,9 +149,11 @@ NULL
 .h5ad_read_categorical_group <- function(grp) {
   if (!inherits(grp, "H5Group")) return(NULL)
   if (!(grp$exists("codes") && grp$exists("categories"))) return(NULL)
-  codes <- grp[["codes"]]$read()
+  codes <- .h5_with_child(grp, "codes", function(d) d$read())
   categories <- .h5ad_read_string_like(grp, "categories")
-  if (is.null(categories)) categories <- as.character(grp[["categories"]]$read())
+  if (is.null(categories)) {
+    categories <- as.character(.h5_with_child(grp, "categories", function(d) d$read()))
+  }
   is_ordered <- isTRUE(.h5ad_as_logical(.h5ad_attr(grp, "ordered", FALSE))[1])
   .h5ad_decode_codes(as.integer(codes), as.character(categories), ordered = is_ordered)
 }
@@ -155,6 +183,7 @@ NULL
 .h5ad_read_string_like <- function(parent, name) {
   if (is.null(parent) || !parent$exists(name)) return(NULL)
   child <- parent[[name]]
+  on.exit(.h5_close_quietly(child), add = TRUE)
   if (inherits(child, "H5D")) {
     return(as.character(child$read()))
   }
@@ -237,6 +266,7 @@ NULL
 .h5ad_read_column <- function(grp, col) {
   if (!grp$exists(col)) return(NULL)
   obj <- grp[[col]]
+  on.exit(.h5_close_quietly(obj), add = TRUE)
   if (inherits(obj, "H5Group")) {
     vals <- .h5ad_read_nullable(obj)
     if (!is.null(vals)) return(vals)
@@ -247,9 +277,11 @@ NULL
   # Legacy (< 0.8) categorical: integer codes + __categories/<col>
   if (grp$exists("__categories")) {
     cats_grp <- grp[["__categories"]]
+    on.exit(.h5_close_quietly(cats_grp), add = TRUE)
     if (cats_grp$exists(col)) {
       codes <- obj$read()
       cats_dset <- cats_grp[[col]]
+      on.exit(.h5_close_quietly(cats_dset), add = TRUE)
       categories <- as.character(cats_dset$read())
       # anndata 0.7 stored booleans as categoricals with "False"/"True" categories
       if (length(categories) <= 2L && all(categories %in% c("False", "True"))) {
@@ -309,7 +341,11 @@ NULL
   if (inherits(obj, "H5D")) {
     enc <- .h5ad_encoding(obj)
     if (identical(enc, "null")) return(NULL)
-    simple <- tryCatch(obj$get_space()$is_simple(), error = function(e) TRUE)
+    simple <- tryCatch({
+      sp <- obj$get_space()
+      on.exit(.h5_close_quietly(sp), add = TRUE)
+      sp$is_simple()
+    }, error = function(e) TRUE)
     if (!isTRUE(simple)) return(NULL)
     vals <- obj$read()
     if (is.factor(vals) && all(levels(vals) %in% c("FALSE", "TRUE"))) {
@@ -328,7 +364,7 @@ NULL
   if (!is.null(cg)) return(cg)
   out <- list()
   for (nm in names(obj)) {
-    out[nm] <- list(tryCatch(.h5ad_read_element(obj[[nm]]), error = function(e) NULL))
+    out[nm] <- list(tryCatch(.h5_with_child(obj, nm, .h5ad_read_element), error = function(e) NULL))
   }
   out
 }
@@ -369,7 +405,7 @@ NULL
   # under __categories (this also restores the `ordered` flag).
   redo <- character(0)
   if (grp$exists("__categories")) {
-    redo <- intersect(names(grp[["__categories"]]), wanted)
+    redo <- intersect(.h5_with_child(grp, "__categories", names), wanted)
     cols[redo] <- NULL
   }
   for (col in setdiff(wanted, names(cols))) {

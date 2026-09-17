@@ -25,6 +25,11 @@ consumes the sidecar, so `UpgradeSeurat(DowngradeSeurat(x))` reproduces `x`
 exactly; `SCTAssay` and other subclasses survive the cycle. Both accept an
 `.rds` / `.h5seurat` path plus `dest`.
 
+Assays whose feature-level meta data has no columns (a fresh assay without
+variable features) convert in both directions: SeuratObject's own
+`Assay5 <-> Assay` coercions fail on such a table under R >= 4.5, so the
+conversion pads it for the duration of the coercion.
+
 ## Lossless h5ad layout upgrade / downgrade
 
 New `UpgradeH5AD()`, `DowngradeH5AD()` and `H5ADLayout()`. `DowngradeH5AD()`
@@ -36,6 +41,13 @@ values, nullable booleans / strings, `null` entries) are recorded in
 `uns/__h5ad_compat_manifest__` and `UpgradeH5AD()` restores them exactly.
 `H5ADLayout()` reports the layout, the oldest anndata able to read the file
 and the encodings present.
+
+The on-disk rewriter and the AnnData readers close every HDF5 handle as soon
+as it is no longer needed, and legacy `__categories` object references are
+built from the object address instead of hdf5r's `create_reference()`, whose
+temporary file handle corrupts hdf5r's reference bookkeeping after enough
+references (a GC-timing dependent "r_count can never be more than 1 larger
+than h5_count" error).
 
 ## AnnData cross-version compatibility (anndata 0.7 through 0.13)
 

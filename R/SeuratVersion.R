@@ -70,6 +70,35 @@ NULL
   isTRUE(all.equal(as.matrix(a), as.matrix(b), check.attributes = FALSE))
 }
 
+# SeuratObject's Assay <-> Assay5 coercions copy the feature-level meta data
+# with `to[[]] <- from[[]]`, which fails ("subscript out of bounds") when the
+# table has rows but no columns (a fresh assay without variable-feature
+# columns). A placeholder column is added for the duration of the coercion and
+# removed afterwards. Variable features are re-applied explicitly because the
+# coercions only carry them when the meta-data copy succeeds.
+.srt_coerce_assay <- function(assay, class) {
+  meta_slot <- if (inherits(assay, "Assay5")) "meta.data" else "meta.features"
+  md <- slot(assay, meta_slot)
+  padded <- is.data.frame(md) && ncol(md) == 0L && nrow(md) > 0L
+  if (padded) {
+    md[[".srt_placeholder"]] <- rep(NA, nrow(md))
+    slot(assay, meta_slot) <- md
+  }
+  to <- suppressWarnings(methods::as(assay, class))
+  if (padded) {
+    to_slot <- if (inherits(to, "Assay5")) "meta.data" else "meta.features"
+    md_to <- slot(to, to_slot)
+    md_to[[".srt_placeholder"]] <- NULL
+    slot(to, to_slot) <- md_to
+  }
+  vf <- tryCatch(SeuratObject::VariableFeatures(assay), error = function(e) character(0))
+  vf <- intersect(vf, rownames(to))
+  if (length(vf) && !identical(vf, tryCatch(SeuratObject::VariableFeatures(to), error = function(e) NULL))) {
+    suppressWarnings(SeuratObject::VariableFeatures(to) <- vf)
+  }
+  to
+}
+
 # ---- assay: v3/v4 Assay -> v5 Assay5 --------------------------------------------
 
 #' Convert a v3/v4 \code{Assay} to a v5 \code{Assay5}, restoring a sidecar
@@ -93,7 +122,7 @@ NULL
     # their extra slots are kept in the sidecar so a downgrade restores them.
     base <- methods::as(assay, "Assay", strict = TRUE)
   }
-  to <- suppressWarnings(methods::as(base, "Assay5"))
+  to <- .srt_coerce_assay(base, "Assay5")
 
   if (!is.null(sidecar) && identical(sidecar$kind, "assay5")) {
     to <- .srt_restore_assay5_from_sidecar(to, assay, sidecar, verbose = verbose)
@@ -223,7 +252,7 @@ NULL
     }
   }
   # SeuratObject's coercion joins split layers and drops the rest
-  to <- suppressWarnings(methods::as(assay, "Assay"))
+  to <- .srt_coerce_assay(assay, "Assay")
   # `data` gets a copy of counts when the v5 assay had no data layer
   has_data <- any(vapply(names(sidecar$layers), function(nm) {
     identical(sidecar$layers[[nm]]$source, "data")
